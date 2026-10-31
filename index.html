@@ -654,9 +654,9 @@ async function renderOversikt(){
     h+=sensTile(cfg.ids.slab,"measure_temperature","Temp betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
     h+=`</div>`;
     try{h+=await priceBlock(0,true);}catch(err){}
-    let hh={},keys=[];try{hh=await loadHourly();keys=Object.keys(hh).sort().slice(-24);}catch(err){}
+    let hh={},keys=[];try{hh=await loadHourly();keys=doneKeys(hh).slice(-24);}catch(err){}
     const v24=keys.map(k=>hh[k]);
-    if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>k.slice(11)+":00"),"kW")}<div class="note">Klicka för mer.</div></div>`;
+    if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>hourLbl(k)),"kW")}<div class="note">Klicka för mer.</div></div>`;
     if(state.devices[cfg.ids.tesla])h+=`<h3>Tesla</h3>`+teslaTiles(state.unit);
   }else{
     h+=`<div class="grid">`+tile("Effekt just nu",e.w!=null?fmt(e.w,0):"–","W","Dekarsön 236","hero")+tile("Denna månad",fmt(e.month,0),unitName(state.unit),"")+tile("I år",fmt(e.year,0),unitName(state.unit),"")+`</div>`;
@@ -1150,8 +1150,8 @@ const CHARTS=[
    return barChart(a,null,a.map((_,i)=>labelDate(addDays(s,i*7))),unitName(eu));}},
  {k:"hours",title:"Timmedeleffekt, senaste 24 timmarna (kW)",async build(c){
    if(state.prop!=="235")return `<div class="note">Gäller Dekarsön 235.</div>`;
-   const hh=await loadHourly(),keys=Object.keys(hh).sort().slice(-24);return lineChart(keys.map(k=>hh[k]),keys.map(k=>k.slice(11)+":00"),"kW");},
-   async more(c){if(state.prop!=="235")return "";const hh=await loadHourly(),all=Object.keys(hh).sort(),k7=all.slice(-168);
+   const hh=await loadHourly(),keys=doneKeys(hh).slice(-24);return lineChart(keys.map(k=>hh[k]),keys.map(k=>hourLbl(k)),"kW");},
+   async more(c){if(state.prop!=="235")return "";const hh=await loadHourly(),all=doneKeys(hh),k7=all.slice(-168);
      const sm=Array(24).fill(0),n=Array(24).fill(0);for(const k of all){const hr=+k.slice(11);sm[hr]+=hh[k];n[hr]++;}
      return `<div class="card" style="margin-top:14px"><h2>Senaste 7 dygnen, timme för timme (kW)</h2>${barChart(k7.map(k=>hh[k]),null,k7.map(k=>k.slice(8,10)+"/"+k.slice(5,7)+" "+k.slice(11)+":00"),"kW")}</div>
        <div class="card" style="margin-top:14px"><h2>Snitt per klockslag, senaste ${Math.round(all.length/24)} dygnen (kW)</h2>${barChart(sm.map((x,i)=>n[i]?x/n[i]:null),null,sm.map((_,i)=>pad(i)+":00"),"kW")}</div>`;}},
@@ -1307,10 +1307,14 @@ function lineChart(vals,labels,unit,color){
   for(let i=0;i<n;i+=step)g+=`<text x="${L+i*bw+bw/2}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg>`;
 }
+/* Bara AVSLUTADE timmar: innevarande timme är inte klar och ska aldrig ingå i timstatistik. */
+function doneKeys(hh){const cur=hourKey(new Date());return Object.keys(hh).filter(k=>k<cur).sort();}
+function hourLbl(k){const t=hourKey(new Date()).slice(0,10),y=hourKey(new Date(Date.now()-864e5)).slice(0,10),d=k.slice(0,10),h=+k.slice(11),r=pad(h)+"–"+pad((h+1)%24);
+  return (d===t?"idag ":d===y?"igår ":k.slice(8,10)+"/"+k.slice(5,7)+" ")+r;}
 async function viewTimmar(){
-  const hh=await loadHourly(),keys=Object.keys(hh).sort();
+  const hh=await loadHourly(),keys=doneKeys(hh);
   if(!keys.length)return `<div class="card">Ingen timdata hittades. Kontrollera enheten "Effektmätare 235" i Admin.</div>`;
-  const last=keys.slice(-24),lv=last.map(k=>hh[k]),ll=last.map(k=>k.slice(11)+":00");
+  const last=keys.slice(-24),lv=last.map(k=>hh[k]),ll=last.map(k=>hourLbl(k));
   const mon=todayStr().slice(0,7),mk=keys.filter(k=>k.startsWith(mon)).sort((a,b)=>hh[b]-hh[a]);
   const top=[];const seenDay=new Set();
   for(const k of mk){const d=k.slice(0,10);if(seenDay.has(d))continue;seenDay.add(d);top.push(k);if(top.length===3)break;}
@@ -1318,7 +1322,7 @@ async function viewTimmar(){
   const maxNow=Math.max(...lv),avg24=lv.reduce((a,b)=>a+b,0)/lv.length;
   let h=`<div class="grid">${tile("Snitt senaste 24 h",fmt(avg24,2),"kW","Medeleffekt per timme","hero")}${tile("Högsta timme senaste 24 h",fmt(maxNow,2),"kW",ll[lv.indexOf(maxNow)])}${tile("Topp 3 denna månad (snitt)",fmt(topAvg,2),"kW","Tre högsta dygnstopparna, ≈ effektavgift")}${tile("Förbrukning senaste 24 h",fmt(lv.reduce((a,b)=>a+b,0),1),"kWh","Summa av timmedeleffekt")}</div>`;
   h+=`<div class="card" style="margin:14px 0"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(lv,ll,"kW")}</div>`;
-  h+=`<div class="card"><h2>Högsta timmarna denna månad</h2><table><tr><th>Tid</th><th>Timmedeleffekt (kW)</th></tr>${top.map(k=>`<tr><td>${k.slice(0,10)} kl ${k.slice(11)}:00</td><td>${fmt(hh[k],2)}</td></tr>`).join("")||`<tr><td colspan="2">Ingen data</td></tr>`}</table>
+  h+=`<div class="card"><h2>Högsta timmarna denna månad</h2><table><tr><th>Tid</th><th>Timmedeleffekt (kW)</th></tr>${top.map(k=>`<tr><td>${k.slice(0,10)} kl ${pad(+k.slice(11))}–${pad((+k.slice(11)+1)%24)}</td><td>${fmt(hh[k],2)}</td></tr>`).join("")||`<tr><td colspan="2">Ingen data</td></tr>`}</table>
    <div class="note">${esc(state.sheetInfo||"")} Beräknat ur effektmätarens logg i Homey (medel per timme). Ligger nätägarens effektavgift på mätarens egen timmedata kan värdet avvika något.</div></div>`;
   return h;
 }
