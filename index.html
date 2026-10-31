@@ -207,7 +207,7 @@ const DEFAULTS={
     d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
     price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",m236prev:"b71aea9a-d306-45a2-90da-b3d589591c31",m236day:"1abf7a52-82b5-47ba-a4a4-0a456b938601",m236month:"30272262-e61d-4e99-b536-c843c3911500",m236prevE:"557af22f-ec2e-4f3a-b1ec-a0ab647667af",m236dayN:"bafbd37d-aa8e-46a3-8582-f08604fc8b88",m236monthN:"cfc670ef-0eff-42a8-9ecf-517091618958",l236_1:"9634d738-f370-44ec-b383-1dd540b63ea3",l236_2:"a09151a6-eec7-418e-b57f-6e6eff63f20d",l236_3:"ed39ab86-96bc-46e3-8af0-ee01960a45e5",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",timSnitt:"f8346588-0055-474e-94eb-d4fc2026ee6a",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
     tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
-    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",entre:"969c95cb-de0a-4222-9510-0761ca0d0721",fastighet:"983c3c84-a1ef-4c64-b36d-f6c6ff093792",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",inneKok:"97c95291-0a6a-45eb-a7d5-39695c4fa655",ventilation:"8904d830-126c-4c0d-9a6c-6bc67c1f77ad",koksfläkt:"ab42117b-5917-4f1b-aaa6-9537931a7c2f",spotKok:"626665dc-15f5-4fa9-9e6c-8fc4fbbe74fc",ytterdorr:"11743e4d-2bf0-408a-a606-db890cddd7c6",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
+    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",entre:"969c95cb-de0a-4222-9510-0761ca0d0721",fastighet:"983c3c84-a1ef-4c64-b36d-f6c6ff093792",dtVP:"d053deb1-b805-465b-b27e-cd9ca1e5fb77",dtGolv:"1fbcbf0a-62bf-48b8-8c89-cd53d1e4a05a",dtUterum:"dd26be28-32a0-45f7-a665-2705e5bf605e",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",inneKok:"97c95291-0a6a-45eb-a7d5-39695c4fa655",ventilation:"8904d830-126c-4c0d-9a6c-6bc67c1f77ad",koksfläkt:"ab42117b-5917-4f1b-aaa6-9537931a7c2f",spotKok:"626665dc-15f5-4fa9-9e6c-8fc4fbbe74fc",ytterdorr:"11743e4d-2bf0-408a-a606-db890cddd7c6",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
   },
   ui:{devices:{},flows:{},status:{lights:true,sockets:true,locks:true,open:true,alarms:true,motion:true,battery:true,temps:true}}
 };
@@ -548,7 +548,7 @@ function golvGroup(f,sensors){
   if(!f)return "";const v=i=>capVal(f,"measure_temperature."+i);let h=onoffTile(f,"Golvvärme","Golvvärme","");
   if(sensors){h+=v(1)!=null?sensTile(f.id,"measure_temperature.1","Framledning golvvärme",fmt(v(1),1),"°C","Givare 1"):"";
     h+=v(2)!=null?sensTile(f.id,"measure_temperature.2","Returledning golvvärme",fmt(v(2),1),"°C","Givare 2"):"";
-    h+=v(1)!=null&&v(2)!=null?tile("ΔT golvvärme",fmt(v(1)-v(2),1),"°C","Fram − retur"):"";}
+    h+=homeyVar(cfg.ids.dtGolv)!=null?dtTile("ΔT golvvärme",cfg.ids.dtGolv,0,"Fram − retur"):(v(1)!=null&&v(2)!=null?tile("ΔT golvvärme",fmt(v(1)-v(2),1),"°C","Fram − retur"):"");}
   h+=capVal(f,"meter_power")!=null?tile("Energi totalt",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat"):"";
   return grp("Golvvärme",h,sensors?5:4);
 }
@@ -557,7 +557,7 @@ function uterumGroup(sl,f,withFloor){
   if(sl)h+=sensTile(sl.id,"measure_temperature","Betongplatta",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(sl.id,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"");
   if(f){h+=v(3)!=null?sensTile(f.id,"measure_temperature.3","Framledning uterum",fmt(v(3),1),"°C","Givare 3"):"";
     h+=v(4)!=null?sensTile(f.id,"measure_temperature.4","Returledning uterum",fmt(v(4),1),"°C","Givare 4"):"";
-    h+=v(3)!=null&&v(4)!=null?tile("ΔT uterum",fmt(v(3)-v(4),1),"°C","Fram − retur"):"";}
+    h+=homeyVar(cfg.ids.dtUterum)!=null?dtTile("ΔT uterum",cfg.ids.dtUterum,0,"Fram − retur"):(v(3)!=null&&v(4)!=null?tile("ΔT uterum",fmt(v(3)-v(4),1),"°C","Fram − retur"):"");}
   if(withFloor&&f){h+=onoffTile(f,"Golvvärme","Golvvärme","");if(capVal(f,"meter_power")!=null)h+=tile("Golvvärme energi",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat");}
   return h?grp("Uterum",h,4):"";
 }
@@ -565,19 +565,22 @@ function ventGroup(){
   const d=state.devices[cfg.ids.ventilation];if(!d)return "";
   return grp("Ventilation",onoffTile(d,devName(d),devName(d),fmt(capVal(d,"meter_power"),1)+" kWh totalt"),4);
 }
-/* ΔT värmepump = framledning − returledning. Givarna hittas via capability-titeln (framledning/supply, retur/return) eller anges i Admin; annars antas capability_1 och capability_2 och det står tydligt. */
-function nibeDelta(nb,temps){
-  const co=nb.capabilitiesObj||{},ttl=k=>String((co[k]&&co[k].title)||"");
-  let f=(cfg.nibeFram||"").trim()||temps.find(k=>/framledning|supply|\bBT2\b|\bBT12\b/i.test(ttl(k))&&!/retur|return/i.test(ttl(k))),r=(cfg.nibeRet||"").trim()||temps.find(k=>/retur|return|\bBT3\b/i.test(ttl(k)));
-  let note="Framledning − retur";
-  if(!f||!r||!co[f]||!co[r]){f=f||"capability_1";r=r||"capability_2";note="Antar "+f+" − "+r+" · ändra i Admin";}
-  const a=co[f]&&co[f].value,b=co[r]&&co[r].value;
-  return a!=null&&b!=null?tile("ΔT värmepump",fmt(a-b,1),"°C",note):tile("ΔT värmepump","–","°C","Givare saknas");
+/* ΔT kommer från Homeys Logic-variabler (Delta T VP / Golvvärme / Uterum). Homey är sanningen; dashboarden räknar inte själv. */
+async function loadVars(){
+  if(isDemo())return null;
+  try{if(!state.vars||Date.now()-state.vars.t>20000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};}catch(e){return null;}
+  return state.vars.v;
 }
+function homeyVar(id){const V=state.vars&&state.vars.v;if(!V)return null;const x=Object.values(V).find(y=>y.id===id);return x&&x.value!=null&&x.value!==""?Number(x.value):null;}
+function dtTile(label,id,fallback,note){
+  const v=homeyVar(id),val=v!=null?v:(isDemo()?fallback:null);
+  return tile(label,val!=null?fmt(val,1):"–","°C",val!=null?note+(v!=null?" · Homey":" · demo"):"Inväntar Homey-variabeln");
+}
+function nibeDelta(){return dtTile("ΔT värmepump",cfg.ids.dtVP,2.2,"Framledning − retur");}
 function nibeGroup(){
   const nb=state.devices[cfg.ids.nibe];if(!nb)return "";
   const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^(measure_temperature|capability_\d+)/.test(k)&&nb.capabilitiesObj[k].value!=null).sort((a,b)=>a.localeCompare(b,"sv",{numeric:true}));
-  return grp("Värmepump · NIBE",temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")+tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu")+nibeDelta(nb,temps),4);
+  return grp("Värmepump · NIBE",temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")+tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu")+nibeDelta(),4);
 }
 function dualTile(attrs,label,a,b,cls){
   const col=x=>`<div style="min-width:0"><div class="v" style="font-size:26px;white-space:nowrap">${x.est?"≈ ":""}${fmt(x.v,x.dec||0)} <small>${x.un}</small></div><div class="s" style="font-size:12.5px;min-height:18px;white-space:nowrap">${x.sub||""}</div></div>`;
@@ -1269,6 +1272,7 @@ function floorSensTiles(f,only){
   return h+(only!=="uterum"?dt(1,2,"ΔT golvvärme"):"")+(only!=="golv"?dt(3,4,"ΔT uterum"):"");
 }
 async function renderKlimat(){
+  await loadVars();
   const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.slab&&d.id!==cfg.ids.ventilation&&d.id!==cfg.ids.fastighet&&d.id!==cfg.ids.entre);
   const zones=[...new Set(all.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv"));
   const list=all.filter(d=>!state.climZone||zoneName(d)===state.climZone).sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")||a.name.localeCompare(b.name,"sv"));
@@ -1626,7 +1630,7 @@ async function viewTraktor(R,u){
   if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor räknas timme för timme: kWh när enheten var igång gånger timpriset just då (senaste 7 dagarna), äldre dagar med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
   return h;
 }
-async function viewUterum(R,u){
+async function viewUterum(R,u){await loadVars();
   const f=state.devices[cfg.ids.floor],s=state.devices[cfg.ids.slab];
   let h=uterumGroup(s,f,true);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
@@ -1820,8 +1824,6 @@ function renderAdmin(){
     <label class="adm-l">Timeffekt-ark, CSV-länk (Google Sheets: Arkiv → Dela → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv" value="${esc(cfg.sheetCsv||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=…&single=true&output=csv"></label>${idf("tibber","Tibber, hela huset (enhets-ID)")}${idf("hush","Hushållsel")}${idf("uppv","Uppvärmning")}${idf("vp","Värmepump")}${idf("ovr","Övrigt (valfritt)")}${idf("d236","Dekarsön 236, virtuell energiöversikt")}${idf("live235","Effektmätare 235 (Tibber Pulse)")}${idf("price","Elpris-enhet (Tibber)")}${idf("tesla","Tesla (bil)")}${idf("teslaE","Energiöversikt Tesla")}${idf("nibe","NIBE värmepump")}${idf("trLoad","Traktor, laddning (uttag)")}${idf("trHeat","Traktor, motorvärmare")}${idf("floor","Golvvärme Uterum")}${idf("entre","Entrévärme utomhus (entréplatta)")}${idf("slab","Betongplatta Uterum (sensor)")}${idf("vp236","Luftvärmepump 236")}${idf("trRep","Traktor, rapportenhet med kr (valfritt)")}${idf("golvRep","Golvvärme, rapportenhet med kr (valfritt)")}
     <label class="adm-l">Dekarsön 236 · timeffekt-ark, CSV-länk (kalkylarket "Timmedeleffekt Dekarsön 236" → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv236" value="${esc(cfg.sheetCsv236||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=1300079826&output=csv"></label>
     <label class="adm-l">Traktor motorvärmare, känd effekt i W (valfritt, ger en tydligt märkt schablonberäkning)<input type="text" data-cfg="trHeatW" value="${esc(cfg.trHeatW||"")}" placeholder="t.ex. 600"></label>
-    <label class="adm-l">NIBE ΔT: capability för framledning (tomt = automatiskt)<input type="text" data-cfg="nibeFram" value="${esc(cfg.nibeFram||"")}" placeholder="t.ex. capability_1"></label>
-    <label class="adm-l">NIBE ΔT: capability för returledning (tomt = automatiskt)<input type="text" data-cfg="nibeRet" value="${esc(cfg.nibeRet||"")}" placeholder="t.ex. capability_2"></label>
     <label class="adm-l">Påslag (kr/kWh)<input type="text" data-cfg="markup" value="${esc(cfg.markup)}"></label></div>
   <div class="card"><h2>Fastigheter</h2><div class="note" style="margin:0 0 8px">Rum som hör till Dekarsön 236. Allt annat räknas som 235.</div>
     ${zones.map(z=>`<label class="stat" style="cursor:pointer"><span>${esc(z.name)}</span><input type="checkbox" data-z236="${z.id}" ${cfg.zones236.includes(z.id)?"checked":""}></label>`).join("")||`<div class="note">Rum hämtas när du är ansluten.</div>`}</div>
