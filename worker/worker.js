@@ -64,7 +64,7 @@ function login(url, env) {
   const redirect = url.origin + "/callback";
   const state = rand().slice(0, 24);
   const u = new URL(ATHOM + "/oauth2/authorise");
-  u.searchParams.set("authorization_type", "code");
+  u.searchParams.set("response_type", "code");
   u.searchParams.set("client_id", env.CLIENT_ID);
   u.searchParams.set("redirect_uri", redirect);
   u.searchParams.set("state", state);
