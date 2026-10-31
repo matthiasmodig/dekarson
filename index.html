@@ -587,7 +587,7 @@ async function renderOversikt(){
     if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>k.slice(11)+":00"),"kW")}<div class="note">Klicka för mer.</div></div>`;
     const t=state.devices[cfg.ids.tesla];
     if(t){const soc=capVal(t,"measure_soc_level")??capVal(t,"measure_battery"),on=capVal(t,"charging_on");
-      h+=`<h3>Tesla</h3><div class="grid">${tile("Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte")}${tile("Räckvidd",fmt(capVal(t,"measure_soc_range_estimated"),0),"km","Uppskattad")}${tile("Laddgräns",fmt(capVal(t,"measure_charge_limit_soc"),0),"%","")}${tile("Senaste laddning",fmt(capVal(t,"measure_charge_energy_added"),1),"kWh","Tillförd energi")}${tile("Temperatur ute / inne",fmt(capVal(t,"measure_climate_temperature_out"),1)+" / "+fmt(capVal(t,"measure_climate_temperature_in"),1),"°C","")}</div>`+teslaCmds();}
+      h+=`<h3>Tesla</h3><div class="grid">${tile("Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte")}${tile("Räckvidd",fmt(capVal(t,"measure_soc_range_estimated"),0),"km","Uppskattad")}${tile("Laddgräns",fmt(capVal(t,"measure_charge_limit_soc"),0),"%","")}${tile("Senaste laddning",fmt(capVal(t,"measure_charge_energy_added"),1),"kWh","Tillförd energi")}${tile("Temperatur ute / inne",fmt(capVal(t,"measure_climate_temperature_out"),1)+" / "+fmt(capVal(t,"measure_climate_temperature_in"),1),"°C","")}</div>`;}
   }else{
     h+=`<div class="grid">`+tile("Effekt just nu",e.w!=null?fmt(e.w,0):"–","W","Dekarsön 236","hero")+tile("Denna månad",fmt(e.month,0),unitName(state.unit),"")+tile("I år",fmt(e.year,0),unitName(state.unit),"")+`</div>`;
   }
@@ -701,6 +701,26 @@ async function hourlyBlock(u,R){
     <div class="note">Summa ${fmt(tot,u==="kr"?0:1)} ${un}. Timmedata är medeleffekt per timme från elmätaren${u==="kr"?" gånger timpriset, alltså ungefärligt (≈)":""}.</div></div>`;
 }
 function hourKey(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());}
+/* Letar efter en prislista (timpriser för flera timmar/dygn) i enhetens store/settings om Homey-appen lagrar en sådan. */
+function extractPrices(dev){
+  const out={};if(!dev)return out;
+  const tk=["startsAt","start","time","from","date","timestamp","t","hour"],vk=["total","price","value","v","SEK_per_kWh","energy","spot"];
+  const tryArr=a=>{let n=0;for(const x of a){let t=null,v=null;
+      if(x&&typeof x==="object"){for(const k of tk)if(x[k]!=null){const d=new Date(x[k]);if(!isNaN(d)){t=d;break;}}for(const k of vk)if(typeof x[k]==="number"){v=x[k];break;}}
+      if(t&&v!=null){out[hourKey(t)]=v;n++;}}return n;};
+  const walk=(o,d)=>{if(o==null||d>4)return;
+    if(typeof o==="string"&&/^\s*[\[{]/.test(o)&&o.length>100){try{walk(JSON.parse(o),d+1);}catch(e){}return;}
+    if(Array.isArray(o)){if(o.length>=8&&typeof o[0]==="object")tryArr(o);else o.forEach(x=>walk(x,d+1));return;}
+    if(typeof o==="object"){const ks=Object.keys(o);
+      if(ks.length>=8&&ks.every(k=>!isNaN(new Date(k)))&&ks.every(k=>typeof o[k]==="number")){ks.forEach(k=>{out[hourKey(new Date(k))]=o[k];});return;}
+      ks.forEach(k=>walk(o[k],d+1));}};
+  walk(dev.store,0);walk(dev.settings,0);return out;
+}
+function tomorrowNote(ed){
+  const lo=capVal(ed,"meter_price_next_day_lowest"),hi=capVal(ed,"meter_price_next_day_highest"),av=capVal(ed,"meter_price_next_day_avg");
+  if(lo==null&&hi==null)return `<div class="note">Homey har inte publicerat morgondagens priser ännu.</div>`;
+  return `<div class="card" style="margin-top:10px"><b>Imorgon</b> (Homey ger bara sammanfattning, inte timpriserna): lägst ${fmt(lo,2)} kr/kWh kl ${fmt(capVal(ed,"hour_next_day_lowest"),0)}:00 · högst ${fmt(hi,2)} kr/kWh kl ${fmt(capVal(ed,"hour_next_day_highest"),0)}:00 · snitt ${fmt(av,2)} kr/kWh.</div>`;
+}
 async function priceBlock(past=24){
   const ph=await loadPriceHist(),now=new Date(),nowK=hourKey(now),ed=state.devices[cfg.ids.elpris];
   const items=[];
@@ -708,6 +728,9 @@ async function priceBlock(past=24){
   const h0=capVal(ed,"meter_price_h0");
   items.push({k:nowK,v:h0!=null?h0:ph[nowK],t:"now"});
   let n=0;for(let i=1;i<=96;i++){const v=capVal(ed,"meter_price_h"+i);if(v==null)continue;n++;items.push({k:hourKey(new Date(now.getTime()+i*36e5)),v,t:"fut"});}
+  const xp=extractPrices(ed),have=new Set(items.map(x=>x.k)),nk=hourKey(now);
+  let extra=0;for(const k of Object.keys(xp).sort()){if(k>nk&&!have.has(k)){items.push({k,v:xp[k],t:"fut"});extra++;}}
+  items.sort((a,b)=>a.k<b.k?-1:1);
   const vals=items.filter(x=>x.v!=null);if(!vals.length)return `<div class="note">Inga priser hittades. Kontrollera prisenhetens ID (Admin).</div>`;
   const fut=items.filter(x=>x.t!=="past"&&x.v!=null);
   const mn=fut.reduce((a,b)=>b.v<a.v?b:a),mx=fut.reduce((a,b)=>b.v>a.v?b:a),avg=fut.reduce((a,b)=>a+b.v,0)/fut.length;
@@ -739,7 +762,7 @@ async function priceBlock(past=24){
     <div class="legend"><span><i style="background:hsl(135 62% 46%)"></i>Billigt</span><span><i style="background:hsl(68 62% 46%)"></i>Medel</span><span><i style="background:hsl(0 62% 46%)"></i>Dyrt</span>${past?`<span>Ljusa staplar = passerat</span>`:""}<span>Ram = nuvarande timme</span></div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg>
     <div class="note" id="pxr${past}" style="min-height:19px;color:var(--ink)">Håll över en stapel för att se priset.</div>
-    <div class="note">Billigast framåt: ${fmt(mn.v,2)} kr/kWh kl ${mn.k.slice(11)}:00 (${mn.k.slice(8,10)}/${mn.k.slice(5,7)}) · dyrast: ${fmt(mx.v,2)} kr/kWh kl ${mx.k.slice(11)}:00 (${mx.k.slice(8,10)}/${mx.k.slice(5,7)}) · snitt ${fmt(avg,2)}. Visar alla timmar Homey har priser för (${n} framåt${days>1?", inklusive imorgon":", morgondagens priser har inte kommit ännu"}). Elpris SE2, utan påslag.</div></div>`;
+    <div class="note">Billigast framåt: ${fmt(mn.v,2)} kr/kWh kl ${mn.k.slice(11)}:00 (${mn.k.slice(8,10)}/${mn.k.slice(5,7)}) · dyrast: ${fmt(mx.v,2)} kr/kWh kl ${mx.k.slice(11)}:00 (${mx.k.slice(8,10)}/${mx.k.slice(5,7)}) · snitt ${fmt(avg,2)}. Visar alla timmar Homey har priser för (${n+extra} framåt${days>1?", inklusive imorgon":""}). Elpris SE2, utan påslag.</div>${days>1?"":tomorrowNote(ed)}</div>`;
 }
 async function renderEkonomi(){
   if(state.prop!=="235"){$("#p-ekonomi").innerHTML=`<div class="card">Kostnader för Dekarsön 236 visas under Energi &amp; effekt (kumulativ räknare, inget elpris per timme).</div>`;return;}
@@ -1061,7 +1084,6 @@ async function viewTesla(R,u){
     ${tile("Vägmätare",fmt(capVal(t,"meter_car_odo"),0),"km","")}
     ${tile("Laddning denna månad",fmt(capVal(e,em),0),un,"Enligt energiöversikten för Tesla")}
     ${tile("Laddning i år",fmt(capVal(e,ey),0),un,"")}</div>`;
-  h+=teslaCmds();
   h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;let T=null;
   if(isDemo()){const S=demoSeries(minDate);T=S.tesla;}
