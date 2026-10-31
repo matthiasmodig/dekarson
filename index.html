@@ -1599,13 +1599,12 @@ function viewVVB(){
   return h;
 }
 async function viewVP(R,u){
-  const minDate=R.ps&&R.ps<R.s?R.ps:R.s,S=await loadSeries(minDate),T=S.vp,d=state.devices[cfg.ids.vp],n=state.devices[cfg.ids.nibe];
+  const d=state.devices[cfg.ids.vp],n=state.devices[cfg.ids.nibe];
   const k=u==="kr"?"meter_money_":"meter_kwh_",un=unitName(u);
   let h=`<div class="grid">${tile("Effekt just nu",fmt(capVal(n,"measure_power")??capVal(d,"measure_watt_avg"),0),"W","NIBE / värmepumpens mätare","hero")}${[["Idag","day","mot igår"],["Denna månad","month","mot förra månaden"],["I år","year","mot förra året"]].map(([l,p,t])=>dualTile("",l,{v:capVal(d,"meter_money_this_"+p),un:"kr",sub:delta(capVal(d,"meter_money_this_"+p),capVal(d,"meter_money_last_"+p),t)},{v:capVal(d,"meter_kwh_this_"+p),un:"kWh",sub:delta(capVal(d,"meter_kwh_this_"+p),capVal(d,"meter_kwh_last_"+p),t)})).join("")}`;
   const tm=capVal(state.devices[cfg.ids.tibber],"meter_kwh_this_month"),vm=capVal(d,"meter_kwh_this_month");
   h+=tile("Andel av hela huset (månad)",tm>0&&vm!=null?fmt(vm/tm*100,0):"–","%","Värmepump delat med Tibber-totalen");
   h+=tile("Snittpris månad",fmt(capVal(d,"meter_money_this_month_avg"),2),"kr/kWh","Enligt Homeys rapport")+`</div>`;
-  const c=chartBlock("Värmepump",T,R,u);if(c.html)h+=c.html;else h+=c;
   return h;
 }
 function teslaTiles(u){
@@ -1623,11 +1622,6 @@ function teslaTiles(u){
 }
 async function viewTesla(R,u){
   let h=teslaTiles(u);
-  const minDate=R.ps&&R.ps<R.s?R.ps:R.s;let T=null;
-  if(isDemo()){const S=demoSeries(minDate);T=S.tesla;}
-  else if(cfg.ids.teslaE){T={kwh:await cumSeries(cfg.ids.teslaE,"devicecapabilities_number.number5",minDate,true),kr:await cumSeries(cfg.ids.teslaE,"devicecapabilities_number.number6",minDate,true)};}
-  const c=chartBlock("Tesla, laddning",T,R,u);h+=c.html||c;
-  h+=`<div class="note">Dygnsvärden räknas ur Tesla-översiktens årsräknare och finns från att den startades.</div>`;
   return h;
 }
 async function viewTraktor(R,u){
@@ -1637,18 +1631,11 @@ async function viewTraktor(R,u){
   let h=`<div class="grid">${oo(l,"Traktor laddning","Laddning",lOn?"PÅ":"Av","","Effekt "+fmt(capVal(l,"measure_power"),0)+" W · klicka för att styra och se historik","hero")}
     ${oo(m,"Traktor MV","Motorvärmare",mOn?"PÅ":"Av","","Klicka för att styra och se historik")}${tile("Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
-  const T=(await loadSeries(minDate)).traktor,eu=effU(T,u);
-  const c=chartBlock("Traktorladdning",T,R,eu);h+=c.html||c;
-  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor räknas timme för timme: kWh när enheten var igång gånger timpriset just då (senaste 7 dagarna), äldre dagar med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
   return h;
 }
 async function viewUterum(R,u){await loadVars();
   const f=state.devices[cfg.ids.floor],s=state.devices[cfg.ids.slab];
   let h=uterumGroup(s,f,true);
-  const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
-  const T=(await loadSeries(minDate)).golv,eu=effU(T,u);
-  const c=chartBlock("Golvvärme Uterum",T,R,eu);h+=c.html||c;
-  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor räknas timme för timme: kWh när enheten var igång gånger timpriset just då (senaste 7 dagarna), äldre dagar med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
   return h;
 }
 async function renderDetalj(){
@@ -1670,7 +1657,6 @@ async function renderDetalj(){
     $("#p-detalj").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;return;
   }
   let h=`<div class="bar" style="position:sticky;top:62px;z-index:10;background:var(--bg);padding:8px 0;margin:0 0 6px">${secs.map(([k,l])=>`<button class="chip" data-jump="det-${k}">${l}</button>`).join("")}</div>`;
-  h+=`<section class="grp"><h3>Period och jämförelse</h3>${presetBar(R)}<div class="note">Gäller alla diagram på sidan.</div></section>`;
   const views={timmar:()=>viewTimmar(),vp:()=>viewVP(R,u),vvb:async()=>viewVVB(),uterum:()=>viewUterum(R,u),traktor:()=>viewTraktor(R,u),tesla:()=>viewTesla(R,u)};
   for(const [k,l] of secs){
     let body="";try{body=await views[k]();}catch(e){body=`<div class="card err">Kunde inte läsa data: ${esc(e.message)}</div>`;}
