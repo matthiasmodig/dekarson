@@ -165,7 +165,7 @@ dialog::backdrop{background:#0009}
 <div class="content">
 <div class="top">
   <div class="seg" id="segProp" role="group" aria-label="Fastighet"></div>
-  <div class="seg" id="segUnit" role="group" aria-label="Enhet">
+  <div class="seg" id="segUnit" role="group" aria-label="Enhet" style="display:none">
     <button data-unit="kr" aria-pressed="true">Kronor</button>
     <button data-unit="kwh" aria-pressed="false">kWh</button>
   </div>
@@ -1456,10 +1456,20 @@ async function renderDetalj(){
   const R=calcRange(),u=state.unit;
   const secs=[["timmar","Timmar och effekt"],["vp","Värmepump"],["vvb","Varmvattenberedare"],["uterum","Uterum och entreplatta"],["traktor","Traktor"],["tesla","Tesla"]];
   if(state.prop==="236"){
-    const d=state.devices[cfg.ids.vp236];
-    $("#p-detalj").innerHTML=`<div class="grid">${tile("Luftvärmepump 236",d?(capVal(d,"onoff")===false?"Av":"På"):"–","",d?"Temperatur: "+fmt(capVal(d,"measure_temperature"),1)+" °C":"Ej hittad")}</div><div class="note">Fler kort för Dekarsön 236 läggs till när det finns data.</div>`;return;
+    const d=state.devices[cfg.ids.vp236],e=liveEnergy();let h="";
+    if(d){let g=onoffTile(d,"Luftvärmepump 236","Luftvärmepump","");
+      if(capVal(d,"measure_temperature")!=null)g+=sensTile(d.id,"measure_temperature","Temperatur",fmt(capVal(d,"measure_temperature"),1),"°C","Kretstemperatur i uttaget");
+      if(capVal(d,"meter_power")!=null)g+=tile("Energi totalt",fmt(capVal(d,"meter_power"),1),"kWh","Ackumulerat i uttaget");
+      h+=grp("Luftvärmepump · Dekarsön 236",g,4);}
+    const u0=state.unit;state.unit="kr";const ek=liveEnergy();state.unit="kwh";const ew=liveEnergy();state.unit=u0;
+    h+=grp("Energi · Dekarsön 236",tile("Effekt just nu",e.w!=null?fmt(e.w,0):"–","W","Aktuell förbrukning","hero")+tile("Denna månad",fmt(ew.month,0),"kWh",ek.month!=null?fmt(ek.month,0)+" kr":"")+tile("I år",fmt(ew.year,0),"kWh",ek.year!=null?fmt(ek.year,0)+" kr":""),4);
+    try{const minDate=R.ps&&R.ps<R.s?R.ps:R.s,S=await loadSeries(minDate),T=S.d236;
+      h+=`<section class="grp"><h3>Period och jämförelse</h3>${presetBar(R)}</section>`;
+      if(T){const c=chartBlock("Dekarsön 236",T,R,effU(T,u));h+=c.html||c;}
+      else h+=`<div class="note">Ange energikälla för Dekarsön 236 under Admin.</div>`;
+    }catch(err){h+=`<div class="note">Historik kunde inte läsas: ${esc(err.message)}</div>`;}
+    $("#p-detalj").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;return;
   }
-  state.detClosed=state.detClosed||{};document.querySelectorAll("#p-detalj details.det").forEach(x=>{state.detClosed[x.id]=!x.open;});
   let h=`<div class="bar" style="position:sticky;top:62px;z-index:10;background:var(--bg);padding:8px 0;margin:0 0 6px">${secs.map(([k,l])=>`<button class="chip" data-jump="det-${k}">${l}</button>`).join("")}</div>`;
   h+=`<section class="grp"><h3>Period och jämförelse</h3>${presetBar(R)}<div class="note">Gäller alla diagram på sidan.</div></section>`;
   const views={timmar:()=>viewTimmar(),vp:()=>viewVP(R,u),vvb:async()=>viewVVB(),uterum:()=>viewUterum(R,u),traktor:()=>viewTraktor(R,u),tesla:()=>viewTesla(R,u)};
