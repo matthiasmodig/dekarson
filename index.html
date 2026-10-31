@@ -1123,18 +1123,18 @@ function spark(arr){
 function kCard(k,name,S,R,u){
   const T=S[k];
   if(!T)return `<div class="card kcard" style="opacity:.6"><div class="nm">${name}</div><div class="note">Ej konfigurerad. Ange enhets-ID i Admin.</div></div>`;
-  const eu=effU(T,u),un=unitName(eu),oth=eu==="kr"?"kwh":"kr";
-  const cur=sumRange(T,eu,R.s,R.e),prv=R.ps?sumRange(T,eu,R.ps,R.pe):null,co=sumRange(T,oth,R.s,R.e);
-  const bsz=R.len<=45?1:(R.len<=200?7:30),sp=bucketize(dayArray(T,eu,R.s,R.len),bsz);
-  const tot=S[mainKey()]?sumRange(S[mainKey()],eu,R.s,R.e).v:null;
-  const share=k!==mainKey()&&tot>0&&cur.v!=null?fmt(cur.v/tot*100,0)+" % av totalen":"";
-  const avg=cur.v!=null&&eu==="kr"&&co.v>0?fmt(cur.v/co.v,2)+" kr/kWh":(oth==="kr"&&co.v!=null&&cur.v>0?fmt(co.v/cur.v,2)+" kr/kWh":"");
+  const eu=effU(T,u),bsz=R.len<=45?1:(R.len<=200?7:30);
+  const kr=sumRange(T,"kr",R.s,R.e),kw=sumRange(T,"kwh",R.s,R.e),pk=R.ps?sumRange(T,"kr",R.ps,R.pe):null,pw=R.ps?sumRange(T,"kwh",R.ps,R.pe):null;
+  const sp=bucketize(dayArray(T,eu,R.s,R.len),bsz),main=S[mainKey()];
+  const tot=main?sumRange(main,"kwh",R.s,R.e).v:null;
+  const share=k!==mainKey()&&tot>0&&kw.v!=null?fmt(kw.v/tot*100,0)+" % av totalen":"";
+  const avg=kr.v!=null&&kw.v>0?fmt(kr.v/kw.v,2)+" kr/kWh":"";
+  const col=(v,un,p,est)=>`<div style="min-width:0"><div class="big" style="font-size:24px;white-space:nowrap">${est?"≈ ":""}${fmt(v,0)} <small>${un}</small></div><div class="s" style="font-size:12.5px;min-height:18px;white-space:nowrap" title="${p&&p.v!=null?"Jämförelse: "+fmt(p.v,0)+" "+un:""}">${p&&p.v!=null&&v!=null?delta(v,p.v,""):""}</div></div>`;
   return `<div class="card kcard" data-card="${k}" tabindex="0" role="button" aria-label="${name}, visa detaljer">
     <div class="top2"><span class="nm">${name}</span><span class="live">${liveOf(k)}</span></div>
-    <div class="big">${T.est&&eu==="kr"?"≈ ":""}${fmt(cur.v,0)} <small>${un}</small></div>
-    <div class="s" style="font-size:13.5px;min-height:19px">${prv?delta(cur.v,prv.v,"mot "+fmt(prv.v,0)+" "+un):""}</div>
-    <div style="margin:6px 0 2px">${spark(sp)}</div>
-    <div class="meta"><span>${fmt(co.v,0)} ${unitName(oth)}</span>${avg?`<span>${avg}</span>`:""}${share?`<span>${share}</span>`:""}${eu!==u?`<span>endast kWh finns</span>`:""}${T.est&&eu==="kr"?`<span>≈ kr = kWh × timpris när den var igång</span>`:""}</div></div>`;
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${col(kr.v,"kr",pk,T.est)}${col(kw.v,"kWh",pw,false)}</div>
+    <div style="margin:4px 0 2px">${spark(sp)}</div>
+    <div class="meta">${avg?`<span>${avg}</span>`:""}${share?`<span>${share}</span>`:""}${T.est?`<span>≈ kr = kWh × timpris när den var igång</span>`:""}${eu==="kwh"&&u==="kr"?`<span>Kronor finns inte för den här källan</span>`:""}</div></div>`;
 }
 /* ---- diagramdefinitioner ---- */
 function monthKeys(n){const t=todayStr();const y=+t.slice(0,4),m=+t.slice(5,7),a=[];for(let i=n-1;i>=0;i--){let mm=m-i,yy=y;while(mm<1){mm+=12;yy--;}a.push(yy+"-"+pad(mm));}return a;}
