@@ -358,7 +358,9 @@ function flowTriggerable(f,kind){
   return false;
 }
 const isSonos=f=>/sonos/i.test(flowName(f));
-function flowShown(f){const u=cfg.ui.flows[f.id];if(u&&u.show!=null)return u.show;return f.triggerable;}
+/* Dolda som standard (kan visas igen under Admin → Flows). Flowen påverkas inte i Homey. */
+const FLOW_HIDE=[/^Appinventering/i,/^Beräkna TIMeffekt/i,/^Energiöversikt virtuella/i,/^Home Control – Garageport (enkel|dubbel) puls/i,/^Köksfläkt$/i,/^Meddela temp 05:45/i,/^Starta värme traktor/i,/^Tesla/i,/^Utomhustemperatur$/i];
+function flowShown(f){const u=cfg.ui.flows[f.id];if(u&&u.show!=null)return u.show;if(FLOW_HIDE.some(r=>r.test(f.name)))return false;return f.triggerable;}
 const flowName=f=>(cfg.ui.flows[f.id]&&cfg.ui.flows[f.id].alias)||f.name;
 async function loadFlows(force){
   if(!force&&Date.now()-state.flowsAt<60000&&state.flows.length)return;
