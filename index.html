@@ -62,6 +62,7 @@ h2{font-size:17px;margin:0 0 10px;font-weight:700}
 h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
 .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.det{margin:0 0 26px;scroll-margin-top:120px}.det>summary{cursor:pointer;padding:10px 0;border-bottom:2px solid var(--line);margin-bottom:14px;list-style:none}.det>summary::before{content:"▾ ";color:var(--mut)}.det:not([open])>summary::before{content:"▸ "}
 .rowN{display:grid;gap:12px;grid-template-columns:repeat(var(--c,4),minmax(0,1fr))}
 .grp{margin:0 0 22px}.grp>h3{margin:0 0 10px}
 @media(max-width:900px){.rowN{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -1403,7 +1404,6 @@ async function viewVP(R,u){
   const tm=capVal(state.devices[cfg.ids.tibber],"meter_kwh_this_month"),vm=capVal(d,"meter_kwh_this_month");
   h+=tile("Andel av hela huset (månad)",tm>0&&vm!=null?fmt(vm/tm*100,0):"–","%","Värmepump delat med Tibber-totalen");
   h+=tile("Snittpris månad",fmt(capVal(d,"meter_money_this_month_avg"),2),"kr/kWh","Enligt Homeys rapport")+`</div>`;
-  h+=`<h3>Period</h3>`+presetBar(R);
   const c=chartBlock("Värmepump",T,R,u);if(c.html)h+=c.html;else h+=c;
   return h;
 }
@@ -1422,7 +1422,6 @@ function teslaTiles(u){
 }
 async function viewTesla(R,u){
   let h=teslaTiles(u);
-  h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;let T=null;
   if(isDemo()){const S=demoSeries(minDate);T=S.tesla;}
   else if(cfg.ids.teslaE){T={kwh:await cumSeries(cfg.ids.teslaE,"devicecapabilities_number.number5",minDate,true),kr:await cumSeries(cfg.ids.teslaE,"devicecapabilities_number.number6",minDate,true)};}
@@ -1437,7 +1436,6 @@ async function viewTraktor(R,u){
   let h=`<div class="grid">${oo(l,"Traktor laddning","Laddning",lOn?"PÅ":"Av","","Effekt "+fmt(capVal(l,"measure_power"),0)+" W · klicka för att styra och se historik","hero")}
     ${oo(m,"Traktor MV","Motorvärmare",mOn?"PÅ":"Av","","Klicka för att styra och se historik")}${tile("Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
   h+=`<div class="bar" style="margin-top:12px">${l?`<button class="btn" data-act="tgl" data-dev="${l.id}">Laddning ${capVal(l,"onoff")?"av":"på"}</button>`:""}${m?`<button class="btn" data-act="tgl" data-dev="${m.id}">Motorvärmare ${mOn?"av":"på"}</button>`:""}</div>`;
-  h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   const T=(await loadSeries(minDate)).traktor,eu=effU(T,u);
   const c=chartBlock("Traktorladdning",T,R,eu);h+=c.html||c;
@@ -1448,7 +1446,6 @@ async function viewUterum(R,u){
   const f=state.devices[cfg.ids.floor],s=state.devices[cfg.ids.slab];
   let h=uterumGroup(s,f)+golvGroup(f,false);
   if(f)h+=`<div class="bar" style="margin:-8px 0 12px"><button class="btn" data-act="tgl" data-dev="${f.id}">Golvvärme ${capVal(f,"onoff")?"av":"på"}</button></div>`;
-  h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   const T=(await loadSeries(minDate)).golv,eu=effU(T,u);
   const c=chartBlock("Golvvärme Uterum",T,R,eu);h+=c.html||c;
@@ -1457,20 +1454,19 @@ async function viewUterum(R,u){
 }
 async function renderDetalj(){
   const R=calcRange(),u=state.unit;
-  let h=`<div class="bar">${DETS.map(([k,l])=>`<button class="chip" data-det="${k}" aria-pressed="${state.det===k}">${l}</button>`).join("")}</div>`;
+  const secs=[["timmar","Timmar och effekt"],["vp","Värmepump"],["vvb","Varmvattenberedare"],["uterum","Uterum och entreplatta"],["traktor","Traktor"],["tesla","Tesla"]];
   if(state.prop==="236"){
     const d=state.devices[cfg.ids.vp236];
-    h+=`<div class="grid">${tile("Luftvärmepump 236",d?(capVal(d,"onoff")===false?"Av":"På"):"–","",d?"Temperatur: "+fmt(capVal(d,"measure_temperature"),1)+" °C":"Ej hittad")}</div><div class="note">Fler kort för Dekarsön 236 läggs till när det finns fler mätare där. Byt till Dekarsön 235 för Timmar, Värmepump, Tesla, Traktor och Uterum.</div>`;
-    $("#p-detalj").innerHTML=h;return;
+    $("#p-detalj").innerHTML=`<div class="grid">${tile("Luftvärmepump 236",d?(capVal(d,"onoff")===false?"Av":"På"):"–","",d?"Temperatur: "+fmt(capVal(d,"measure_temperature"),1)+" °C":"Ej hittad")}</div><div class="note">Fler kort för Dekarsön 236 läggs till när det finns data.</div>`;return;
   }
-  try{
-    if(state.det==="timmar")h+=await viewTimmar();
-    else if(state.det==="vp")h+=await viewVP(R,u);
-    else if(state.det==="tesla")h+=await viewTesla(R,u);
-    else if(state.det==="traktor")h+=await viewTraktor(R,u);
-    else if(state.det==="vvb")h+=viewVVB();
-    else h+=await viewUterum(R,u);
-  }catch(e){h+=`<div class="card err">Kunde inte läsa data: ${esc(e.message)}</div>`;}
+  state.detClosed=state.detClosed||{};document.querySelectorAll("#p-detalj details.det").forEach(x=>{state.detClosed[x.id]=!x.open;});
+  let h=`<div class="bar" style="position:sticky;top:62px;z-index:10;background:var(--bg);padding:8px 0;margin:0 0 6px">${secs.map(([k,l])=>`<button class="chip" data-jump="det-${k}">${l}</button>`).join("")}</div>`;
+  h+=`<section class="grp"><h3>Period och jämförelse</h3>${presetBar(R)}<div class="note">Gäller alla diagram på sidan.</div></section>`;
+  const views={timmar:()=>viewTimmar(),vp:()=>viewVP(R,u),vvb:async()=>viewVVB(),uterum:()=>viewUterum(R,u),traktor:()=>viewTraktor(R,u),tesla:()=>viewTesla(R,u)};
+  for(const [k,l] of secs){
+    let body="";try{body=await views[k]();}catch(e){body=`<div class="card err">Kunde inte läsa data: ${esc(e.message)}</div>`;}
+    h+=`<details class="det" id="det-${k}" ${state.detClosed[`det-${k}`]?"":"open"}><summary><h2 style="display:inline;font-size:20px">${l}</h2></summary>${body}</details>`;
+  }
   $("#p-detalj").innerHTML=h;
   const c=$("#cmp");if(c)c.value=state.cmp;
 }
@@ -1744,7 +1740,7 @@ document.addEventListener("click",async e=>{
   const sb=e.target.closest("[data-status]");if(sb){openModal("status",sb.dataset.status);return;}
   const kc=e.target.closest("[data-card]");if(kc){openModal("card",kc.dataset.card);return;}
   const cc=e.target.closest("[data-chart]");if(cc){openModal("chart",cc.dataset.chart);return;}
-  const dt=e.target.closest("[data-det]");if(dt){state.det=dt.dataset.det;draw();return;}
+  const jp=e.target.closest("[data-jump]");if(jp){const el=document.getElementById(jp.dataset.jump);if(el){el.open=true;el.scrollIntoView({behavior:"smooth",block:"start"});}return;}
   const b=e.target.closest("[data-act]");if(!b)return;
   const act=b.dataset.act,card=b.closest("[data-id]"),id=card&&card.dataset.id;
   try{
