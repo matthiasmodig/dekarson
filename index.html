@@ -685,13 +685,13 @@ async function renderOversikt(){
     g1+=tileA('data-daily="kwh"',"Energi idag",fmt(kd,1),"kWh",delta(kd,kdp,"mot igår ("+fmt(kdp,0)+" kWh)"));
     g1+=tileA('data-daily="kr"',"Kr idag",fmt(rd,0),"kr",delta(rd,rdp,"mot igår ("+fmt(rdp,0)+" kr)"));
     g1+=tileA('data-goto="timpris"',"Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
-    h+=grp("El just nu",g1,5);
+    const elGrp=grp("El just nu",g1,5);
     const ud=state.devices[cfg.ids.ute],feel=capVal(state.devices[cfg.ids.smhi],"air_temperature_feels_like_cp"),sl=state.devices[cfg.ids.slab],kk=state.devices[cfg.ids.inneKok];
     let g2="";
     if(kk)g2+=sensTile(kk.id,"measure_temperature","Inomhus (kök)",fmt(capVal(kk,"measure_temperature"),1),"°C",capVal(kk,"measure_humidity")!=null?sensLink(kk.id,"measure_humidity","Luftfuktighet "+fmt(capVal(kk,"measure_humidity"),0)+" %"):"Kök representerar inomhus");
     g2+=sensTile(cfg.ids.nibe,"capability_0","Utetemperatur",fmt(capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out"),1),"°C",(feel!=null?"Känns som "+fmt(feel,1)+" °C (SMHI) · ":"")+"NIBE BT1");
     g2+=sensTile(cfg.ids.slab,"measure_temperature","Betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
-    h+=grp("Temperatur",g2,3);
+    h+=grp("Temperatur",g2,3)+elGrp;
     try{h+=await priceBlock(0,true);}catch(err){}
     let hh={},keys=[];try{hh=await loadHourly();keys=doneKeys(hh).slice(-24);}catch(err){}
     const v24=keys.map(k=>hh[k]);
