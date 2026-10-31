@@ -541,7 +541,8 @@ function delta(cur,prev,suffix){
 }
 function grp(title,inner,cols,note){return `<section class="grp"><h3>${title}</h3><div class="rowN" style="--c:${cols||4}">${inner}</div>${note?`<div class="note">${note}</div>`:""}</section>`;}
 function tileA(attrs,label,value,unit,sub,cls){return tile(label,value,unit,sub,cls).replace('<div class="card tile','<div '+attrs+' tabindex="0" role="button" style="cursor:pointer" class="card tile');}
-function onoffTile(d,nm,label,sub,cls){if(!d)return "";const on=!!capVal(d,"onoff"),pw=capVal(d,"measure_power");
+function onoffTile(d,nm,label,sub,cls,quick){if(!d)return "";const on=!!capVal(d,"onoff"),pw=capVal(d,"measure_power");
+  if(quick)return `<div class="card tile ${cls||""}" data-act="toggle" data-id="${esc(d.id)}" tabindex="0" role="switch" aria-checked="${on}" title="Klicka för att slå ${on?"av":"på"}" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${esc(label)}<button class="btn sm" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" style="float:right;padding:0 8px;min-height:24px;font-size:12px" title="Visa historik">Historik</button></div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W":""}${sub?(pw!=null?" · ":"")+sub:""}</div></div>`;
   return `<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${esc(label)}</div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W":""}${sub?(pw!=null?" · ":"")+sub:""}</div></div>`;}
 function golvGroup(f,sensors){
   if(!f)return "";const v=i=>capVal(f,"measure_temperature."+i);let h=onoffTile(f,"Golvvärme","Golvvärme","");
@@ -635,7 +636,7 @@ function heatCards(){
   if(state.prop!=="235")return "";
   const dv=id=>state.devices[id];
   const sub=d=>{const dim=capVal(d,"dim"),kw=capVal(d,"meter_power");return (dim!=null&&capVal(d,"onoff")?Math.round(dim*100)+" % · ":"")+(kw!=null?fmt(kw,1)+" kWh totalt":"Ingen energimätare");};
-  const t=(id,n)=>{const d=dv(id);return d&&hasOnoff(d)?onoffTile(d,n,n,sub(d)):"";};
+  const t=(id,n)=>{const d=dv(id);return d&&hasOnoff(d)?onoffTile(d,n,n,sub(d),"",true):"";};
   const r1=lockTile(dv(cfg.ids.ytterdorr))+t(cfg.ids.ventilation,"Ventilation")+t(cfg.ids.avlopp,"Avloppsbrunn")+t(state.devices[cfg.ids.entre]?cfg.ids.entre:cfg.ids.floor,"Entréplatta");
   const r2=t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+t(cfg.ids.trLoad,"Traktor laddning")+t(cfg.ids.trHeat,"Traktor MV");
   return `<section class="grp"><h3>Styrning och kontroll</h3>${r1?`<div class="rowN" style="--c:4;margin-bottom:12px">${r1}</div>`:""}${r2?`<div class="rowN" style="--c:4">${r2}</div>`:""}</section>`;
@@ -1658,24 +1659,34 @@ async function renderDetalj(){
 function devCard(d){
   const c=d.capabilitiesObj,on=!!(c.onoff&&c.onoff.value);
   const pw=c.measure_power&&c.measure_power.value!=null?fmt(c.measure_power.value,0)+" W":"";
-  let h=`<div class="card dev ${on?"on":""}" data-id="${d.id}"><div class="row"><div><div class="nm">${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${c.dim&&c.dim.value!=null?` · <b class="dimv">${Math.round(c.dim.value*100)} %</b>`:""}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
+  let h=`<div class="card dev ${on?"on":""}" data-id="${d.id}" data-onoff="${d.id}" data-nm="${esc(devName(d))}" ${/taklampa h[öo]ger/i.test(devName(d))&&/uterum/i.test(zoneName(d))?'data-row2="1"':""} tabindex="0" role="button" title="Visa historik" style="cursor:pointer"><div class="row"><div><div class="nm">${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${c.dim&&c.dim.value!=null?` · <b class="dimv">${Math.round(c.dim.value*100)} %</b>`:""}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
     <button class="sw" role="switch" aria-checked="${on}" data-act="toggle" aria-label="Av/på ${esc(devName(d))}"></button></div>`;
+  h+=`<div style="text-align:right;margin-top:4px"><button class="btn sm" data-act="hide" style="padding:0 8px;min-height:22px;font-size:12px">Dölj</button></div>`;
   if(c.dim&&c.dim.value!=null)h+=`<input type="range" oninput="var b=this.closest('.dev').querySelector('.dimv');if(b)b.textContent=this.value+' %'" min="1" max="100" value="${Math.round(c.dim.value*100)}" data-act="dim" aria-label="Ljusstyrka">`;
   return h+`</div>`;
 }
 function renderStyr(){
-  const devs=propDevices().filter(d=>hasOnoff(d)&&isShown(d));
+  const hv=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(Boolean),ids235=[cfg.ids.nibe,...hv,cfg.ids.live235,cfg.ids.tibber],idsGrp=new Set(state.prop==="235"?ids235:[cfg.ids.vp236]);
+  const devs=propDevices().filter(d=>hasOnoff(d)&&isShown(d)&&!idsGrp.has(d.id));
+  const hidden=propDevices().filter(d=>hasOnoff(d)&&!idsGrp.has(d.id)&&cfg.ui.devices[d.id]&&cfg.ui.devices[d.id].show===false);
   const q=(state.search||"").toLowerCase();
   const list=q?devs.filter(d=>(devName(d)+" "+zoneName(d)).toLowerCase().includes(q)):devs;
   const by={};for(const d of list)(by[zoneName(d)]=by[zoneName(d)]||[]).push(d);
   let h=`<div class="bar"><input type="search" id="q" placeholder="Sök enhet eller rum" value="${esc(state.search)}"><span class="grow"></span>
     <button class="btn" data-act="alloff">Släck alla lampor</button></div>`;
+  const gd=(state.prop==="235"?[[cfg.ids.nibe,"NIBE värmepump","vp"],...hv.map((id,i)=>[id,"Varmvattenberedare "+(i+1),null]),[cfg.ids.tibber,"Tibber, hela huset","tibber"]]:[[cfg.ids.vp236,"Luftvärmepump 236",null]]).filter(x=>state.devices[x[0]]&&(!q||x[1].toLowerCase().includes(q)||"värmepump el vvb tibber".includes(q)));
+  if(gd.length){h+=`<div class="zonehead"><b>Värmepump och el</b></div><div class="grid">`+gd.map(([id,nm,card])=>{const d=state.devices[id];
+    if(hasOnoff(d))return devCard(d);
+    const w=capVal(d,"measure_power")??capVal(d,"measure_watt_avg");
+    return `<div class="card dev" ${card?`data-card="${card}" tabindex="0" role="button" style="cursor:pointer"`:""}><div class="row"><div><div class="nm">${esc(nm)}</div><div class="sub">${w!=null?fmt(w,0)+" W":"Ingen effektmätning"}${capVal(d,"meter_power")!=null?" · "+fmt(capVal(d,"meter_power"),1)+" kWh totalt":""}</div></div></div></div>`;}).join("")+`</div>`;}
   for(const z of Object.keys(by).sort((a,b)=>a.localeCompare(b,"sv"))){
     const lights=by[z].filter(isLamp),anyOn=lights.some(d=>d.capabilitiesObj.onoff.value);
     h+=`<div class="zonehead"><b>${esc(z)}</b>${lights.length?`<button class="btn sm" data-act="zone" data-zone="${esc(z)}" data-to="${!anyOn}">Lampor ${anyOn?"av":"på"}</button>`:""}</div><div class="grid">${by[z].sort((a,b)=>devName(a).localeCompare(devName(b),"sv")).map(devCard).join("")}</div>`;
   }
-  if(!list.length)h+=`<div class="card">Inga enheter att visa. Välj vilka som ska synas under Admin.</div>`;
+  if(hidden.length)h+=`<div class="zonehead"><b>Dolda (${hidden.length})</b></div><div class="bar">${hidden.map(d=>`<button class="btn sm" data-act="unhide" data-dev="${esc(d.id)}">Visa ${esc(devName(d))}</button>`).join("")}</div>`;
+  if(!list.length&&!gd.length)h+=`<div class="card">Inga enheter att visa. Välj vilka som ska synas under Admin.</div>`;
   $("#p-styr").innerHTML=h;
+  document.querySelectorAll("#p-styr .grid").forEach(g=>{const c=g.querySelector("[data-row2]");if(!c)return;const cols=getComputedStyle(g).gridTemplateColumns.split(" ").length,kids=[...g.children];g.removeChild(c);const ref=kids.filter(k=>k!==c)[cols];ref?g.insertBefore(c,ref):g.appendChild(c);c.style.gridColumnStart="1";});
   const qi=$("#q");if(qi&&state.keepFocus){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);}
 }
 
@@ -1916,7 +1927,7 @@ document.addEventListener("click",async e=>{
   if(e.target.id==="panelBtn"){showTab("oversikt");setPanel(true);return;}
   if(e.target.id==="panelX"){setPanel(false);return;}
   const sp=e.target.closest("[data-sensper]");if(sp){state.sensPer=sp.dataset.sensper;renderModal();return;}
-  const oo=e.target.closest("[data-onoff]");if(oo){openModal("onoff",oo.dataset.onoff);return;}
+  const oo=e.target.closest("[data-onoff]"),oa=e.target.closest("[data-act]");if(oo&&!(oa&&oa!==oo&&oo.contains(oa))){openModal("onoff",oo.dataset.onoff);return;}
   const se=e.target.closest("[data-sens]");if(se){openModal("sens",se.dataset.sens);return;}
   const p=e.target.closest("[data-p]");
   if(p){state.preset=p.dataset.p;if(state.preset==="valfri"&&!state.from){state.to=todayStr();state.from=addDays(state.to,-29);}draw();return;}
@@ -1932,6 +1943,8 @@ document.addEventListener("click",async e=>{
   const act=b.dataset.act,card=b.closest("[data-id]"),id=card&&card.dataset.id;
   try{
     if(act==="tgl"){const d=state.devices[b.dataset.dev];await setCap(d.id,"onoff",!d.capabilitiesObj.onoff.value);draw();}
+    else if(act==="hide"){(cfg.ui.devices[id]=cfg.ui.devices[id]||{}).show=false;persist();draw();}
+    else if(act==="unhide"){(cfg.ui.devices[b.dataset.dev]=cfg.ui.devices[b.dataset.dev]||{}).show=true;persist();draw();}
     else if(act==="toggle"){const d=state.devices[id];await setCap(id,"onoff",!d.capabilitiesObj.onoff.value);draw();}
     else if(act==="flow"){await runFlow(id);state.flash[id]=true;draw();setTimeout(()=>{delete state.flash[id];draw();},1800);}
     else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
@@ -1981,7 +1994,7 @@ document.addEventListener("change",async e=>{
 });
 
 (function(){const m=/[#&]session=([a-f0-9]{64})/.exec(location.hash);if(m){cfg.session=m[1];cfg.demo=false;cfg.mode="cloud";persist();history.replaceState(null,"",location.pathname+location.search);}})();
-document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart||e.target.dataset.daily||e.target.dataset.sens||e.target.dataset.onoff||e.target.dataset.goto)){e.preventDefault();e.target.click();}});
+document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart||e.target.dataset.daily||e.target.dataset.sens||e.target.dataset.onoff||e.target.dataset.goto||(e.target.dataset.act==="toggle"&&e.target.getAttribute("role")==="switch"))){e.preventDefault();e.target.click();}});
 document.addEventListener("mousemove",sensHover);document.addEventListener("touchmove",e=>{if(e.touches[0])sensHover({target:e.target,clientX:e.touches[0].clientX});},{passive:true});
 $("#dlg").addEventListener("close",()=>{state.modal=null;});
 try{applyTheme(localStorage.getItem("homeyTheme")||"auto");}catch(e){applyTheme("auto");}
