@@ -1681,12 +1681,12 @@ function renderStyr(){
   const hv=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(Boolean),ids235=[cfg.ids.nibe,...hv,cfg.ids.live235,cfg.ids.tibber],idsGrp=new Set(state.prop==="235"?ids235:[cfg.ids.vp236]);
   const devs=propDevices().filter(d=>hasOnoff(d)&&isShown(d)&&!idsGrp.has(d.id));
   const hidden=propDevices().filter(d=>hasOnoff(d)&&!idsGrp.has(d.id)&&cfg.ui.devices[d.id]&&cfg.ui.devices[d.id].show===false);
-  const q=(state.search||"").toLowerCase();
-  const list=q?devs.filter(d=>(devName(d)+" "+zoneName(d)).toLowerCase().includes(q)):devs;
+  const q="",rooms=[...new Set(devs.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv")),zsel=rooms.includes(state.styrZone)?state.styrZone:"";
+  const list=zsel?devs.filter(d=>zoneName(d)===zsel):devs;
   const by={};for(const d of list)(by[zoneName(d)]=by[zoneName(d)]||[]).push(d);
-  let h=`<div class="bar"><input type="search" id="q" placeholder="Sök enhet eller rum" value="${esc(state.search)}"><span class="grow"></span>
+  let h=`<div class="bar"><label>Rum <select id="styrzone"><option value="">Alla rum</option>${rooms.map(z=>`<option ${z===zsel?"selected":""}>${esc(z)}</option>`).join("")}</select></label><span class="grow"></span>
     <button class="btn" data-act="alloff">Släck alla lampor</button></div>`;
-  const gd=(state.prop==="235"?[[cfg.ids.nibe,"NIBE värmepump","vp"],...hv.map((id,i)=>[id,"Varmvattenberedare "+(i+1),null]),[cfg.ids.tibber,"Tibber, hela huset","tibber"]]:[[cfg.ids.vp236,"Luftvärmepump 236",null]]).filter(x=>state.devices[x[0]]&&(!q||x[1].toLowerCase().includes(q)||"värmepump el vvb tibber".includes(q)));
+  const gd=(state.prop==="235"?[[cfg.ids.nibe,"NIBE värmepump","vp"],...hv.map((id,i)=>[id,"Varmvattenberedare "+(i+1),null]),[cfg.ids.tibber,"Tibber, hela huset","tibber"]]:[[cfg.ids.vp236,"Luftvärmepump 236",null]]).filter(x=>!zsel&&state.devices[x[0]]);
   if(gd.length){h+=`<div class="zonehead"><b>Värmepump och el</b></div><div class="grid">`+gd.map(([id,nm,card])=>{const d=state.devices[id];
     if(hasOnoff(d))return devCard(d);
     const w=capVal(d,"measure_power")??capVal(d,"measure_watt_avg");
@@ -2017,6 +2017,7 @@ document.addEventListener("change",async e=>{
   try{
     if(t.dataset.act==="dim"){await setCap(t.closest("[data-id]").dataset.id,"dim",Number(t.value)/100);draw();return;}
     if(t.id==="sensfrom"||t.id==="sensto"){state[t.id==="sensfrom"?"sensFrom":"sensTo"]=t.value;await renderModal();return;}
+    if(t.id==="styrzone"){state.styrZone=t.value;draw();return;}
     if(t.id==="climzone"){state.climZone=t.value;draw();return;}
     if(t.id==="mcmp"){state.cmp=t.value;draw();return;}
     if(t.id==="cmp"){state.cmp=t.value;draw();return;}
