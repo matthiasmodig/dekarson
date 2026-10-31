@@ -223,7 +223,7 @@ function persist(){try{localStorage.setItem("homeyDash2",JSON.stringify(cfg));}c
 const isCloud=()=>cfg.mode==="cloud";
 const isDemo=()=>cfg.demo||!(isCloud()?(cfg.workerUrl&&cfg.session):(cfg.ip&&cfg.key));
 
-const state={dark:window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches,climSel:"",climPer:"last24Hours",climZone:"",det:"timmar",hourly:null,prop:"235",unit:"kr",tab:"oversikt",preset:"manad",cmp:"prev",from:"",to:"",
+const state={dark:window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches,climSel:"",climPer:"last24Hours",sensPer:"7d",sensFrom:"",sensTo:"",climZone:"",det:"timmar",hourly:null,prop:"235",unit:"kr",tab:"oversikt",preset:"manad",cmp:"prev",from:"",to:"",
   devices:{},zones:{},flows:[],flowsAt:0,cache:{},adminOk:false,flash:{},search:"",adminSearch:""};
 
 /* =====================================================================
@@ -602,9 +602,9 @@ async function renderOversikt(){
     const ph0=capVal(state.devices[cfg.ids.elpris],"meter_price_h0"),pnow=ph0!=null?ph0:(e.price!=null?e.price:null);
     h+=tile("Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
     const ud=state.devices[cfg.ids.ute],feel=capVal(state.devices[cfg.ids.smhi],"air_temperature_feels_like_cp");
-    h+=tile("Utetemperatur",fmt(capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out"),1),"°C",(feel!=null?"Känns som "+fmt(feel,1)+" °C (SMHI) · ":"")+"NIBE BT1");
+    h+=sensTile(cfg.ids.nibe,"capability_0","Utetemperatur",fmt(capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out"),1),"°C",(feel!=null?"Känns som "+fmt(feel,1)+" °C (SMHI) · ":"")+"NIBE BT1");
     const sl=state.devices[cfg.ids.slab];
-    h+=tile("Temp betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?"Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %":"Uterum");
+    h+=sensTile(cfg.ids.slab,"measure_temperature","Temp betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
     h+=`</div>`;
     try{h+=await priceBlock(0,true);}catch(err){}
     let hh={},keys=[];try{hh=await loadHourly();keys=Object.keys(hh).sort().slice(-24);}catch(err){}
@@ -876,27 +876,89 @@ async function climHist(id,per){
   const m={};for(const e of es){if(e.v==null)continue;const k=Math.floor(new Date(e.t).getTime()/bucket);(m[k]=m[k]||[]).push(e.v);}
   return Object.keys(m).sort((a,b)=>a-b).map(k=>[(+k+.5)*bucket,m[k].reduce((p,c)=>p+c,0)/m[k].length]);
 }
+
+const SENSPER=[["24h","24 timmar",1],["7d","7 dagar",7],["30d","30 dagar",30],["1y","1 år",365],["custom","Valfri period",0]];
+const SENSCACHE={};
+function sensRange(){
+  const p=state.sensPer,now=Date.now();
+  if(p==="custom"){const f=state.sensFrom||addDays(todayStr(),-7),t=state.sensTo||todayStr();
+    return [new Date(f+"T00:00:00").getTime(),Math.min(now,new Date(t+"T00:00:00").getTime()+864e5)];}
+  const d=(SENSPER.find(x=>x[0]===p)||SENSPER[1])[2];return [now-d*864e5,now];
+}
+function sensRes(span){const d=span/864e5;return d<=1.05?"last24Hours":d<=7.1?"last7Days":d<=14.1?"last14Days":d<=31.1?"last31Days":d<=366?"thisYear":"last2Years";}
+async function sensHist(id,cap,f,t){
+  const key=[id,cap,Math.round(f/6e4),Math.round(t/6e4)].join("|"),c=SENSCACHE[key];
+  if(c&&Date.now()-c.at<6e4)return c.pts;
+  let es=[];
+  if(isDemo()){const n=Math.min(2000,Math.max(60,Math.round((t-f)/36e5*4))),step=(t-f)/n,seed=id.length*7,hum=/humidity/.test(cap);
+    for(let i=0;i<=n;i++){const x=f+i*step;es.push({t:x,v:hum?50+8*Math.sin(x/864e5*2*Math.PI)+3*Math.sin(x/9e6+seed):20+2*Math.sin(x/864e5*2*Math.PI)+2*Math.sin(x/(864e5*9))+Math.sin(x/1e7+seed)});}
+  }else es=await logEntries(id,cap,sensRes(t-f));
+  const span=t-f,steps=[3e5,9e5,18e5,36e5,108e5,216e5,432e5,864e5];
+  let b=steps[steps.length-1];for(const s of steps)if(span/s<=300){b=s;break;}
+  const m={};for(const e of es){if(e.v==null)continue;const tt=new Date(e.t).getTime();if(tt<f||tt>=t)continue;const k=Math.floor(tt/b);(m[k]=m[k]||[]).push(e.v);}
+  const pts=Object.keys(m).sort((a,b)=>a-b).map(k=>[(+k+.5)*b,m[k].reduce((p,c)=>p+c,0)/m[k].length]);
+  SENSCACHE[key]={at:Date.now(),pts};return pts;
+}
+function sensInfo(id,cap){
+  const d=state.devices[id]||{},co=(d.capabilitiesObj||{})[cap]||{};
+  const hum=/humidity/.test(cap);
+  return {name:devName(d)||id,title:hum?"Luftfuktighet":(co.title&&co.title!==cap?co.title:"Temperatur"),unit:hum?"%":"°C",dec:hum?0:1,now:capVal(d,cap)};
+}
+function sensLink(id,cap,inner,cls){return `<span class="${cls||""}" data-sens="${esc(id)}|${esc(cap)}" tabindex="0" role="button" title="Visa diagram över tid" style="cursor:pointer">${inner}</span>`;}
+function sensTile(id,cap,label,value,unit,sub,cls){return `<div class="card tile ${cls||""}" data-sens="${esc(id)}|${esc(cap)}" tabindex="0" role="button" title="Visa diagram över tid" style="cursor:pointer"><div class="l">${label}</div><div class="v">${value}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`;}
+let SENSPTS=null;
+function sensChart(pts,unit,dec){
+  pts=pts.filter(p=>p[1]!=null);if(pts.length<2){SENSPTS=null;return `<div class="note">Ingen historik hittades för perioden.</div>`;}
+  const W=1000,H=300,L=52,B=28,T=10,R=8,t0=pts[0][0],t1=pts[pts.length-1][0];
+  let mn=Math.min(...pts.map(p=>p[1])),mx=Math.max(...pts.map(p=>p[1]));if(mx-mn<2){mx+=1;mn-=1;}
+  const pd=(mx-mn)*.1;mn-=pd;mx+=pd;
+  const x=t=>L+(W-L-R)*(t-t0)/Math.max(1,t1-t0),y=v=>T+(H-T-B)*(1-(v-mn)/(mx-mn));let g="";
+  for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,dec)}</text>`;}
+  g+=`<polyline points="${pts.map(p=>x(p[0]).toFixed(1)+","+y(p[1]).toFixed(1)).join(" ")}" fill="none" stroke="var(--cur)" stroke-width="2.2"/>`;
+  const long=(t1-t0)>2*864e5;
+  for(let i=0;i<=4;i++){const t=t0+(t1-t0)*i/4,d=new Date(t);g+=`<text x="${x(t)}" y="${H-8}" text-anchor="${i===0?"start":i===4?"end":"middle"}">${d.getDate()}/${d.getMonth()+1}${long?"":" "+pad(d.getHours())+":00"}</text>`;}
+  g+=`<line id="sensX" y1="${T}" y2="${H-B}" stroke="var(--muted)" stroke-dasharray="3 3" visibility="hidden"/><circle id="sensDot" r="4.5" fill="var(--cur)" visibility="hidden"/>`;
+  SENSPTS={pts,x0:L,x1:W-R,W,H,t0,t1,mn,mx,T,B,unit,dec};
+  return `<svg id="sensSvg" viewBox="0 0 ${W} ${H}" width="100%" role="img" style="touch-action:pan-y">${g}</svg><div class="note" id="sensRead" style="min-height:1.4em">Håll musen över diagrammet för att se värden.</div>`;
+}
+function sensHover(e){
+  const sv=e.target.closest&&e.target.closest("#sensSvg");if(!sv||!SENSPTS)return;
+  const S=SENSPTS,r=sv.getBoundingClientRect(),px=(e.clientX-r.left)/r.width*S.W;
+  const t=S.t0+(S.t1-S.t0)*Math.min(1,Math.max(0,(px-S.x0)/(S.x1-S.x0)));
+  let best=S.pts[0];for(const p of S.pts)if(Math.abs(p[0]-t)<Math.abs(best[0]-t))best=p;
+  const xx=S.x0+(S.x1-S.x0)*(best[0]-S.t0)/Math.max(1,S.t1-S.t0),yy=S.T+(S.H-S.T-S.B)*(1-(best[1]-S.mn)/(S.mx-S.mn));
+  const ln=$("#sensX"),dt=$("#sensDot");ln.setAttribute("x1",xx);ln.setAttribute("x2",xx);ln.setAttribute("visibility","visible");
+  dt.setAttribute("cx",xx);dt.setAttribute("cy",yy);dt.setAttribute("visibility","visible");
+  const d=new Date(best[0]);$("#sensRead").textContent=d.getDate()+"/"+(d.getMonth()+1)+" "+pad(d.getHours())+":"+pad(d.getMinutes())+" · "+fmt(best[1],S.dec)+" "+S.unit;
+}
+async function sensModalHtml(k){
+  const [id,cap]=k.split("|"),inf=sensInfo(id,cap),[f,t]=sensRange();
+  let h=`<div class="mhead"><h2>${esc(inf.name)} · ${esc(inf.title.toLowerCase())}</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>
+  <div class="bar">${SENSPER.map(([p,l])=>`<button class="chip" data-sensper="${p}" aria-pressed="${state.sensPer===p}">${l}</button>`).join("")}
+  ${state.sensPer==="custom"?`<label>Från <input type="date" id="sensfrom" value="${state.sensFrom||addDays(todayStr(),-7)}" max="${todayStr()}"></label><label>Till <input type="date" id="sensto" value="${state.sensTo||todayStr()}" max="${todayStr()}"></label>`:""}</div>`;
+  let pts=[];
+  try{pts=await sensHist(id,cap,f,t);}catch(e){return h+`<div class="warn">Historik kunde inte läsas: ${esc(e.message)}</div>`;}
+  const vs=pts.map(p=>p[1]),avg=vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null;
+  h+=`<div class="grid">${tile("Nu",fmt(inf.now,inf.dec),inf.unit,"")}${tile("Lägst",fmt(vs.length?Math.min(...vs):null,inf.dec),inf.unit,"")}${tile("Högst",fmt(vs.length?Math.max(...vs):null,inf.dec),inf.unit,"")}${tile("Medel",fmt(avg,inf.dec),inf.unit,"")}</div>`;
+  h+=`<div class="card" style="margin-top:14px">${sensChart(pts,inf.unit,inf.dec)}</div>`;
+  return h;
+}
 async function renderKlimat(){
   const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla);
   const zones=[...new Set(all.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv"));
   const list=all.filter(d=>!state.climZone||zoneName(d)===state.climZone).sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")||a.name.localeCompare(b.name,"sv"));
-  let h=`<div class="bar"><label>Rum <select id="climzone"><option value="">Alla rum</option>${zones.map(z=>`<option ${z===state.climZone?"selected":""}>${esc(z)}</option>`).join("")}</select></label>
-    ${[["last24Hours","24 timmar"],["last7Days","7 dagar"],["last31Days","30 dagar"]].map(([k,l])=>`<button class="chip" data-climper="${k}" aria-pressed="${state.climPer===k}">${l}</button>`).join("")}</div>`;
+  let h=`<div class="bar"><label>Rum <select id="climzone"><option value="">Alla rum</option>${zones.map(z=>`<option ${z===state.climZone?"selected":""}>${esc(z)}</option>`).join("")}</select></label></div>`;
   if(!list.length)h+=`<div class="card">Inga temperaturgivare hittades för ${PROPS.find(p=>p.k===state.prop).name}.</div>`;
   else{
-    if(!list.find(d=>d.id===state.climSel))state.climSel=list[0].id;
     h+=`<div class="grid">${list.map(d=>{const hu=capVal(d,"measure_humidity"),bat=capVal(d,"measure_battery");
-      return `<div class="card kcard" data-clim="${d.id}" tabindex="0" role="button" style="${d.id===state.climSel?"border-color:var(--accent)":""}"><div class="top2"><span class="nm">${esc(devName(d))}</span><span class="live">${esc(zoneName(d))}</span></div><div class="big">${fmt(capVal(d,"measure_temperature"),1)} <small>°C</small></div><div class="meta">${hu!=null?`<span>Fukt ${fmt(hu,0)} %</span>`:""}${bat!=null?`<span>Batteri ${fmt(bat,0)} %</span>`:""}</div></div>`;}).join("")}</div>`;
-    const sel=state.devices[state.climSel];
-    try{const pts=await climHist(state.climSel,state.climPer);h+=`<div class="card" style="margin:14px 0"><h2>${esc(devName(sel))} · temperatur (°C)</h2>${tempChart(pts)}<div class="note">Klicka på ett annat kort för att byta givare.</div></div>`;}
-    catch(e){h+=`<div class="note">Historik kunde inte läsas: ${esc(e.message)}</div>`;}
+      return `<div class="card kcard" data-sens="${esc(d.id)}|measure_temperature" tabindex="0" role="button" title="Visa diagram över tid"><div class="top2"><span class="nm">${esc(devName(d))}</span><span class="live">${esc(zoneName(d))}</span></div><div class="big">${fmt(capVal(d,"measure_temperature"),1)} <small>°C</small></div><div class="meta">${hu!=null?`<span data-sens="${esc(d.id)}|measure_humidity" title="Visa fuktdiagram" style="text-decoration:underline dotted">Fukt ${fmt(hu,0)} %</span>`:""}${bat!=null?`<span>Batteri ${fmt(bat,0)} %</span>`:""}</div></div>`;}).join("")}</div><div class="note">Klicka på en temperatur eller luftfuktighet för diagram över tid.</div>`;
   }
   if(state.prop==="235"){
     const nb=state.devices[cfg.ids.nibe];
     if(nb){const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^(measure_temperature|capability_\d+)/.test(k)&&nb.capabilitiesObj[k].value!=null).sort((a,b)=>a.localeCompare(b,"sv",{numeric:true}));
-      h+=`<h3>Värmepump · NIBE</h3><div class="grid">${temps.map(k=>tile(esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")}${tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu")}</div>`;}
+      h+=`<h3>Värmepump · NIBE</h3><div class="grid">${temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")}${tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu")}</div>`;}
     const f=state.devices[cfg.ids.floor],sl=state.devices[cfg.ids.slab];
-    if(f||sl)h+=`<h3>Uterum och entreplatta</h3><div class="grid">${tile("Betongplatta",fmt(capVal(sl,"measure_temperature"),1),"°C","Fukt "+fmt(capVal(sl,"measure_humidity"),0)+" %")}${tile("Golvvärme",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}${tile("Golvets givare",fmt(capVal(f,"measure_temperature"),1),"°C",[1,2,3,4].map(i=>fmt(capVal(f,"measure_temperature."+i),1)).join(" / "))}</div>`;
+    if(f||sl)h+=`<h3>Uterum och entreplatta</h3><div class="grid">${sl?sensTile(sl.id,"measure_temperature","Betongplatta",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(sl.id,"measure_humidity","Fukt "+fmt(capVal(sl,"measure_humidity"),0)+" %"):""):""}${tile("Golvvärme",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}${f?sensTile(f.id,"measure_temperature","Golvets givare",fmt(capVal(f,"measure_temperature"),1),"°C",[1,2,3,4].map(i=>capVal(f,"measure_temperature."+i)!=null?sensLink(f.id,"measure_temperature."+i,fmt(capVal(f,"measure_temperature."+i),1)):"–").join(" / ")):""}</div>`;
   }
   $("#p-klimat").innerHTML=h;
 }
@@ -1037,6 +1099,7 @@ function modalHead(title){
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
   if(m.t==="status"){body.innerHTML=statusModalHtml(m.k);return;}
+  if(m.t==="sens"){body.innerHTML=await sensModalHtml(m.k);return;}
   const c=await kortCtx(addDays(todayStr(),-760)),R=c.R,u=c.u;
   if(m.t==="daily"){
     const T=c.S[mainKey()],eu=m.k,un=unitName(eu);h=modalHead((eu==="kr"?"Kostnad":"Förbrukning")+" per dygn · "+PROPS.find(p=>p.k===state.prop).name);
@@ -1295,7 +1358,7 @@ function renderStatus(){
   if(S.alarms)h+=cat("Larm",L.alarms.map(d=>`<span class="dot bad"></span>${esc(devName(d))}`),L.alarms.length?"bad":"");
   if(S.motion)h+=cat("Rörelse just nu",L.motion.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
   if(S.battery)h+=cat("Svagt batteri (20 % eller lägre)",L.battery.map(d=>`${esc(devName(d))}</span><span>${fmt(capVal(d,"measure_battery"),0)} %`),L.battery.length?"bad":"");
-  if(S.temps)h+=cat("Temperaturer",L.temps.sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")).map(d=>`${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${fmt(capVal(d,"measure_temperature"),1)} °C`));
+  if(S.temps)h+=cat("Temperaturer",L.temps.sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")).map(d=>`<span data-sens="${esc(d.id)}|measure_temperature" style="cursor:pointer;display:contents">${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${fmt(capVal(d,"measure_temperature"),1)} °C</span>`));
   h+=`</div><div class="note">Uppdateras var 20:e sekund. Vilka rutor som visas styrs i Admin.</div>`;
   $("#p-status").innerHTML=h;
 }
@@ -1485,8 +1548,8 @@ document.addEventListener("click",async e=>{
   const th=e.target.closest("#segTheme [data-theme]");if(th){setTheme(th.dataset.theme);return;}
   if(e.target.id==="panelBtn"){showTab("oversikt");setPanel(true);return;}
   if(e.target.id==="panelX"){setPanel(false);return;}
-  const cs=e.target.closest("[data-clim]");if(cs){state.climSel=cs.dataset.clim;draw();return;}
-  const cp=e.target.closest("[data-climper]");if(cp){state.climPer=cp.dataset.climper;draw();return;}
+  const sp=e.target.closest("[data-sensper]");if(sp){state.sensPer=sp.dataset.sensper;renderModal();return;}
+  const se=e.target.closest("[data-sens]");if(se){openModal("sens",se.dataset.sens);return;}
   const p=e.target.closest("[data-p]");
   if(p){state.preset=p.dataset.p;if(state.preset==="valfri"&&!state.from){state.to=todayStr();state.from=addDays(state.to,-29);}draw();return;}
   if(e.target.closest("[data-close]")){$("#dlg").close();state.modal=null;return;}
@@ -1526,6 +1589,7 @@ document.addEventListener("change",async e=>{
   const t=e.target;
   try{
     if(t.dataset.act==="dim"){await setCap(t.closest("[data-id]").dataset.id,"dim",Number(t.value)/100);draw();return;}
+    if(t.id==="sensfrom"||t.id==="sensto"){state[t.id==="sensfrom"?"sensFrom":"sensTo"]=t.value;await renderModal();return;}
     if(t.id==="climzone"){state.climZone=t.value;draw();return;}
     if(t.id==="mcmp"){state.cmp=t.value;draw();return;}
     if(t.id==="cmp"){state.cmp=t.value;draw();return;}
@@ -1546,7 +1610,8 @@ document.addEventListener("change",async e=>{
 });
 
 (function(){const m=/[#&]session=([a-f0-9]{64})/.exec(location.hash);if(m){cfg.session=m[1];cfg.demo=false;cfg.mode="cloud";persist();history.replaceState(null,"",location.pathname+location.search);}})();
-document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart||e.target.dataset.daily)){e.preventDefault();e.target.click();}});
+document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart||e.target.dataset.daily||e.target.dataset.sens)){e.preventDefault();e.target.click();}});
+document.addEventListener("mousemove",sensHover);document.addEventListener("touchmove",e=>{if(e.touches[0])sensHover({target:e.target,clientX:e.touches[0].clientX});},{passive:true});
 $("#dlg").addEventListener("close",()=>{state.modal=null;});
 try{applyTheme(localStorage.getItem("homeyTheme")||"auto");}catch(e){applyTheme("auto");}
 drawProp();
