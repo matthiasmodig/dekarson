@@ -565,10 +565,19 @@ function ventGroup(){
   const d=state.devices[cfg.ids.ventilation];if(!d)return "";
   return grp("Ventilation",onoffTile(d,devName(d),devName(d),fmt(capVal(d,"meter_power"),1)+" kWh totalt"),4);
 }
+/* ΔT värmepump = framledning − returledning. Givarna hittas via capability-titeln (framledning/supply, retur/return) eller anges i Admin; annars antas capability_1 och capability_2 och det står tydligt. */
+function nibeDelta(nb,temps){
+  const co=nb.capabilitiesObj||{},ttl=k=>String((co[k]&&co[k].title)||"");
+  let f=(cfg.nibeFram||"").trim()||temps.find(k=>/framledning|supply|\bBT2\b|\bBT12\b/i.test(ttl(k))&&!/retur|return/i.test(ttl(k))),r=(cfg.nibeRet||"").trim()||temps.find(k=>/retur|return|\bBT3\b/i.test(ttl(k)));
+  let note="Framledning − retur";
+  if(!f||!r||!co[f]||!co[r]){f=f||"capability_1";r=r||"capability_2";note="Antar "+f+" − "+r+" · ändra i Admin";}
+  const a=co[f]&&co[f].value,b=co[r]&&co[r].value;
+  return a!=null&&b!=null?tile("ΔT värmepump",fmt(a-b,1),"°C",note):tile("ΔT värmepump","–","°C","Givare saknas");
+}
 function nibeGroup(){
   const nb=state.devices[cfg.ids.nibe];if(!nb)return "";
   const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^(measure_temperature|capability_\d+)/.test(k)&&nb.capabilitiesObj[k].value!=null).sort((a,b)=>a.localeCompare(b,"sv",{numeric:true}));
-  return grp("Värmepump · NIBE",temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")+tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu"),4);
+  return grp("Värmepump · NIBE",temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")+tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu")+nibeDelta(nb,temps),4);
 }
 function dualTile(attrs,label,a,b,cls){
   const col=x=>`<div style="min-width:0"><div class="v" style="font-size:26px;white-space:nowrap">${x.est?"≈ ":""}${fmt(x.v,x.dec||0)} <small>${x.un}</small></div><div class="s" style="font-size:12.5px;min-height:18px;white-space:nowrap">${x.sub||""}</div></div>`;
@@ -1811,6 +1820,8 @@ function renderAdmin(){
     <label class="adm-l">Timeffekt-ark, CSV-länk (Google Sheets: Arkiv → Dela → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv" value="${esc(cfg.sheetCsv||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=…&single=true&output=csv"></label>${idf("tibber","Tibber, hela huset (enhets-ID)")}${idf("hush","Hushållsel")}${idf("uppv","Uppvärmning")}${idf("vp","Värmepump")}${idf("ovr","Övrigt (valfritt)")}${idf("d236","Dekarsön 236, virtuell energiöversikt")}${idf("live235","Effektmätare 235 (Tibber Pulse)")}${idf("price","Elpris-enhet (Tibber)")}${idf("tesla","Tesla (bil)")}${idf("teslaE","Energiöversikt Tesla")}${idf("nibe","NIBE värmepump")}${idf("trLoad","Traktor, laddning (uttag)")}${idf("trHeat","Traktor, motorvärmare")}${idf("floor","Golvvärme Uterum")}${idf("entre","Entrévärme utomhus (entréplatta)")}${idf("slab","Betongplatta Uterum (sensor)")}${idf("vp236","Luftvärmepump 236")}${idf("trRep","Traktor, rapportenhet med kr (valfritt)")}${idf("golvRep","Golvvärme, rapportenhet med kr (valfritt)")}
     <label class="adm-l">Dekarsön 236 · timeffekt-ark, CSV-länk (kalkylarket "Timmedeleffekt Dekarsön 236" → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv236" value="${esc(cfg.sheetCsv236||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=1300079826&output=csv"></label>
     <label class="adm-l">Traktor motorvärmare, känd effekt i W (valfritt, ger en tydligt märkt schablonberäkning)<input type="text" data-cfg="trHeatW" value="${esc(cfg.trHeatW||"")}" placeholder="t.ex. 600"></label>
+    <label class="adm-l">NIBE ΔT: capability för framledning (tomt = automatiskt)<input type="text" data-cfg="nibeFram" value="${esc(cfg.nibeFram||"")}" placeholder="t.ex. capability_1"></label>
+    <label class="adm-l">NIBE ΔT: capability för returledning (tomt = automatiskt)<input type="text" data-cfg="nibeRet" value="${esc(cfg.nibeRet||"")}" placeholder="t.ex. capability_2"></label>
     <label class="adm-l">Påslag (kr/kWh)<input type="text" data-cfg="markup" value="${esc(cfg.markup)}"></label></div>
   <div class="card"><h2>Fastigheter</h2><div class="note" style="margin:0 0 8px">Rum som hör till Dekarsön 236. Allt annat räknas som 235.</div>
     ${zones.map(z=>`<label class="stat" style="cursor:pointer"><span>${esc(z.name)}</span><input type="checkbox" data-z236="${z.id}" ${cfg.zones236.includes(z.id)?"checked":""}></label>`).join("")||`<div class="note">Rum hämtas när du är ansluten.</div>`}</div>
