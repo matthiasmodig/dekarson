@@ -1260,7 +1260,7 @@ function floorSensTiles(f,only){
   return h+(only!=="uterum"?dt(1,2,"ΔT golvvärme"):"")+(only!=="golv"?dt(3,4,"ΔT uterum"):"");
 }
 async function renderKlimat(){
-  const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.slab&&d.id!==cfg.ids.ventilation);
+  const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.slab&&d.id!==cfg.ids.ventilation&&d.id!==cfg.ids.fastighet);
   const zones=[...new Set(all.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv"));
   const list=all.filter(d=>!state.climZone||zoneName(d)===state.climZone).sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")||a.name.localeCompare(b.name,"sv"));
   let h="";
@@ -1717,7 +1717,7 @@ function statusLists(){
     if((c.alarm_smoke&&c.alarm_smoke.value)||(c.alarm_water&&c.alarm_water.value)||(c.alarm_generic&&c.alarm_generic.value)||(c.alarm_battery&&c.alarm_battery.value))L.alarms.push(d);
     if(c.alarm_motion&&c.alarm_motion.value)L.motion.push(d);
     if(c.measure_battery&&c.measure_battery.value!=null&&c.measure_battery.value<=20)L.battery.push(d);
-    if(d.class==="sensor"&&c.measure_temperature&&c.measure_temperature.value!=null)L.temps.push(d);
+    if(d.id!==cfg.ids.fastighet&&d.class==="sensor"&&c.measure_temperature&&c.measure_temperature.value!=null)L.temps.push(d);
   }
   return L;
 }
@@ -1739,7 +1739,7 @@ function renderStatus(){
       if(d){const co=d.capabilitiesObj;for(const k of Object.keys(co).filter(k=>/^measure_current/.test(k)).sort()){const n=(k.match(/(\d)$/)||[0,ph.length+1])[1],pk=Object.keys(co).find(x=>/^measure_power/.test(x)&&new RegExp("[._]?(l|phase)?"+n+"$","i").test(x)&&x!=="measure_power"),vk=Object.keys(co).find(x=>/^measure_voltage/.test(x)&&new RegExp(n+"$").test(x));
         ph.push({n:"L"+n,a:co[k].value,w:pk?co[pk].value:null,v:vk?co[vk].value:null});}}}
     if(ph.length){const fuse=Number(cfg.fuse)||20;
-      h+=cat("Faser · "+PROPS.find(p=>p.k===state.prop).name,ph.map(x=>`<b>${x.n}</b> </span><span>${x.w!=null?fmt(x.w,0)+" W":""}${x.w!=null&&x.a!=null?" · ":""}${x.a!=null?`<span style="${state.prop==="235"&&x.a/fuse>.85?"color:var(--bad)":""}">${fmt(x.a,1)} A</span>`:""}${x.v!=null?" · "+fmt(x.v,0)+" V":""}`),"",null,"max-width:260px");}}
+      h+=cat("Faser · "+PROPS.find(p=>p.k===state.prop).name,ph.map(x=>`<b>${x.n}</b> </span><span>${x.w!=null?fmt(x.w,0)+" W":""}${x.w!=null&&x.a!=null?" · ":""}${x.a!=null?`<span style="${state.prop==="235"&&x.n!=="Totalt"&&x.a/fuse>.85?"color:var(--bad)":""}">${fmt(x.a,1)} A</span>`:""}${x.v!=null?" · "+fmt(x.v,0)+" V":""}`),"",null,"min-width:0;max-width:380px;white-space:nowrap");}}
   if(S.locks)h+=cat("Lås",L.locks.map(x=>`<span class="dot ${x.ok?"ok":"bad"}"></span>${esc(devName(x.d))}</span><span>${x.ok?"Låst":"Olåst"}`),L.locks.some(x=>!x.ok)?"bad":"");
   if(S.open)h+=cat("Kontakter aktiva (öppet)",L.open.map(d=>`<span class="dot bad"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
   if(S.alarms)h+=cat("Larm",L.alarms.map(d=>`<span class="dot bad"></span>${esc(devName(d))}`),L.alarms.length?"bad":"");
