@@ -561,7 +561,7 @@ function golvGroup(f,sensors){
   if(sensors){h+=v(1)!=null?sensTile(f.id,"measure_temperature.1","Framledning golvvärme",fmt(v(1),1),"°C","Givare 1"):"";
     h+=v(2)!=null?sensTile(f.id,"measure_temperature.2","Returledning golvvärme",fmt(v(2),1),"°C","Givare 2"):"";
     h+=homeyVar(cfg.ids.dtGolv)!=null?dtTile("ΔT golvvärme",cfg.ids.dtGolv,0,"Fram − retur"):(v(1)!=null&&v(2)!=null?tile("ΔT golvvärme",fmt(v(1)-v(2),1),"°C","Fram − retur"):"");}
-  h+=capVal(f,"meter_power")!=null?tile("Energi totalt",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat"):"";
+  h+=capVal(f,"meter_power")!=null?tileA('data-card="golv"',"Energi totalt",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat"):"";
   return grp("Golvvärme",h,sensors?5:4);
 }
 function uterumGroup(sl,f,withFloor){
@@ -570,7 +570,7 @@ function uterumGroup(sl,f,withFloor){
   if(f){h+=v(3)!=null?sensTile(f.id,"measure_temperature.3","Framledning uterum",fmt(v(3),1),"°C","Givare 3"):"";
     h+=v(4)!=null?sensTile(f.id,"measure_temperature.4","Returledning uterum",fmt(v(4),1),"°C","Givare 4"):"";
     h+=homeyVar(cfg.ids.dtUterum)!=null?dtTile("ΔT uterum",cfg.ids.dtUterum,0,"Fram − retur"):(v(3)!=null&&v(4)!=null?tile("ΔT uterum",fmt(v(3)-v(4),1),"°C","Fram − retur"):"");}
-  if(withFloor&&f){h+=onoffTile(f,"Golvvärme","Golvvärme","");if(capVal(f,"meter_power")!=null)h+=tile("Golvvärme energi",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat");}
+  if(withFloor&&f){h+=onoffTile(f,"Golvvärme","Golvvärme","");if(capVal(f,"meter_power")!=null)h+=tileA('data-card="golv"',"Golvvärme energi",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat");}
   return h?grp("Uterum",h,4):"";
 }
 function ventGroup(){
@@ -593,7 +593,7 @@ function nibeGroup(){
   const nb=state.devices[cfg.ids.nibe];if(!nb)return "";
   const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^(measure_temperature|capability_\d+)/.test(k)&&nb.capabilitiesObj[k].value!=null).sort((a,b)=>a.localeCompare(b,"sv",{numeric:true}));
   const ts=temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k));
-  const eff=tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu");
+  const eff=sensTile(nb.id,"measure_power","Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu");
   return grp("Värmepump · NIBE",[ts[0]||"",eff,...ts.slice(1),nibeDelta()].join(""),4);
 }
 function dualTile(attrs,label,a,b,cls){
@@ -841,7 +841,7 @@ async function renderEnergi(){
   h+=`<section class="grp" style="margin-top:6px"><h3>Vald period</h3><div class="rowN" style="--c:3">`;
   const dK=R.len-cur.kr.missing||1,dW=R.len-cur.kwh.missing||1,pdK=prv?R.len-prv.kr.missing||1:1,pdW=prv?R.len-prv.kwh.missing||1:1;
   h+=dualTile('data-daily="kr"',"Vald period",{v:cur.kr.v,un:"kr",sub:prv?delta(cur.kr.v,prv.kr.v,"mot "+fmt(prv.kr.v,0)):""},{v:cur.kwh.v,un:"kWh",sub:prv?delta(cur.kwh.v,prv.kwh.v,"mot "+fmt(prv.kwh.v,0)):""},"hero");
-  h+=tile("Snittpris",fmt(avg,2),"kr/kWh",pavg!=null?delta(avg,pavg,"mot "+fmt(pavg,2)):"");
+  h+=tileA('data-daily="kr"',"Snittpris",fmt(avg,2),"kr/kWh",pavg!=null?delta(avg,pavg,"mot "+fmt(pavg,2)):"");
   h+=dualTile('data-daily="kr"',"Per dygn",{v:cur.kr.v!=null?cur.kr.v/dK:null,un:"kr",sub:prv&&prv.kr.v!=null?delta(cur.kr.v/dK,prv.kr.v/pdK,""):""},{v:cur.kwh.v!=null?cur.kwh.v/dW:null,un:"kWh",sub:prv&&prv.kwh.v!=null?delta(cur.kwh.v/dW,prv.kwh.v/pdW,""):""});
   h+=`</div></section>`;
   if(is235){const tb=state.devices[cfg.ids.tibber];
@@ -1175,9 +1175,9 @@ async function renderTimpris(){
   const ph0=capVal(el,"meter_price_h0"),pnow=ph0!=null?ph0:(pr!=null?pr+Number(cfg.markup||0):null),g=k=>capVal(el,k),hr=k=>g(k)!=null?" kl "+pad(g(k))+":00":"";
   let h="";
   let a=tileA('data-chart="price"',"Elpris nu",fmt(pnow,2),"kr/kWh","Nästa 8 h i snitt: "+fmt(g("meter_price_next_8h_avg"),2),"hero");
-  a+=tile("Snitt idag",fmt(g("meter_price_this_day_avg"),2),"kr/kWh","");
-  a+=tile("Lägst idag",fmt(g("meter_price_this_day_lowest"),2),"kr/kWh",hr("hour_this_day_lowest").trim());
-  a+=tile("Högst idag",fmt(g("meter_price_this_day_highest"),2),"kr/kWh",hr("hour_this_day_highest").trim());
+  a+=tileA('data-chart="price"',"Snitt idag",fmt(g("meter_price_this_day_avg"),2),"kr/kWh","");
+  a+=tileA('data-chart="price"',"Lägst idag",fmt(g("meter_price_this_day_lowest"),2),"kr/kWh",hr("hour_this_day_lowest").trim());
+  a+=tileA('data-chart="price"',"Högst idag",fmt(g("meter_price_this_day_highest"),2),"kr/kWh",hr("hour_this_day_highest").trim());
   a+=tileA('data-chart="price"',"Snitt denna månad",fmt(g("meter_price_this_month_avg"),2),"kr/kWh","Förra månaden: "+fmt(g("meter_price_last_month_avg"),2));
   h+=grp("Timpris just nu",a,5);
   if(g("meter_price_next_day_avg")!=null){
@@ -1580,7 +1580,7 @@ async function viewTimmar(){
   for(const k of mk){const d=k.slice(0,10);if(seenDay.has(d))continue;seenDay.add(d);top.push(k);if(top.length===3)break;}
   const topAvg=top.length?top.reduce((a,k)=>a+hh[k],0)/top.length:null;
   const maxNow=Math.max(...lv),avg24=lv.reduce((a,b)=>a+b,0)/lv.length;
-  let h=`<div class="grid">${tile("Snitt senaste 24 h",fmt(avg24,2),"kW","Medeleffekt per timme","hero")}${tile("Högsta timme senaste 24 h",fmt(maxNow,2),"kW",ll[lv.indexOf(maxNow)])}${tile("Topp 3 denna månad (snitt)",fmt(topAvg,2),"kW","Tre högsta dygnstopparna, ≈ effektavgift")}${tile("Förbrukning senaste 24 h",fmt(lv.reduce((a,b)=>a+b,0),1),"kWh","Summa av timmedeleffekt")}</div>`;
+  let h=`<div class="grid">${tileA('data-chart="hours"',"Snitt senaste 24 h",fmt(avg24,2),"kW","Medeleffekt per timme","hero")}${tileA('data-chart="hours"',"Högsta timme senaste 24 h",fmt(maxNow,2),"kW",ll[lv.indexOf(maxNow)])}${tileA('data-chart="hours"',"Topp 3 denna månad (snitt)",fmt(topAvg,2),"kW","Tre högsta dygnstopparna, ≈ effektavgift")}${tileA('data-chart="hours"',"Förbrukning senaste 24 h",fmt(lv.reduce((a,b)=>a+b,0),1),"kWh","Summa av timmedeleffekt")}</div>`;
   h+=`<div class="card" style="margin:14px 0"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(lv,ll,"kW")}</div>`;
   h+=`<div class="card"><h2>Högsta timmarna denna månad</h2><table><tr><th>Tid</th><th>Timmedeleffekt (kW)</th></tr>${top.map(k=>`<tr><td>${k.slice(0,10)} kl ${pad(+k.slice(11))}–${pad((+k.slice(11)+1)%24)}</td><td>${fmt(hh[k],2)}</td></tr>`).join("")||`<tr><td colspan="2">Ingen data</td></tr>`}</table>
    <div class="note">${esc(state.sheetInfo||"")} Beräknat ur effektmätarens logg i Homey (medel per timme). Ligger nätägarens effektavgift på mätarens egen timmedata kan värdet avvika något.</div></div>`;
@@ -1590,10 +1590,10 @@ function viewVVB(){
   const ids=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(Boolean),ds=ids.map(i=>state.devices[i]).filter(Boolean),nb=state.devices[cfg.ids.nibe];
   const ttl=(k,f)=>{const t=nb&&((nb.capabilitiesObj||{})[k]||{}).title;return t&&t!==k?t:f;};
   const tot=ds.reduce((a,d)=>a+(capVal(d,"measure_power")||0),0),kwh=ds.reduce((a,d)=>a+(capVal(d,"meter_power")||0),0);
-  let g=tile("Effekt just nu",fmt(tot,0),"W",ds.length+" mätare/uttag","hero")
+  let g=tileA('data-card="vvb"',"Effekt just nu",fmt(tot,0),"W",ds.length+" mätare/uttag","hero")
    +(capVal(nb,"capability_3")!=null?sensTile(cfg.ids.nibe,"capability_3",esc(ttl("capability_3","Varmvatten topp (BT7)")),fmt(capVal(nb,"capability_3"),1),"°C","NIBE"):"")
    +(capVal(nb,"capability_4")!=null?sensTile(cfg.ids.nibe,"capability_4",esc(ttl("capability_4","Varmvatten laddning (BT6)")),fmt(capVal(nb,"capability_4"),1),"°C","NIBE"):"")
-   +tile("Energi totalt",fmt(kwh,1),"kWh",ds.map(d=>esc(devName(d))+" "+fmt(capVal(d,"meter_power"),1)).join(" · "));
+   +tileA('data-card="vvb"',"Energi totalt",fmt(kwh,1),"kWh",ds.map(d=>esc(devName(d))+" "+fmt(capVal(d,"meter_power"),1)).join(" · "));
   let h=grp("Varmvattenberedare",g,4);
   if(!ds.length)return h+`<div class="card">Inga varmvattenberedare hittades. Ange enhets-ID i Admin.</div>`;
   return h;
@@ -1601,24 +1601,25 @@ function viewVVB(){
 async function viewVP(R,u){
   const d=state.devices[cfg.ids.vp],n=state.devices[cfg.ids.nibe];
   const k=u==="kr"?"meter_money_":"meter_kwh_",un=unitName(u);
-  let h=`<div class="grid">${tile("Effekt just nu",fmt(capVal(n,"measure_power")??capVal(d,"measure_watt_avg"),0),"W","NIBE / värmepumpens mätare","hero")}${[["Idag","day","mot igår"],["Denna månad","month","mot förra månaden"],["I år","year","mot förra året"]].map(([l,p,t])=>dualTile("",l,{v:capVal(d,"meter_money_this_"+p),un:"kr",sub:delta(capVal(d,"meter_money_this_"+p),capVal(d,"meter_money_last_"+p),t)},{v:capVal(d,"meter_kwh_this_"+p),un:"kWh",sub:delta(capVal(d,"meter_kwh_this_"+p),capVal(d,"meter_kwh_last_"+p),t)})).join("")}`;
+  let h=`<div class="grid">${(n?(l,v,u,sb,c)=>sensTile(n.id,"measure_power",l,v,u,sb,c):tile)("Effekt just nu",fmt(capVal(n,"measure_power")??capVal(d,"measure_watt_avg"),0),"W","NIBE / värmepumpens mätare","hero")}${[["Idag","day","mot igår"],["Denna månad","month","mot förra månaden"],["I år","year","mot förra året"]].map(([l,p,t])=>dualTile('data-card="vp"',l,{v:capVal(d,"meter_money_this_"+p),un:"kr",sub:delta(capVal(d,"meter_money_this_"+p),capVal(d,"meter_money_last_"+p),t)},{v:capVal(d,"meter_kwh_this_"+p),un:"kWh",sub:delta(capVal(d,"meter_kwh_this_"+p),capVal(d,"meter_kwh_last_"+p),t)})).join("")}`;
   const tm=capVal(state.devices[cfg.ids.tibber],"meter_kwh_this_month"),vm=capVal(d,"meter_kwh_this_month");
-  h+=tile("Andel av hela huset (månad)",tm>0&&vm!=null?fmt(vm/tm*100,0):"–","%","Värmepump delat med Tibber-totalen");
-  h+=tile("Snittpris månad",fmt(capVal(d,"meter_money_this_month_avg"),2),"kr/kWh","Enligt Homeys rapport")+`</div>`;
+  h+=tileA('data-card="vp"',"Andel av hela huset (månad)",tm>0&&vm!=null?fmt(vm/tm*100,0):"–","%","Värmepump delat med Tibber-totalen");
+  h+=tileA('data-card="vp"',"Snittpris månad",fmt(capVal(d,"meter_money_this_month_avg"),2),"kr/kWh","Enligt Homeys rapport")+`</div>`;
   return h;
 }
 function teslaTiles(u){
   const t=state.devices[cfg.ids.tesla],e=state.devices[cfg.ids.teslaE],un=unitName(u);
   const soc=capVal(t,"measure_soc_level")??capVal(t,"measure_battery"),on=capVal(t,"charging_on");
+  const ts=(cap,l,v,u2,sb,c)=>t&&t.capabilitiesObj&&t.capabilitiesObj[cap]?sensTile(t.id,cap,l,v,u2,sb,c):tile(l,v,u2,sb,c);
   const em=u==="kr"?"devicecapabilities_number.number3":"devicecapabilities_number.number2",ey=u==="kr"?"devicecapabilities_number.number6":"devicecapabilities_number.number5";
-  return `<div class="grid">${tile("Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte","hero")}
-    ${tile("Räckvidd",fmt(capVal(t,"measure_soc_range_estimated"),0),"km","Uppskattad")}
-    ${tile("Laddgräns",fmt(capVal(t,"measure_charge_limit_soc"),0),"%","Inställd gräns")}
-    ${tile("Tillförd energi senaste laddning",fmt(capVal(t,"measure_charge_energy_added"),1),"kWh","")}
-    ${tile("Temperatur ute / inne",fmt(capVal(t,"measure_climate_temperature_out"),1)+" / "+fmt(capVal(t,"measure_climate_temperature_in"),1),"°C","")}
-    ${tile("Vägmätare",fmt(capVal(t,"meter_car_odo"),0),"km","")}
-    ${tile("Laddning denna månad",fmt(capVal(e,em),0),un,"Enligt energiöversikten för Tesla")}
-    ${tile("Laddning i år",fmt(capVal(e,ey),0),un,"")}</div>`;
+  return `<div class="grid">${ts("measure_soc_level","Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte","hero")}
+    ${ts("measure_soc_range_estimated","Räckvidd",fmt(capVal(t,"measure_soc_range_estimated"),0),"km","Uppskattad")}
+    ${ts("measure_charge_limit_soc","Laddgräns",fmt(capVal(t,"measure_charge_limit_soc"),0),"%","Inställd gräns")}
+    ${ts("measure_charge_energy_added","Tillförd energi senaste laddning",fmt(capVal(t,"measure_charge_energy_added"),1),"kWh","")}
+    ${ts("measure_climate_temperature_out","Temperatur ute / inne",fmt(capVal(t,"measure_climate_temperature_out"),1)+" / "+fmt(capVal(t,"measure_climate_temperature_in"),1),"°C","")}
+    ${ts("meter_car_odo","Vägmätare",fmt(capVal(t,"meter_car_odo"),0),"km","")}
+    ${tileA('data-card="tesla"',"Laddning denna månad",fmt(capVal(e,em),0),un,"Enligt energiöversikten för Tesla")}
+    ${tileA('data-card="tesla"',"Laddning i år",fmt(capVal(e,ey),0),un,"")}</div>`;
 }
 async function viewTesla(R,u){
   let h=teslaTiles(u);
@@ -1629,7 +1630,7 @@ async function viewTraktor(R,u){
   const mOn=!!capVal(m,"onoff"),lOn=!!capVal(l,"onoff");
   const oo=(d,nm,label,val,unit,sub,cls)=>d?`<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${capVal(d,"onoff")?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${capVal(d,"onoff")?"on":""}"></span> ${label}</div><div class="v">${val}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`:tile(label,val,unit,sub,cls);
   let h=`<div class="grid">${oo(l,"Traktor laddning","Laddning",lOn?"PÅ":"Av","","Effekt "+fmt(capVal(l,"measure_power"),0)+" W · klicka för att styra och se historik","hero")}
-    ${oo(m,"Traktor MV","Motorvärmare",mOn?"PÅ":"Av","","Klicka för att styra och se historik")}${tile("Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
+    ${oo(m,"Traktor MV","Motorvärmare",mOn?"PÅ":"Av","","Klicka för att styra och se historik")}${tileA('data-card="traktor"',"Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   return h;
 }
