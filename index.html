@@ -143,11 +143,8 @@ dialog::backdrop{background:#0009}
     <span class="grp">Hem</span>
     <button data-tab="oversikt" aria-selected="true">Översikt</button>
     <span class="grp">Energi</span>
-    <button data-tab="energi" aria-selected="false">Energi &amp; effekt</button>
-    <button data-tab="kort" aria-selected="false">Energikort</button>
+    <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="detalj" aria-selected="false">Detaljer</button>
-    <span class="grp">Ekonomi</span>
-    <button data-tab="ekonomi" aria-selected="false">Kostnader &amp; kronor</button>
     <span class="grp">Klimat</span>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
     <span class="grp">Styrning</span>
@@ -1688,11 +1685,15 @@ async function draw(){
   else if(state.tab==="flows")renderFlows();
   else if(state.tab==="status")renderStatus();
   else renderAdmin();
+  if(["energi","kort","ekonomi"].includes(state.tab)){
+    const subs=[["energi","Effekt & energi"],["kort","Energikort"],["ekonomi","Kostnader & kronor"]];
+    $("#p-"+state.tab).insertAdjacentHTML("afterbegin",`<div class="bar" style="margin-bottom:14px">${subs.map(([k,l])=>`<button class="chip" data-sub="${k}" aria-pressed="${state.tab===k}">${l}</button>`).join("")}</div>`);
+  }
   if(state.modal&&$("#dlg").open)await renderModal();
 }
 function showTab(t){
   state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
-  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t||(b.dataset.tab==="energi"&&["kort","ekonomi"].includes(t))));
   for(const k of ["oversikt","kort","energi","detalj","ekonomi","klimat","styr","flows","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
 }
@@ -1700,6 +1701,7 @@ function showTab(t){
 /* =====================================================================
    HÄNDELSER
    ===================================================================== */
+document.addEventListener("click",e=>{const b=e.target.closest("[data-sub]");if(b){showTab(b.dataset.sub);}});
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)showTab(b.dataset.tab);});
 $("#segProp").addEventListener("click",e=>{const b=e.target.closest("[data-prop]");if(!b)return;state.prop=b.dataset.prop;drawProp();draw();});
 $("#segUnit").addEventListener("click",e=>{const b=e.target.closest("[data-unit]");if(!b)return;state.unit=b.dataset.unit;drawProp();draw();});
