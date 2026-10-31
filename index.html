@@ -562,7 +562,7 @@ function heatCards(){
   if(state.prop!=="235")return "";
   const hd=heatDevs();if(!hd.length)return "";
   return `<h3>Värme &amp; laddning</h3><div class="grid">${hd.map(([d,n])=>{const on=!!capVal(d,"onoff"),pw=capVal(d,"measure_power"),e=capVal(d,"meter_power");
-    return `<div class="card tile" data-onoff="${esc(d.id)}" data-nm="${esc(n)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer"><div class="l"><span class="dot ${on?"on":""}"></span> ${esc(n)}</div><div class="v">${on?"På":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W · ":""}${e!=null?fmt(e,1)+" kWh totalt":"Ingen energimätare"}</div></div>`;}).join("")}</div>`;
+    return `<div class="card tile" data-onoff="${esc(d.id)}" data-nm="${esc(n)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${esc(n)}</div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W · ":""}${e!=null?fmt(e,1)+" kWh totalt":"Ingen energimätare"}</div></div>`;}).join("")}</div>`;
 }
 const PWRON=5;
 async function onoffSegs(id,f,t,cap){
