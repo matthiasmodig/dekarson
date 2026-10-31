@@ -1207,7 +1207,6 @@ async function viewTimmar(){
   const hh=await loadHourly(),keys=Object.keys(hh).sort();
   if(!keys.length)return `<div class="card">Ingen timdata hittades. Kontrollera enheten "Effektmätare 235" i Admin.</div>`;
   const last=keys.slice(-24),lv=last.map(k=>hh[k]),ll=last.map(k=>k.slice(11)+":00");
-  const prof=Array.from({length:24},(_,h)=>{const a=keys.filter(k=>+k.slice(11)===h).map(k=>hh[k]);return a.length?a.reduce((p,c)=>p+c,0)/a.length:null;});
   const mon=todayStr().slice(0,7),mk=keys.filter(k=>k.startsWith(mon)).sort((a,b)=>hh[b]-hh[a]);
   const top=[];const seenDay=new Set();
   for(const k of mk){const d=k.slice(0,10);if(seenDay.has(d))continue;seenDay.add(d);top.push(k);if(top.length===3)break;}
@@ -1215,7 +1214,6 @@ async function viewTimmar(){
   const maxNow=Math.max(...lv),avg24=lv.reduce((a,b)=>a+b,0)/lv.length;
   let h=`<div class="grid">${tile("Snitt senaste 24 h",fmt(avg24,2),"kW","Medeleffekt per timme","hero")}${tile("Högsta timme senaste 24 h",fmt(maxNow,2),"kW",ll[lv.indexOf(maxNow)])}${tile("Topp 3 denna månad (snitt)",fmt(topAvg,2),"kW","Tre högsta dygnstopparna, ≈ effektavgift")}${tile("Förbrukning senaste 24 h",fmt(lv.reduce((a,b)=>a+b,0),1),"kWh","Summa av timmedeleffekt")}</div>`;
   h+=`<div class="card" style="margin:14px 0"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(lv,ll,"kW")}</div>`;
-  h+=`<div class="card" style="margin:14px 0"><h2>Typisk dag: snitt per klockslag, senaste 31 dagarna (kW)</h2>${lineChart(prof,prof.map((_,i)=>pad(i)+":00"),"kW","var(--prev)")}</div>`;
   h+=`<div class="card"><h2>Högsta timmarna denna månad</h2><table><tr><th>Tid</th><th>Timmedeleffekt (kW)</th></tr>${top.map(k=>`<tr><td>${k.slice(0,10)} kl ${k.slice(11)}:00</td><td>${fmt(hh[k],2)}</td></tr>`).join("")||`<tr><td colspan="2">Ingen data</td></tr>`}</table>
    <div class="note">Beräknat ur effektmätarens logg i Homey (medel per timme). Ligger nätägarens effektavgift på mätarens egen timmedata kan värdet avvika något.</div></div>`;
   return h;
