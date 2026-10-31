@@ -156,6 +156,7 @@ const PROPS=[{k:"235",name:"Dekarsön 235"},{k:"236",name:"Dekarsön 236"}];
 const DEFAULTS={
   ip:"",key:"",mode:/\.matthiasmodig\.se$/.test(location.hostname)?"cloud":"local",workerUrl:"https://dekarson-api.matthias-modig.workers.dev",session:"",demo:true,pin:"",markup:0.448,
   exclude:"avlopp|frysvakt|garageport|ventilation|homey|motorv|traktor",
+  lampRx:"spot|lampa|belysning|ljusstake|stjärna|slinga|lykta|lysrör",
   zones236:["34b25977-ba64-49f5-816c-90adeb4091eb"],
   ids:{
     tibber:"9984ff30-8ea8-4a59-8b77-ca10a9722cdf",hush:"d2a46475-4494-4794-ad4a-413f89209ecf",
@@ -298,6 +299,12 @@ const zoneName=d=>(state.zones[d.zone]&&state.zones[d.zone].name)||"Övrigt";
 const devName=d=>(cfg.ui.devices[d.id]&&cfg.ui.devices[d.id].alias)||d.name;
 function excluded(d){try{return cfg.exclude&&new RegExp(cfg.exclude,"i").test(d.name);}catch(e){return false;}}
 function hasOnoff(d){return !!(d.capabilitiesObj&&d.capabilitiesObj.onoff);}
+function isLamp(d){
+  const u=cfg.ui.devices[d.id];if(u&&u.lamp!=null)return !!u.lamp;
+  if(d.class==="light")return true;
+  if(d.class!=="socket"||!hasOnoff(d))return false;
+  try{return !!cfg.lampRx&&new RegExp(cfg.lampRx,"i").test(d.name);}catch(e){return false;}
+}
 function isShown(d){
   const u=cfg.ui.devices[d.id];if(u&&u.show!=null)return u.show;
   return hasOnoff(d)&&(d.class==="light"||d.class==="socket")&&!excluded(d);
@@ -872,7 +879,7 @@ function renderStyr(){
   let h=`<div class="bar"><input type="search" id="q" placeholder="Sök enhet eller rum" value="${esc(state.search)}"><span class="grow"></span>
     <button class="btn" data-act="alloff">Släck alla lampor</button></div>`;
   for(const z of Object.keys(by).sort((a,b)=>a.localeCompare(b,"sv"))){
-    const lights=by[z].filter(d=>d.class==="light"),anyOn=lights.some(d=>d.capabilitiesObj.onoff.value);
+    const lights=by[z].filter(isLamp),anyOn=lights.some(d=>d.capabilitiesObj.onoff.value);
     h+=`<div class="zonehead"><b>${esc(z)}</b>${lights.length?`<button class="btn sm" data-act="zone" data-zone="${esc(z)}" data-to="${!anyOn}">Lampor ${anyOn?"av":"på"}</button>`:""}</div><div class="grid">${by[z].sort((a,b)=>devName(a).localeCompare(devName(b),"sv")).map(devCard).join("")}</div>`;
   }
   if(!list.length)h+=`<div class="card">Inga enheter att visa. Välj vilka som ska synas under Admin.</div>`;
@@ -900,8 +907,8 @@ function statusLists(){
   const L={lights:[],sockets:[],locks:[],open:[],alarms:[],motion:[],battery:[],temps:[]};
   for(const d of propDevices()){
     const c=d.capabilitiesObj||{};
-    if(d.class==="light"&&c.onoff&&c.onoff.value)L.lights.push(d);
-    if(d.class==="socket"&&c.onoff&&c.onoff.value)L.sockets.push(d);
+    if(isLamp(d)&&c.onoff&&c.onoff.value)L.lights.push(d);
+    else if(d.class==="socket"&&c.onoff&&c.onoff.value)L.sockets.push(d);
     if(d.class==="lock"||c.locked)L.locks.push({d,ok:!!(c.locked&&c.locked.value)});
     if(c.alarm_contact&&c.alarm_contact.value)L.open.push(d);
     if((c.alarm_smoke&&c.alarm_smoke.value)||(c.alarm_water&&c.alarm_water.value)||(c.alarm_generic&&c.alarm_generic.value)||(c.alarm_battery&&c.alarm_battery.value))L.alarms.push(d);
@@ -990,13 +997,14 @@ function renderAdmin(){
   <div class="card"><h2>Statusrutor</h2>${Object.keys(stNames).map(k=>`<label class="stat" style="cursor:pointer"><span>${stNames[k]}</span><input type="checkbox" data-st="${k}" ${st[k]?"checked":""}></label>`).join("")}
     <h2 style="margin-top:16px">Skydd och dolda enheter</h2>
     <label class="adm-l">PIN för Admin (tomt = ingen)<input type="text" data-cfg="pin" value="${esc(cfg.pin)}"></label>
-    <label class="adm-l">Dölj automatiskt i Styrning (regex på namn)<input type="text" data-cfg="exclude" value="${esc(cfg.exclude)}"></label></div>
+    <label class="adm-l">Dölj automatiskt i Styrning (regex på namn)<input type="text" data-cfg="exclude" value="${esc(cfg.exclude)}"></label>
+    <label class="adm-l">Uttag som räknas som lampor (regex på namn)<input type="text" data-cfg="lampRx" value="${esc(cfg.lampRx)}"></label></div>
   </div>
   <h3>Sök bland enheter och flows</h3><div class="bar"><input type="search" id="aq" placeholder="Filtrera" value="${esc(state.adminSearch)}"></div>
   <div class="card" style="overflow:auto"><h2>Enheter med av/på (${devs.length})</h2>
-    <table class="adm"><tr><th>Enhet</th><th>Rum</th><th>Fastighet</th><th>Visa</th><th>Favorit</th><th>Eget namn</th></tr>
+    <table class="adm"><tr><th>Enhet</th><th>Rum</th><th>Fastighet</th><th>Visa</th><th>Lampa</th><th>Favorit</th><th>Eget namn</th></tr>
     ${devs.map(d=>{const u=cfg.ui.devices[d.id]||{};return `<tr><td>${esc(d.name)}<div class="note" style="margin:0">${esc(d.class)}</div></td><td>${esc(zoneName(d))}</td><td>${propOf(d)}</td>
-      <td><input type="checkbox" data-dev="${d.id}" data-f="show" ${isShown(d)?"checked":""}></td><td><input type="checkbox" data-dev="${d.id}" data-f="fav" ${u.fav?"checked":""}></td>
+      <td><input type="checkbox" data-dev="${d.id}" data-f="show" ${isShown(d)?"checked":""}></td><td><input type="checkbox" data-dev="${d.id}" data-f="lamp" ${isLamp(d)?"checked":""}></td><td><input type="checkbox" data-dev="${d.id}" data-f="fav" ${u.fav?"checked":""}></td>
       <td><input type="text" data-dev="${d.id}" data-f="alias" value="${esc(u.alias||"")}" placeholder="${esc(d.name)}"></td></tr>`;}).join("")}</table></div>
   <div class="card" style="overflow:auto;margin-top:12px"><h2>Flows (${fls.length})</h2>
     <table class="adm"><tr><th>Flow</th><th>Typ</th><th>Visa</th><th>Favorit</th><th>Eget namn</th></tr>
@@ -1118,10 +1126,10 @@ document.addEventListener("click",async e=>{
     else if(act==="toggle"){const d=state.devices[id];await setCap(id,"onoff",!d.capabilitiesObj.onoff.value);draw();}
     else if(act==="flow"){await runFlow(id);state.flash[id]=true;draw();setTimeout(()=>{delete state.flash[id];draw();},1800);}
     else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
-      for(const d of propDevices().filter(d=>d.class==="light"&&hasOnoff(d)&&isShown(d)&&zoneName(d)===z))await setCap(d.id,"onoff",to);draw();}
+      for(const d of propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d)&&zoneName(d)===z))await setCap(d.id,"onoff",to);draw();}
     else if(act==="alloff"){
       if(!confirm("Släcka alla tända lampor i "+PROPS.find(p=>p.k===state.prop).name+"?"))return;
-      for(const d of propDevices().filter(d=>d.class==="light"&&hasOnoff(d)&&isShown(d)&&d.capabilitiesObj.onoff.value))await setCap(d.id,"onoff",false);draw();}
+      for(const d of propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d)&&d.capabilitiesObj.onoff.value))await setCap(d.id,"onoff",false);draw();}
     else if(act==="test"){await testConn();}
     else if(act==="login"){if(!cfg.workerUrl){showErr("Fyll i serveradressen först.");return;}location.href=cfg.workerUrl.replace(/\/$/,"")+"/login";}
     else if(act==="logout"){try{await fetch(base()+"/logout",{method:"POST",headers:{"Authorization":"Bearer "+cfg.session}});}catch(e){}cfg.session="";persist();state.devices={};draw();refresh({force:true});}
