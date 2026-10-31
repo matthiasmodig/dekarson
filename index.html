@@ -205,7 +205,7 @@ const DEFAULTS={
     d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
     price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
     tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
-    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
+    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
   },
   ui:{devices:{},flows:{},status:{lights:true,sockets:true,locks:true,open:true,alarms:true,motion:true,battery:true,temps:true}}
 };
@@ -1147,7 +1147,7 @@ async function renderModal(){
 async function openModal(t,k){state.modal={t,k};$("#dlgBody").innerHTML="<div class='note'>Hämtar…</div>";const d=$("#dlg");if(!d.open)d.showModal();try{await renderModal();}catch(e){$("#dlgBody").innerHTML=`<div class="warn">${esc(e.message)}</div><button class="btn" data-close="1">Stäng</button>`;}}
 
 /* ---------- Detaljer: fler kort ---------- */
-const DETS=[["timmar","Timmar och effekt"],["vp","Värmepump"],["tesla","Tesla"],["traktor","Traktor"],["uterum","Uterum och entreplatta"]];
+const DETS=[["timmar","Timmar och effekt"],["vp","Värmepump"],["tesla","Tesla"],["traktor","Traktor"],["vvb","Varmvattenberedare"],["uterum","Uterum och entreplatta"]];
 const kwhOnly=un=>un==="kr";
 function cumSeries(id,cap,minDate,yearly){
   return fetchMerged(id,cap,minDate,e=>dailyFromCumulative(e,yearly));
@@ -1216,6 +1216,20 @@ async function viewTimmar(){
   h+=`<div class="card" style="margin:14px 0"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(lv,ll,"kW")}</div>`;
   h+=`<div class="card"><h2>Högsta timmarna denna månad</h2><table><tr><th>Tid</th><th>Timmedeleffekt (kW)</th></tr>${top.map(k=>`<tr><td>${k.slice(0,10)} kl ${k.slice(11)}:00</td><td>${fmt(hh[k],2)}</td></tr>`).join("")||`<tr><td colspan="2">Ingen data</td></tr>`}</table>
    <div class="note">Beräknat ur effektmätarens logg i Homey (medel per timme). Ligger nätägarens effektavgift på mätarens egen timmedata kan värdet avvika något.</div></div>`;
+  return h;
+}
+function viewVVB(){
+  const ids=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(Boolean),ds=ids.map(i=>state.devices[i]).filter(Boolean),nb=state.devices[cfg.ids.nibe];
+  const ttl=(k,f)=>{const t=nb&&((nb.capabilitiesObj||{})[k]||{}).title;return t&&t!==k?t:f;};
+  const tot=ds.reduce((a,d)=>a+(capVal(d,"measure_power")||0),0),kwh=ds.reduce((a,d)=>a+(capVal(d,"meter_power")||0),0);
+  let h=`<div class="grid">${tile("Effekt just nu",fmt(tot,0),"W",ds.length+" mätare"+(ds.length===1?"":"/uttag"),"hero")}`
+   +(capVal(nb,"capability_3")!=null?sensTile(cfg.ids.nibe,"capability_3",esc(ttl("capability_3","Varmvatten topp (BT7)")),fmt(capVal(nb,"capability_3"),1),"°C","NIBE"):"")
+   +(capVal(nb,"capability_4")!=null?sensTile(cfg.ids.nibe,"capability_4",esc(ttl("capability_4","Varmvatten laddning (BT6)")),fmt(capVal(nb,"capability_4"),1),"°C","NIBE"):"")
+   +tile("Energi totalt",fmt(kwh,1),"kWh","Summa av mätarna")+`</div>`;
+  if(!ds.length)return h+`<div class="card">Inga varmvattenberedare hittades. Ange enhets-ID i Admin.</div>`;
+  h+=`<h3>Mätare och uttag</h3><div class="grid">${ds.map(d=>tile(esc(devName(d)),fmt(capVal(d,"measure_power"),0),"W",(capVal(d,"onoff")==null?"":(capVal(d,"onoff")?"På":"Av")+" · ")+fmt(capVal(d,"meter_power"),1)+" kWh totalt"+(capVal(d,"measure_current")!=null?" · "+fmt(capVal(d,"measure_current"),1)+" A":""))).join("")}</div>`;
+  const sw=ds.filter(d=>hasOnoff(d));
+  if(sw.length)h+=`<div class="bar" style="margin-top:12px">${sw.map(d=>`<button class="btn" data-act="tgl" data-dev="${d.id}">${esc(devName(d))} ${capVal(d,"onoff")?"av":"på"}</button>`).join("")}</div>`;
   return h;
 }
 async function viewVP(R,u){
@@ -1291,6 +1305,7 @@ async function renderDetalj(){
     else if(state.det==="vp")h+=await viewVP(R,u);
     else if(state.det==="tesla")h+=await viewTesla(R,u);
     else if(state.det==="traktor")h+=await viewTraktor(R,u);
+    else if(state.det==="vvb")h+=viewVVB();
     else h+=await viewUterum(R,u);
   }catch(e){h+=`<div class="card err">Kunde inte läsa data: ${esc(e.message)}</div>`;}
   $("#p-detalj").innerHTML=h;
@@ -1486,7 +1501,7 @@ function demoSetup(){
     mk("d15","Frysvakt Dekarsön 236","socket","z236",{onoff:true,measure_power:68}),mk("d16","Element Dekarsön 236","socket","z236",{onoff:false,measure_power:0}),
     mk("d17","Lampa Dekarsön 236","light","z236",{onoff:false,dim:1}),mk("d18","Temperatursensor Dekarsön 236","sensor","z236",{measure_temperature:21.4,measure_battery:100}),
     mk(cfg.ids.tibber,"Energi Tibber","other","zh",{meter_kwh_this_day:14.9,meter_kwh_last_day:48.2,meter_kwh_this_month:1460,meter_kwh_last_month:1367,meter_kwh_this_year:14345,meter_kwh_last_year:17662,meter_money_this_day:24.1,meter_money_last_day:56.5,meter_money_this_month:1818,meter_money_last_month:1990,meter_money_this_year:21770,meter_money_last_year:17704,meter_kwh_this_hour:0.65,meter_kwh_last_hour:1.63,measure_watt_avg:1385,measure_watt_max:4186}),
-    mk(cfg.ids.tesla,"Tesla Model Y","other","zh",{charging_on:false,measure_soc_level:75,measure_battery:75,measure_soc_range_estimated:319.9,measure_charge_limit_soc:80,measure_charge_energy_added:12.6,measure_climate_temperature_in:3.4,measure_climate_temperature_out:3.5,meter_car_odo:102580}),mk(cfg.ids.teslaE,"Energiöversikt Tesla","other","zh",{"devicecapabilities_number.number2":293,"devicecapabilities_number.number3":277,"devicecapabilities_number.number5":293,"devicecapabilities_number.number6":277}),mk(cfg.ids.nibe,"NIBE","thermostat","zh",{measure_power:751,capability_0:5.5,capability_1:24.6,capability_2:24.5}),mk(cfg.ids.vp,"Energi VP","other","zh",{meter_kwh_this_day:8.3,meter_kwh_last_day:11,meter_kwh_this_month:434,meter_kwh_last_month:504,meter_kwh_this_year:5459,meter_kwh_last_year:6287,meter_money_this_day:12.6,meter_money_last_day:11.3,meter_money_this_month:465,meter_money_last_month:641,meter_money_this_year:8161,meter_money_last_year:7719,meter_money_this_month_avg:1.07,measure_watt_avg:849}),mk(cfg.ids.trLoad,"Traktor Laddning","socket","zg",{onoff:false,measure_power:0,meter_power:5.9}),mk(cfg.ids.trHeat,"Traktor Motorvärmare","socket","zg",{onoff:false}),mk(cfg.ids.floor,"Golvvärme Uterum","socket","z4",{onoff:false,measure_power:0,meter_power:173,measure_temperature:53.1,"measure_temperature.1":28.1,"measure_temperature.2":24.4,"measure_temperature.3":22.8,"measure_temperature.4":24.2}),mk(cfg.ids.slab,"Betongplatta Uterum","sensor","z4",{measure_temperature:11.7,measure_humidity:60}),
+    mk(cfg.ids.vvb[0],"VV-beredare Värmepump","socket","zh",{onoff:true,measure_power:0,meter_power:6.6,measure_current:0.01}),mk(cfg.ids.vvb[1],"VVB L1 Värmepump","socket","zh",{onoff:true,measure_power:0,meter_power:0.9}),mk(cfg.ids.vvb[2],"VVB L2 Värmepump","socket","zh",{measure_power:0,meter_power:5.8}),mk(cfg.ids.tesla,"Tesla Model Y","other","zh",{charging_on:false,measure_soc_level:75,measure_battery:75,measure_soc_range_estimated:319.9,measure_charge_limit_soc:80,measure_charge_energy_added:12.6,measure_climate_temperature_in:3.4,measure_climate_temperature_out:3.5,meter_car_odo:102580}),mk(cfg.ids.teslaE,"Energiöversikt Tesla","other","zh",{"devicecapabilities_number.number2":293,"devicecapabilities_number.number3":277,"devicecapabilities_number.number5":293,"devicecapabilities_number.number6":277}),mk(cfg.ids.nibe,"NIBE","thermostat","zh",{measure_power:751,capability_0:5.5,capability_1:24.6,capability_2:24.5}),mk(cfg.ids.vp,"Energi VP","other","zh",{meter_kwh_this_day:8.3,meter_kwh_last_day:11,meter_kwh_this_month:434,meter_kwh_last_month:504,meter_kwh_this_year:5459,meter_kwh_last_year:6287,meter_money_this_day:12.6,meter_money_last_day:11.3,meter_money_this_month:465,meter_money_last_month:641,meter_money_this_year:8161,meter_money_last_year:7719,meter_money_this_month_avg:1.07,measure_watt_avg:849}),mk(cfg.ids.trLoad,"Traktor Laddning","socket","zg",{onoff:false,measure_power:0,meter_power:5.9}),mk(cfg.ids.trHeat,"Traktor Motorvärmare","socket","zg",{onoff:false}),mk(cfg.ids.floor,"Golvvärme Uterum","socket","z4",{onoff:false,measure_power:0,meter_power:173,measure_temperature:53.1,"measure_temperature.1":28.1,"measure_temperature.2":24.4,"measure_temperature.3":22.8,"measure_temperature.4":24.2}),mk(cfg.ids.slab,"Betongplatta Uterum","sensor","z4",{measure_temperature:11.7,measure_humidity:60}),
     mk(cfg.ids.live235,"Elmätare","other","zh",{measure_power:2299,"measure_current.l1":9.2,"measure_current.l2":6.1,"measure_current.l3":11.8}),mk(cfg.ids.price,"Elpris","other","zh",{measure_price_total:0.57}),mk(cfg.ids.ute,"Utetemperatur Utomhus","sensor","zh",{measure_temperature:5.5}),mk(cfg.ids.smhi,"Väder SMHI","other","zh",{air_temperature_feels_like_cp:3.6}),mk(cfg.ids.elpris,"Elpris SE2","other","zh",Object.fromEntries(Array.from({length:36},(_,i)=>["meter_price_h"+i,0.55+0.4*Math.cos(((new Date().getHours()+i-8)%24)/24*2*Math.PI)+((new Date().getHours()+i)%24>=17&&(new Date().getHours()+i)%24<=20?0.5:0)]))),
     mk(cfg.ids.d236,"Energiöversikt 236","other","z236",{"measure_power.number1":509,"devicecapabilities_number.number2":172,"devicecapabilities_number.number3":184,"devicecapabilities_number.number4":107,"devicecapabilities_number.number5":172,"devicecapabilities_number.number6":184})
   ];
