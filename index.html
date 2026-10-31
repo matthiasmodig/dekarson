@@ -597,6 +597,8 @@ async function renderOversikt(){
     h+=tile("Timmedel effekt just nu",thisH!=null?fmt(thisH/frac,2):"–","kW",thisH!=null?fmt(thisH,2)+" kWh på "+fmt(frac*60,0)+" min":"");
     const ph0=capVal(state.devices[cfg.ids.elpris],"meter_price_h0"),pnow=ph0!=null?ph0:(e.price!=null?e.price:null);
     h+=tile("Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
+    const sl=state.devices[cfg.ids.slab];
+    h+=tile("Temp betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?"Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %":"Uterum");
     h+=`</div>`;
     try{h+=await priceBlock(0,true);}catch(err){}
     let hh={},keys=[];try{hh=await loadHourly();keys=Object.keys(hh).sort().slice(-24);}catch(err){}
