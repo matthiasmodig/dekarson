@@ -555,8 +555,49 @@ function statusBar(){
     ${chip("alarms",al?"bad":"ok",`Larm/öppet: ${al}`)}
     ${chip("motion",L.motion.length?"on":"",`Rörelse: ${L.motion.length}`)}
     ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}</div>
-    ${state.prop==="235"?`<div class="bar" style="margin:8px 0 0"><b>Värme &amp; laddning</b>${heatDevs().map(([d,n])=>chip("heat",capVal(d,"onoff")?"on":"",`${n}: ${capVal(d,"onoff")?"På":"Av"}`)).join("")}</div>`:""}
     <div class="note" style="margin-top:6px">Klicka på en ruta för detaljer och för att ändra.</div></div>`;
+}
+
+function heatCards(){
+  if(state.prop!=="235")return "";
+  const hd=heatDevs();if(!hd.length)return "";
+  return `<h3>Värme &amp; laddning</h3><div class="grid">${hd.map(([d,n])=>{const on=!!capVal(d,"onoff"),pw=capVal(d,"measure_power"),e=capVal(d,"meter_power");
+    return `<div class="card tile" data-onoff="${esc(d.id)}" data-nm="${esc(n)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer"><div class="l"><span class="dot ${on?"on":""}"></span> ${esc(n)}</div><div class="v">${on?"På":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W · ":""}${e!=null?fmt(e,1)+" kWh totalt":"Ingen energimätare"}</div></div>`;}).join("")}</div>`;
+}
+async function onoffSegs(id,f,t){
+  const cur=!!capVal(state.devices[id],"onoff");let es=[];
+  if(isDemo()){const n=Math.max(4,Math.round((t-f)/36e5/6));let st=true,x=f;for(let i=0;i<n;i++){es.push({t:x,v:st});st=!st;x+=(t-f)/n*(0.4+((i*7)%5)/5);if(x>=t)break;}}
+  else es=await logEntries(id,"onoff",sensRes(t-f));
+  es=es.map(e=>({t:new Date(e.t).getTime(),v:e.v===true||e.v===1||e.v==="true"})).filter(e=>e.t<t).sort((a,b)=>a.t-b.t);
+  const seg=[];
+  for(let i=0;i<es.length;i++){const s0=Math.max(f,es[i].t),s1=i+1<es.length?es[i+1].t:t;if(s1>f)seg.push({s:s0,e:Math.min(t,s1),on:es[i].v});}
+  if(seg.length&&seg[seg.length-1].on!==cur&&!isDemo()){/* senaste loggade läget gäller till nu */}
+  return seg;
+}
+async function onoffModalHtml(id){
+  const d=state.devices[id];if(!d)return `<div class="warn">Enheten hittades inte.</div>`;
+  const [f,t]=sensRange(),on=!!capVal(d,"onoff"),nm=(heatDevs().find(x=>x[0]&&x[0].id===id)||[0,devName(d)])[1];
+  let h=`<div class="mhead"><h2>${esc(nm)}</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>
+  <div class="bar"><span class="dot ${on?"on":""}"></span><b>${on?"På":"Av"}</b><button class="btn" data-act="tgl" data-dev="${esc(id)}">${on?"Slå av":"Slå på"}</button></div>
+  <div class="grid">${tile("Effekt nu",fmt(capVal(d,"measure_power"),0),"W","")}${tile("Energi totalt",fmt(capVal(d,"meter_power"),1),"kWh",capVal(d,"meter_power")==null?"Ingen energimätare":"Mätarställning")}</div>
+  <div class="bar" style="margin-top:12px">${SENSPER.map(([p,l])=>`<button class="chip" data-sensper="${p}" aria-pressed="${state.sensPer===p}">${l}</button>`).join("")}
+  ${state.sensPer==="custom"?`<label>Från <input type="date" id="sensfrom" value="${state.sensFrom||addDays(todayStr(),-7)}" max="${todayStr()}"></label><label>Till <input type="date" id="sensto" value="${state.sensTo||todayStr()}" max="${todayStr()}"></label>`:""}</div>`;
+  let seg=[];
+  try{seg=await onoffSegs(id,f,t);}catch(e){return h+`<div class="warn">Historik kunde inte läsas: ${esc(e.message)}</div>`;}
+  if(!seg.length)return h+`<div class="note">Ingen på/av-historik hittades för perioden. Kontrollera att Homey loggar enhetens på/av (Insights).</div>`;
+  const onMs=seg.filter(x=>x.on).reduce((a,x)=>a+x.e-x.s,0),known=seg.reduce((a,x)=>a+x.e-x.s,0),starts=seg.filter((x,i)=>x.on&&(i===0?false:!seg[i-1].on)).length;
+  h+=`<div class="grid" style="margin-top:12px">${tile("Tid på",fmt(onMs/36e5,1),"h",fmt(known?onMs/known*100:0,0)+" % av perioden")}${tile("Antal starter",String(starts),"","")}${tile("Längsta pass",fmt(Math.max(0,...seg.filter(x=>x.on).map(x=>(x.e-x.s)/36e5)),1),"h","")}</div>`;
+  const W=1000,H=84,L=10,R=10,x=tt=>L+(W-L-R)*(tt-f)/(t-f);let g=`<rect x="${L}" y="14" width="${W-L-R}" height="36" fill="var(--line)" rx="4"/>`;
+  g+=seg.map(z=>`<rect x="${x(z.s).toFixed(1)}" y="14" width="${Math.max(1.5,x(z.e)-x(z.s)).toFixed(1)}" height="36" fill="${z.on?"var(--cur)":"transparent"}"/>`).join("");
+  const long=(t-f)>2*864e5;
+  for(let i=0;i<=4;i++){const tt=f+(t-f)*i/4,dd=new Date(tt);g+=`<text x="${x(tt)}" y="74" text-anchor="${i===0?"start":i===4?"end":"middle"}">${dd.getDate()}/${dd.getMonth()+1}${long?"":" "+pad(dd.getHours())+":00"}</text>`;}
+  h+=`<div class="card" style="margin-top:14px"><h2>När den varit på</h2><svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg><div class="legend"><span><i style="background:var(--cur)"></i>På</span><span><i style="background:var(--line)"></i>Av</span></div></div>`;
+  if(t-f>=2*864e5&&t-f<=93*864e5){
+    const days=[];for(let d0=new Date(f);d0.getTime()<t;d0=new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()+1))days.push(new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()).getTime());
+    const hrs=days.map(ds=>{const de=ds+864e5;return seg.filter(z=>z.on).reduce((a,z)=>a+Math.max(0,Math.min(z.e,de)-Math.max(z.s,ds)),0)/36e5;});
+    h+=`<div class="card" style="margin-top:14px"><h2>Timmar på per dygn</h2>${barChart(hrs,null,days.map(ds=>{const dd=new Date(ds);return dd.getDate()+"/"+(dd.getMonth()+1);}),"h")}</div>`;
+  }
+  return h;
 }
 function statusModalHtml(k){
   const L=statusLists(),tit={lights:"Lampor",sockets:"Uttag",locks:"Lås",alarms:"Larm och öppna kontakter",motion:"Rörelse just nu",battery:"Svagt batteri",heat:"Värme & laddning"}[k]||k;
@@ -589,7 +630,7 @@ function teslaCmds(){
 }
 async function renderOversikt(){
   const e=liveEnergy();
-  let h=statusBar();
+  let h=statusBar()+heatCards();
   if(state.prop==="235"){
     const tb=state.devices[cfg.ids.tibber],now=new Date(),frac=Math.max(now.getMinutes()+now.getSeconds()/60,1)/60;
     const thisH=capVal(tb,"meter_kwh_this_hour"),kd=capVal(tb,"meter_kwh_this_day"),kdp=capVal(tb,"meter_kwh_last_day"),rd=capVal(tb,"meter_money_this_day"),rdp=capVal(tb,"meter_money_last_day");
@@ -1108,6 +1149,7 @@ function modalHead(title){
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
   if(m.t==="status"){body.innerHTML=statusModalHtml(m.k);return;}
+  if(m.t==="onoff"){body.innerHTML=await onoffModalHtml(m.k);return;}
   if(m.t==="sens"){body.innerHTML=await sensModalHtml(m.k);return;}
   const c=await kortCtx(addDays(todayStr(),-760)),R=c.R,u=c.u;
   if(m.t==="daily"){
@@ -1570,6 +1612,7 @@ document.addEventListener("click",async e=>{
   if(e.target.id==="panelBtn"){showTab("oversikt");setPanel(true);return;}
   if(e.target.id==="panelX"){setPanel(false);return;}
   const sp=e.target.closest("[data-sensper]");if(sp){state.sensPer=sp.dataset.sensper;renderModal();return;}
+  const oo=e.target.closest("[data-onoff]");if(oo){openModal("onoff",oo.dataset.onoff);return;}
   const se=e.target.closest("[data-sens]");if(se){openModal("sens",se.dataset.sens);return;}
   const p=e.target.closest("[data-p]");
   if(p){state.preset=p.dataset.p;if(state.preset==="valfri"&&!state.from){state.to=todayStr();state.from=addDays(state.to,-29);}draw();return;}
@@ -1631,7 +1674,7 @@ document.addEventListener("change",async e=>{
 });
 
 (function(){const m=/[#&]session=([a-f0-9]{64})/.exec(location.hash);if(m){cfg.session=m[1];cfg.demo=false;cfg.mode="cloud";persist();history.replaceState(null,"",location.pathname+location.search);}})();
-document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart||e.target.dataset.daily||e.target.dataset.sens)){e.preventDefault();e.target.click();}});
+document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart||e.target.dataset.daily||e.target.dataset.sens||e.target.dataset.onoff)){e.preventDefault();e.target.click();}});
 document.addEventListener("mousemove",sensHover);document.addEventListener("touchmove",e=>{if(e.touches[0])sensHover({target:e.target,clientX:e.touches[0].clientX});},{passive:true});
 $("#dlg").addEventListener("close",()=>{state.modal=null;});
 try{applyTheme(localStorage.getItem("homeyTheme")||"auto");}catch(e){applyTheme("auto");}
