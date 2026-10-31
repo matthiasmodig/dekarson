@@ -1269,7 +1269,7 @@ function floorSensTiles(f,only){
   return h+(only!=="uterum"?dt(1,2,"ΔT golvvärme"):"")+(only!=="golv"?dt(3,4,"ΔT uterum"):"");
 }
 async function renderKlimat(){
-  const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.slab&&d.id!==cfg.ids.ventilation&&d.id!==cfg.ids.fastighet);
+  const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.slab&&d.id!==cfg.ids.ventilation&&d.id!==cfg.ids.fastighet&&d.id!==cfg.ids.entre);
   const zones=[...new Set(all.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv"));
   const list=all.filter(d=>!state.climZone||zoneName(d)===state.climZone).sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")||a.name.localeCompare(b.name,"sv"));
   let h="";
@@ -1726,7 +1726,7 @@ function statusLists(){
     if((c.alarm_smoke&&c.alarm_smoke.value)||(c.alarm_water&&c.alarm_water.value)||(c.alarm_generic&&c.alarm_generic.value)||(c.alarm_battery&&c.alarm_battery.value))L.alarms.push(d);
     if(c.alarm_motion&&c.alarm_motion.value)L.motion.push(d);
     if(c.measure_battery&&c.measure_battery.value!=null&&c.measure_battery.value<=20)L.battery.push(d);
-    if(d.id!==cfg.ids.fastighet&&d.class==="sensor"&&c.measure_temperature&&c.measure_temperature.value!=null)L.temps.push(d);
+    if(d.id!==cfg.ids.fastighet&&d.id!==cfg.ids.entre&&d.class==="sensor"&&c.measure_temperature&&c.measure_temperature.value!=null)L.temps.push(d);
   }
   return L;
 }
