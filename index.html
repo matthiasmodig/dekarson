@@ -1670,6 +1670,8 @@ function devCard(d){
   const pw=c.measure_power&&c.measure_power.value!=null?fmt(c.measure_power.value,0)+" W":"";
   let h=`<div class="card dev ${on?"on":""}" data-id="${d.id}" data-onoff="${d.id}" data-nm="${esc(devName(d))}" ${/taklampa h[öo]ger/i.test(devName(d))&&/uterum/i.test(zoneName(d))?'data-row2="1"':""} tabindex="0" role="button" title="Visa historik" style="cursor:pointer"><div class="row"><div><div class="nm">${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${c.dim&&c.dim.value!=null?` · <b class="dimv">${Math.round(c.dim.value*100)} %</b>`:""}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
     <button class="sw" role="switch" aria-checked="${on}" data-act="toggle" aria-label="Av/på ${esc(devName(d))}"></button></div>`;
+  if(d.id===cfg.ids.floor){const sl=state.devices[cfg.ids.slab],tv=sl&&capVal(sl,"measure_temperature");
+    if(tv!=null)h+=`<div data-sens="${esc(sl.id)}|measure_temperature" style="margin-top:6px;cursor:pointer;font-size:14px">Betongplatta <b style="font-size:20px">${fmt(tv,1)} °C</b></div>`;}
   h+=`<div style="text-align:right;margin-top:4px"><button class="btn sm" data-act="hide" style="padding:0 8px;min-height:22px;font-size:12px">Dölj</button></div>`;
   if(c.dim&&c.dim.value!=null)h+=`<input type="range" oninput="var b=this.closest('.dev').querySelector('.dimv');if(b)b.textContent=this.value+' %'" min="1" max="100" value="${Math.round(c.dim.value*100)}" data-act="dim" aria-label="Ljusstyrka">`;
   return h+`</div>`;
