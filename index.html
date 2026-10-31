@@ -544,6 +544,7 @@ function attnHtml(){
   for(const x of L.locks.filter(x=>!x.ok))att.push(`Olåst: ${esc(devName(x.d))}`);
   return `<div class="card ${att.length?"attn":""}" style="grid-column:1/-1"><h2>Behöver uppmärksamhet <span class="pill ${att.length?"bad":""}">${att.length}</span></h2>${att.length?`<ul style="margin:0;padding-left:18px">${att.map(x=>`<li>${x}</li>`).join("")}</ul>`:`<div class="note" style="margin:0">Inget just nu.</div>`}</div>`;
 }
+function heatDevs(){return [[cfg.ids.floor,"Golvvärme / Entreplatta"],[cfg.ids.trLoad,"Traktor laddning"],[cfg.ids.trHeat,"Traktor MV"]].map(([id,n])=>[state.devices[id],n]).filter(x=>x[0]&&hasOnoff(x[0]));}
 function statusBar(){
   const L=statusLists(),unl=L.locks.filter(x=>!x.ok).length,al=L.alarms.length+L.open.length;
   const chip=(k,dot,txt)=>`<button class="chip" data-status="${k}"><span class="dot ${dot}"></span>${txt}</button>`;
@@ -554,14 +555,16 @@ function statusBar(){
     ${chip("alarms",al?"bad":"ok",`Larm/öppet: ${al}`)}
     ${chip("motion",L.motion.length?"on":"",`Rörelse: ${L.motion.length}`)}
     ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}</div>
+    ${state.prop==="235"?`<div class="bar" style="margin:8px 0 0"><b>Värme &amp; laddning</b>${heatDevs().map(([d,n])=>chip("heat",capVal(d,"onoff")?"on":"",`${n}: ${capVal(d,"onoff")?"På":"Av"}`)).join("")}</div>`:""}
     <div class="note" style="margin-top:6px">Klicka på en ruta för detaljer och för att ändra.</div></div>`;
 }
 function statusModalHtml(k){
-  const L=statusLists(),tit={lights:"Lampor",sockets:"Uttag",locks:"Lås",alarms:"Larm och öppna kontakter",motion:"Rörelse just nu",battery:"Svagt batteri"}[k]||k;
+  const L=statusLists(),tit={lights:"Lampor",sockets:"Uttag",locks:"Lås",alarms:"Larm och öppna kontakter",motion:"Rörelse just nu",battery:"Svagt batteri",heat:"Värme & laddning"}[k]||k;
   let h=`<div class="mhead"><h2>${tit}</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`;
   const cards=ds=>ds.length?`<div class="grid">${ds.sort((a,b)=>(capVal(b,"onoff")?1:0)-(capVal(a,"onoff")?1:0)||zoneName(a).localeCompare(zoneName(b),"sv")).map(devCard).join("")}</div>`:`<div class="note">Inga enheter.</div>`;
   const row=(d,right)=>`<div class="stat"><span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${right}</span></div>`;
   if(k==="lights"){const ds=propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d));h+=`<div class="bar"><button class="btn" data-act="alloff">Släck alla lampor</button><span class="note">${L.lights.length} av ${ds.length} tända</span></div>`+cards(ds);}
+  else if(k==="heat"){h+=cards(heatDevs().map(x=>x[0]));}
   else if(k==="sockets"){h+=cards(propDevices().filter(d=>!isLamp(d)&&d.class==="socket"&&hasOnoff(d)&&isShown(d)));}
   else if(k==="locks"){h+=L.locks.length?L.locks.map(x=>row(x.d,`<span class="dot ${x.ok?"ok":"bad"}"></span>${x.ok?"Låst":"Olåst"} <button class="btn sm" data-act="lock" data-dev="${x.d.id}" data-to="${!x.ok}">${x.ok?"Lås upp":"Lås"}</button>`)).join(""):`<div class="note">Inga lås.</div>`;}
   else if(k==="alarms"){const a=[...L.alarms.map(d=>row(d,"Larm")),...L.open.map(d=>row(d,"Öppen"))];h+=a.length?a.join(""):`<div class="note">Inget aktivt.</div>`;}
