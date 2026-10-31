@@ -1745,7 +1745,7 @@ function renderStatus(){
   if(S.alarms)h+=cat("Larm",L.alarms.map(d=>`<span class="dot bad"></span>${esc(devName(d))}`),L.alarms.length?"bad":"");
   if(S.motion)h+=cat("Rörelse just nu",L.motion.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
   if(S.battery)h+=cat("Svagt batteri (20 % eller lägre)",L.battery.map(d=>`${esc(devName(d))}</span><span>${fmt(capVal(d,"measure_battery"),0)} %`),L.battery.length?"bad":"");
-  if(S.temps)h+=cat("Temperaturer",L.temps.sort((a,b)=>capVal(b,"measure_temperature")-capVal(a,"measure_temperature")).map(d=>`<span data-sens="${esc(d.id)}|measure_temperature" style="cursor:pointer;display:contents">${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${fmt(capVal(d,"measure_temperature"),1)} °C</span>`));
+  if(S.temps)h+=cat("Temperaturer",L.temps.sort((a,b)=>capVal(b,"measure_temperature")-capVal(a,"measure_temperature")).map(d=>`<span data-sens="${esc(d.id)}|measure_temperature" style="cursor:pointer;display:contents">${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${fmt(capVal(d,"measure_temperature"),1)} °C</span>`),"",null,"grid-column:span 2;min-width:0");
   h+=`</div><div class="note">Uppdateras var 20:e sekund. Vilka rutor som visas styrs i Admin.</div>`;
   $("#p-status").innerHTML=h;
 }
