@@ -205,7 +205,7 @@ const DEFAULTS={
     tibber:"9984ff30-8ea8-4a59-8b77-ca10a9722cdf",hush:"d2a46475-4494-4794-ad4a-413f89209ecf",
     uppv:"f6565b0d-0a1b-4d61-be3d-21e064f0af16",vp:"2b491c90-9448-47be-85a4-c4de18e5a711",ovr:"",
     d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
-    price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",m236prev:"b71aea9a-d306-45a2-90da-b3d589591c31",m236day:"1abf7a52-82b5-47ba-a4a4-0a456b938601",m236month:"30272262-e61d-4e99-b536-c843c3911500",m236dayN:"bafbd37d-aa8e-46a3-8582-f08604fc8b88",m236monthN:"cfc670ef-0eff-42a8-9ecf-517091618958",l236_1:"9634d738-f370-44ec-b383-1dd540b63ea3",l236_2:"a09151a6-eec7-418e-b57f-6e6eff63f20d",l236_3:"ed39ab86-96bc-46e3-8af0-ee01960a45e5",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",timSnitt:"f8346588-0055-474e-94eb-d4fc2026ee6a",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
+    price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",m236prev:"b71aea9a-d306-45a2-90da-b3d589591c31",m236day:"1abf7a52-82b5-47ba-a4a4-0a456b938601",m236month:"30272262-e61d-4e99-b536-c843c3911500",m236prevE:"557af22f-ec2e-4f3a-b1ec-a0ab647667af",m236dayN:"bafbd37d-aa8e-46a3-8582-f08604fc8b88",m236monthN:"cfc670ef-0eff-42a8-9ecf-517091618958",l236_1:"9634d738-f370-44ec-b383-1dd540b63ea3",l236_2:"a09151a6-eec7-418e-b57f-6e6eff63f20d",l236_3:"ed39ab86-96bc-46e3-8af0-ee01960a45e5",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",timSnitt:"f8346588-0055-474e-94eb-d4fc2026ee6a",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
     tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
     trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",inneKok:"97c95291-0a6a-45eb-a7d5-39695c4fa655",ventilation:"8904d830-126c-4c0d-9a6c-6bc67c1f77ad",koksfläkt:"ab42117b-5917-4f1b-aaa6-9537931a7c2f",spotKok:"626665dc-15f5-4fa9-9e6c-8fc4fbbe74fc",ytterdorr:"11743e4d-2bf0-408a-a606-db890cddd7c6",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
   },
@@ -225,7 +225,7 @@ function persist(){try{localStorage.setItem("homeyDash2",JSON.stringify(cfg));}c
 const isCloud=()=>cfg.mode==="cloud";
 const isDemo=()=>cfg.demo||!(isCloud()?(cfg.workerUrl&&cfg.session):(cfg.ip&&cfg.key));
 
-const state={detClosed:{},dark:window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches,climSel:"",climPer:"last24Hours",sensPer:"7d",sensFrom:"",sensTo:"",climZone:"",det:"timmar",hourly:null,prop:"235",unit:"kr",tab:"oversikt",preset:"manad",cmp:"prev",from:"",to:"",
+const state={detClosed:{},h236d:"",h236m:"",dark:window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches,climSel:"",climPer:"last24Hours",sensPer:"7d",sensFrom:"",sensTo:"",climZone:"",det:"timmar",hourly:null,prop:"235",unit:"kr",tab:"oversikt",preset:"manad",cmp:"prev",from:"",to:"",
   devices:{},zones:{},flows:[],flowsAt:0,cache:{},adminOk:false,flash:{},search:"",adminSearch:""};
 
 /* =====================================================================
@@ -736,6 +736,7 @@ async function renderEnergi(){
   h+=`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name}</div>`;
 
   h+=`<section class="grp"><h3>${is235?"Hela huset · Tibber":"Effekt · Dekarsön 236"}</h3>`+await medelEffektHtml()+faseHtml()+`</section>`;
+  if(!is235){try{h+=await hist236Html();}catch(e){h+=`<div class="note">Historik kunde inte läsas: ${esc(e.message)}</div>`;}}
   if(!S){h+=`<div class="warn">Kunde inte läsa historiken från Homey: ${esc(serr)}</div>`;$("#p-energi").innerHTML=h;const c0=$("#cmp");if(c0)c0.value=state.cmp;return;}
   if(!T){h+=`<div class="card">Ange energikälla för ${PROPS.find(p=>p.k===state.prop).name} under Admin.</div>`;$("#p-energi").innerHTML=h;$("#cmp").value=state.cmp;return;}
   const cur={kwh:sumRange(T,"kwh",R.s,R.e),kr:sumRange(T,"kr",R.s,R.e)};
@@ -881,21 +882,71 @@ async function medelData236(){
   }else D.hourWhy=devs.some(d=>!d)?"Fasmätare saknas":"Mätarställning saknas eller är gammal";
   /* C–E: färdigberäknade Logic-variabler */
   let V=null;
-  if(demo){D.varT=Date.now();V={prev:1480,day:1.62,month:1.48,dayN:Math.max(D.doneDay,0),monthN:Math.max(D.doneMonth,0)};}
+  if(demo){D.varT=Date.now();V={prevE:1.48,prev:1480,day:1.62,month:1.48,dayN:Math.max(D.doneDay,0),monthN:Math.max(D.doneMonth,0)};}
   else try{
     if(!state.vars||Date.now()-state.vars.t>20000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};
     const all=state.vars.v||{},g=id=>{const x=Object.values(all).find(y=>y.id===id);return x&&x.value!=null&&x.value!==""?Number(x.value):null;};
-    V={prev:g(cfg.ids.m236prev),day:g(cfg.ids.m236day),month:g(cfg.ids.m236month),dayN:g(cfg.ids.m236dayN),monthN:g(cfg.ids.m236monthN)};
+    V={prevE:g(cfg.ids.m236prevE),prev:g(cfg.ids.m236prev),day:g(cfg.ids.m236day),month:g(cfg.ids.m236month),dayN:g(cfg.ids.m236dayN),monthN:g(cfg.ids.m236monthN)};
     D.varT=state.vars.t;
   }catch(e){D.varErr=e.message;}
   if(V){
     const ok=V.monthN>0;
-    D.prev=ok&&V.prev!=null?{v:V.prev/1000}:null;
+    D.prev=ok&&V.prev!=null?{v:V.prev/1000,kwh:V.prevE}:null;
+    if(D.prev&&D.prev.kwh!=null&&Math.abs(D.prev.v-D.prev.kwh)>Math.max(.05,D.prev.kwh*.05))D.prevWarn="W-variabeln ("+fmt(D.prev.v,2)+" kW) stämmer inte med energivariabeln ("+fmt(D.prev.kwh,2)+" kWh)";
     D.day=V.dayN>0&&V.day!=null?{v:V.day,n:V.dayN}:null;
     D.month=V.monthN>0&&V.month!=null?{v:V.month,n:V.monthN}:null;
     D.varsEmpty=!(V.dayN>0)&&!(V.monthN>0);
   }
   return D;
+}
+/* ---------- Dekarsön 236: historik ur Google-arket (separat från 235) ---------- */
+async function sheetHourly236(){
+  const url=(cfg.sheetCsv236||"").trim();if(!url)return null;
+  const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);
+  const rows=parseCsv(await r.text()),hd=(rows[0]||[]).map(x=>(x||"").trim());
+  const wi=hd.findIndex(x=>/medel\s*effekt/i.test(x)&&/\(W\)/.test(x)),di=hd.findIndex(x=>/^datum$/i.test(x)),ti=hd.findIndex(x=>/^tid$/i.test(x));
+  if(wi<0||di<0||ti<0)throw new Error("Kolumnerna Datum, Tid och Medel effekt (W) hittades inte");
+  const out={};let bad=0;
+  for(const r of rows.slice(1)){
+    if(!r.some(x=>(x||"").trim()))continue;
+    const ds=(r[di]||"").trim(),ts=(r[ti]||"").trim(),w=(r[wi]||"").trim().replace(",",".");
+    let m=ds.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/),Y,M,Dd;
+    if(m){Y=+m[1];M=+m[2];Dd=+m[3];}else{m=ds.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);if(m){Dd=+m[1];M=+m[2];Y=+m[3];}}
+    const tm=ts.match(/^(\d{1,2}):(\d{2})/);
+    if(!m||!tm||!/^\d+(\.\d+)?$/.test(w)||Number(w)>60000){bad++;continue;}
+    const d=new Date(new Date(Y,M-1,Dd,+tm[1],0).getTime()-36e5),k=hourKey(d);
+    if(out[k]==null)out[k]=Number(w)/1000;
+  }
+  Object.defineProperty(out,"__bad",{value:bad,enumerable:false});
+  return out;
+}
+async function loadHourly236(){
+  if(state.hourly236&&Date.now()-state.hourly236.t<2*60*1000)return state.hourly236.v;
+  let v=null,err="";
+  if(isDemo()){v={};const R=rnd(23),now=new Date();for(let i=24*40;i>=1;i--){if(R()<.03)continue;const d=new Date(now.getTime()-i*36e5),hr=d.getHours();v[hourKey(d)]=Math.max(.2,.6+.4*Math.cos((hr-7)/24*2*Math.PI)+R()*.5);}}
+  else try{v=await sheetHourly236();}catch(e){err=e.message;}
+  state.hourly236={t:Date.now(),v,err};return state.hourly236.v;
+}
+async function hist236Html(){
+  const hh=await loadHourly236(),err=state.hourly236&&state.hourly236.err;
+  let h=`<section class="grp" style="margin-top:14px"><h3>Historik · Dekarsön 236</h3>`;
+  if(!(cfg.sheetCsv236||"").trim()&&!isDemo())return h+`<div class="card note">Ange CSV-länken till arket "Effekt per timme" för Dekarsön 236 under Admin så visas historiken här. Ingen data hämtas från Dekarsön 235.</div></section>`;
+  if(err)return h+`<div class="card note">Ingen data · kunde inte läsa arket (${esc(err)}).</div></section>`;
+  const keys=doneKeys(hh||{});
+  if(!keys.length)return h+`<div class="card note">Ingen data · arket har inga timrader ännu. Historiken visas när Homey-flödet har skrivit sin första rad.</div></section>`;
+  const today=todayStr(),last=keys[keys.length-1].slice(0,10);
+  const day=state.h236d||last,mon=state.h236m||day.slice(0,7);
+  const dv=[],dl=[];for(let i=0;i<24;i++){const k=day+"T"+pad(i);dv.push(hh[k]!=null?hh[k]:null);dl.push(pad(i)+"–"+pad((i+1)%24));}
+  const got=dv.filter(x=>x!=null);
+  h+=`<div class="card chartcard"><div class="bar" style="margin:0 0 6px"><label>Dygn <input type="date" id="h236d" value="${day}" max="${today}"></label><span class="note" style="margin:0">${got.length} av 24 timmar registrerade${got.length?" · medel "+fmt(got.reduce((a,b)=>a+b,0)/got.length,2)+" kW":""} · luckor är saknade värden</span></div><h2>Timmedeleffekt per timme, ${day} (kW)</h2>${got.length?lineChart(dv,dl,"kW"):'<div class="note">Ingen data för valt dygn.</div>'}</div>`;
+  const wk=[],wl=[];for(let i=167;i>=1;i--){const d=new Date(Date.now()-i*36e5),k=hourKey(d);wk.push(hh[k]!=null?hh[k]:null);wl.push(hourLbl(k));}
+  h+=`<div class="card chartcard" style="margin-top:12px"><h2>Timmedeleffekt senaste veckan (kW)</h2>${wk.some(x=>x!=null)?lineChart(wk,wl,"kW"):'<div class="note">Ingen data senaste veckan.</div>'}</div>`;
+  const dim=new Date(+mon.slice(0,4),+mon.slice(5,7),0).getDate(),mv=[],ml=[],mn=[];
+  for(let d=1;d<=dim;d++){const p=mon+"-"+pad(d),m=meanOfHours(hh,p);mv.push(m?m.v:null);mn.push(m?m.n:0);ml.push(pad(d));}
+  h+=`<div class="card chartcard" style="margin-top:12px"><div class="bar" style="margin:0 0 6px"><label>Månad <input type="month" id="h236m" value="${mon}" max="${today.slice(0,7)}"></label></div><h2>Dygnsmedeleffekt ${mon} (kW)</h2>${mv.some(x=>x!=null)?lineChart(mv,ml.map((l,i)=>l+" ("+mn[i]+" h)"),"kW"):'<div class="note">Ingen data för vald månad.</div>'}<div class="note">Medel av registrerade timmedeleffekter. Dygn med färre än 24 timmar är ofullständiga (antal i verktygstips).</div></div>`;
+  const ms=[...new Set(keys.map(k=>k.slice(0,7)))];
+  h+=`<div class="card" style="margin-top:12px"><h2>Månadsmedeleffekt</h2><table><tr><th>Månad</th><th>Medeleffekt (kW)</th><th>Timmar</th></tr>${ms.map(m=>{const x=meanOfHours(hh,m),full=(new Date(+m.slice(0,4),+m.slice(5,7),0).getDate())*24;return `<tr><td>${m}</td><td>${fmt(x.v,2)}</td><td>${x.n}${x.n<full&&m<today.slice(0,7)?" (ofullständig)":m===today.slice(0,7)?" (pågår)":""}</td></tr>`;}).join("")}</table><div class="note">${state.hourly236&&hh&&hh.__bad?hh.__bad+" rader hoppades över (ogiltigt datum/värde). ":""}Källa: Google-arket för Dekarsön 236.</div></div></section>`;
+  return h;
 }
 async function medelEffektHtml(){
   const is236=state.prop==="236";
@@ -908,7 +959,7 @@ async function medelEffektHtml(){
   return `<div class="rowN" style="--c:5;margin-bottom:6px">`
    +TA("Aktuell effekt",f(D.power),"kW",D.power!=null?"Momentan effekt, inte timmedeleffekt":(D.p236?"Ingen data"+(D.powerWhy?" · "+D.powerWhy:""):wait("")),"hero")
    +TA("Pågående timmes medeleffekt",D.hour?f(D.hour.v):"–","kW",D.hour?"<b>Ofullständig timme</b> · "+fmt(D.hour.kwh,2)+" kWh på "+fmt(D.hour.min,0)+" min":(D.p236?"Inväntar mätdata"+(D.hourWhy?" · "+D.hourWhy:""):wait(D.hourWhy)))
-   +TA("Föregående timmes medeleffekt",D.prev?f(D.prev.v):"–","kW",D.prev?(D.prev.alt?"Från Tibber-mätarens timenergi":"Homey TimSnitt")+(D.prevWarn?" · <b style=\"color:var(--bad)\">"+D.prevWarn+"</b>":""):(D.p236?noV:wait("")))
+   +TA("Föregående timmes medeleffekt",D.prev?f(D.prev.v):"–","kW",D.prev?(D.prev.alt?"Från Tibber-mätarens timenergi":"Homey "+(D.p236?"Logic-variabel":"TimSnitt")+(D.prev.kwh!=null?" · "+fmt(D.prev.kwh,2)+" kWh":""))+(D.prevWarn?" · <b style=\"color:var(--bad)\">"+D.prevWarn+"</b>":""):(D.p236?noV:wait("")))
    +TA("Dygnsmedeleffekt",D.day?f(D.day.v):"–","kW",inc(D.day,D.doneDay,"timmar hittills idag"))
    +TA("Månadsmedeleffekt",D.month?f(D.month.v):"–","kW",inc(D.month,D.doneMonth,"timmar hittills denna månad"))
    +`</div><div class="note" style="margin-bottom:12px">Uppdaterad ${hh}${D.varT?" · variabler hämtade "+new Date(D.varT).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}):""} · Dekarsön ${is236?"236 (egna fasmätare och Logic-variabler)":"235"}. Dygns- och månadsmedel bygger på enskilda timmedeleffekter från Homey.</div>`;
@@ -1664,6 +1715,7 @@ function renderAdmin(){
     <div class="note">Uppgifterna sparas bara i den här webbläsaren, aldrig på någon server. Adressen kan vara en IP (192.168.1.50) eller en hel adress med https://.</div></div>
   <div class="card"><h2>Energikällor</h2>
     <label class="adm-l">Timeffekt-ark, CSV-länk (Google Sheets: Arkiv → Dela → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv" value="${esc(cfg.sheetCsv||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=…&single=true&output=csv"></label>${idf("tibber","Tibber, hela huset (enhets-ID)")}${idf("hush","Hushållsel")}${idf("uppv","Uppvärmning")}${idf("vp","Värmepump")}${idf("ovr","Övrigt (valfritt)")}${idf("d236","Dekarsön 236, virtuell energiöversikt")}${idf("live235","Effektmätare 235 (Tibber Pulse)")}${idf("price","Elpris-enhet (Tibber)")}${idf("tesla","Tesla (bil)")}${idf("teslaE","Energiöversikt Tesla")}${idf("nibe","NIBE värmepump")}${idf("trLoad","Traktor, laddning (uttag)")}${idf("trHeat","Traktor, motorvärmare")}${idf("floor","Golvvärme Uterum")}${idf("slab","Betongplatta Uterum (sensor)")}${idf("vp236","Luftvärmepump 236")}${idf("trRep","Traktor, rapportenhet med kr (valfritt)")}${idf("golvRep","Golvvärme, rapportenhet med kr (valfritt)")}
+    <label class="adm-l">Dekarsön 236 · timeffekt-ark, CSV-länk (kalkylarket "Timmedeleffekt Dekarsön 236" → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv236" value="${esc(cfg.sheetCsv236||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=1300079826&output=csv"></label>
     <label class="adm-l">Påslag (kr/kWh)<input type="text" data-cfg="markup" value="${esc(cfg.markup)}"></label></div>
   <div class="card"><h2>Fastigheter</h2><div class="note" style="margin:0 0 8px">Rum som hör till Dekarsön 236. Allt annat räknas som 235.</div>
     ${zones.map(z=>`<label class="stat" style="cursor:pointer"><span>${esc(z.name)}</span><input type="checkbox" data-z236="${z.id}" ${cfg.zones236.includes(z.id)?"checked":""}></label>`).join("")||`<div class="note">Rum hämtas när du är ansluten.</div>`}</div>
@@ -1839,6 +1891,8 @@ document.addEventListener("change",async e=>{
     if(t.id==="climzone"){state.climZone=t.value;draw();return;}
     if(t.id==="mcmp"){state.cmp=t.value;draw();return;}
     if(t.id==="cmp"){state.cmp=t.value;draw();return;}
+    if(t.id==="h236d"){state.h236d=t.value;state.h236m=t.value.slice(0,7);draw();return;}
+    if(t.id==="h236m"){state.h236m=t.value;draw();return;}
     if(t.id==="from"){state.from=t.value;draw();return;}
     if(t.id==="to"){state.to=t.value;draw();return;}
     if(t.id==="imp"){const f=t.files[0];if(!f)return;const j=JSON.parse(await f.text());const d=clone(DEFAULTS);
@@ -1846,7 +1900,7 @@ document.addEventListener("change",async e=>{
     if(t.dataset.cfg){
       const path=t.dataset.cfg.split("."),val=t.type==="checkbox"?t.checked:t.value.trim();
       if(path[0]==="ids")cfg.ids[path[1]]=val;else if(path[0]==="markup")cfg.markup=parseFloat(String(val).replace(",","."))||0;else cfg[path[0]]=val;
-      if(path[0]==="sheetCsv")state.hourly=null;
+      if(path[0]==="sheetCsv")state.hourly=null;if(path[0]==="sheetCsv236")state.hourly236=null;
       persist();state.cache={};if(["ip","key","demo","workerUrl","mode"].includes(path[0])){state.devices={};refresh({force:true,flows:true});}else draw();return;}
     if(t.dataset.z236){const s=new Set(cfg.zones236);t.checked?s.add(t.dataset.z236):s.delete(t.dataset.z236);cfg.zones236=[...s];persist();draw();return;}
     if(t.dataset.st){cfg.ui.status[t.dataset.st]=t.checked;persist();return;}
