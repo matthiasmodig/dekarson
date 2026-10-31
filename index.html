@@ -586,7 +586,8 @@ async function renderEnergi(){
   const curA=dayArray(T,u,R.s,R.len),prvA=R.ps?dayArray(T,u,R.ps,R.len):null;
   const b=R.len<=45?1:(R.len<=200?7:30);
   const cb=bucketize(curA,b),pb=prvA?bucketize(prvA,b):null,labels=cb.map((_,i)=>labelDate(addDays(R.s,i*b)));
-  h+=`<div class="card" style="margin:14px 0"><h2>${u==="kr"?"Kostnad (kr)":"Förbrukning (kWh)"} per ${b===1?"dygn":(b===7?"vecka":"30 dagar")}</h2>
+  if(is235&&R.len===1){try{h+=await hourlyBlock(u,R);}catch(e){h+=`<div class="note">Timdata kunde inte läsas: ${esc(e.message)}</div>`;}}
+  else h+=`<div class="card" style="margin:14px 0"><h2>${u==="kr"?"Kostnad (kr)":"Förbrukning (kWh)"} per ${b===1?"dygn":(b===7?"vecka":"30 dagar")}</h2>
     <div class="legend"><span><i style="background:var(--cur)"></i>Vald period</span>${R.ps?`<span><i style="background:var(--prev)"></i>Jämförelse</span>`:""}</div>${barChart(cb,pb,labels,un)}</div>`;
 
   if(is235){
@@ -645,6 +646,17 @@ async function loadPriceHist(){
   }
   state.priceH={t:Date.now(),v:h};return h;
 }
+async function hourlyBlock(u,R){
+  const hh=await loadHourly();let ph={};try{ph=await loadPriceHist();}catch(e){}
+  const day=(d)=>Array.from({length:24},(_,i)=>{const k=d+"T"+pad(i),kw=hh[k];if(kw==null)return null;
+    if(u==="kwh")return kw;const pr=ph[k];return pr==null?null:kw*pr;});
+  const cur=day(R.s),prv=state.cmp==="prev"?day(addDays(R.s,-1)):null;
+  const un=u==="kr"?"kr":"kWh",labels=Array.from({length:24},(_,i)=>pad(i));
+  const tot=cur.filter(x=>x!=null).reduce((a,b)=>a+b,0);
+  return `<div class="card" style="margin:14px 0"><h2>${u==="kr"?"Kostnad (kr)":"Förbrukning (kWh)"} per timme · ${R.s}</h2>
+    <div class="legend"><span><i style="background:var(--cur)"></i>Vald dag</span>${prv?`<span><i style="background:var(--prev)"></i>Dagen före</span>`:""}</div>${barChart(cur,prv,labels,un)}
+    <div class="note">Summa ${fmt(tot,u==="kr"?0:1)} ${un}. Timmedata är medeleffekt per timme från elmätaren${u==="kr"?" gånger timpriset, alltså ungefärligt (≈)":""}.</div></div>`;
+}
 function hourKey(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());}
 async function priceBlock(){
   const ph=await loadPriceHist(),now=new Date(),nowK=hourKey(now),ed=state.devices[cfg.ids.elpris];
@@ -683,7 +695,8 @@ async function renderEkonomi(){
   h+=`</div>`;
   try{h+=await priceBlock();}catch(e){h+=`<div class="note">Prishistorik kunde inte läsas: ${esc(e.message)}</div>`;}
   h+=`<h3>Period</h3>`+presetBar(R);
-  const c=chartBlock("Kostnad",S.tibber,R,"kr");h+=c.html||c;
+  if(R.len===1){try{h+=await hourlyBlock("kr",R);}catch(e){h+=`<div class="note">Timdata kunde inte läsas: ${esc(e.message)}</div>`;}}
+  else{const c=chartBlock("Kostnad",S.tibber,R,"kr");h+=c.html||c;}
   const rows=[["tibber","Totalt, hela huset"],["hush","Hushållsel"],["uppv","Uppvärmning"],["vp","Värmepump"],["ovr","Övrigt"],["tesla","Tesla"],["traktor","Traktor"],["golv","Golvvärme Uterum"]];
   const tot=S.tibber?sumRange(S.tibber,"kr",R.s,R.e).v:null;
   h+=`<div class="card"><h2>Kostnadstabell <span class="pill">${R.s===R.e?R.s:R.s+" – "+R.e}</span></h2><div style="overflow:auto"><table><tr><th>Kategori</th><th>kr</th><th>kWh</th><th>kr/kWh</th><th>Andel</th><th>Täckning</th><th>Underlag</th></tr>`;
