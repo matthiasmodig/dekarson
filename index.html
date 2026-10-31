@@ -144,6 +144,7 @@ dialog::backdrop{background:#0009}
     <button data-tab="oversikt" aria-selected="true">Översikt</button>
     <span class="grp">Energi</span>
     <button data-tab="energi" aria-selected="false">Energi</button>
+    <button data-tab="timpris" aria-selected="false">Timpris</button>
     <button data-tab="detalj" aria-selected="false">Detaljer</button>
     <span class="grp">Klimat</span>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
@@ -178,7 +179,7 @@ dialog::backdrop{background:#0009}
   <section id="p-kort" class="hide"></section>
   <section id="p-energi" class="hide"></section>
   <section id="p-detalj" class="hide"></section>
-  <section id="p-ekonomi" class="hide"></section>
+  <section id="p-timpris" class="hide"></section>
   <section id="p-klimat" class="hide"></section>
   <section id="p-styr" class="hide"></section>
   <section id="p-flows" class="hide"></section>
@@ -675,7 +676,7 @@ async function renderOversikt(){
     g1+=tileA('data-chart="hours"',"Pågående timmes medeleffekt",md&&md.hour?fmt(md.hour.v,2):"–","kW",md&&md.hour?"Ofullständig timme · "+fmt(md.hour.kwh,2)+" kWh på "+fmt(md.hour.min,0)+" min":"Inväntar mätvärde"+(md&&md.hourWhy?" · "+md.hourWhy:""));
     g1+=tileA('data-daily="kwh"',"Energi idag",fmt(kd,1),"kWh",delta(kd,kdp,"mot igår ("+fmt(kdp,0)+" kWh)"));
     g1+=tileA('data-daily="kr"',"Kr idag",fmt(rd,0),"kr",delta(rd,rdp,"mot igår ("+fmt(rdp,0)+" kr)"));
-    g1+=tile("Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
+    g1+=tileA('data-goto="timpris"',"Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
     h+=grp("El just nu",g1,5);
     const ud=state.devices[cfg.ids.ute],feel=capVal(state.devices[cfg.ids.smhi],"air_temperature_feels_like_cp"),sl=state.devices[cfg.ids.slab],kk=state.devices[cfg.ids.inneKok];
     let g2="";
@@ -702,6 +703,13 @@ async function renderOversikt(){
 }
 
 /* ---------- Energi ---------- */
+async function kortSections(R){
+  const c=await kortCtx(addDays(todayStr(),-400));
+  let h=`<section class="grp" style="margin-top:18px"><h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div></section><section class="grp"><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
+  for(const d of KORTCHARTS.map(k=>CHARTS.find(x=>x.k===k))){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
+    h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
+  return h+`</div></section>`;
+}
 async function renderEnergi(){
   const R=calcRange(),minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   let S=null,serr=null;try{S=await loadSeries(minDate);}catch(e){serr=e.message;}
@@ -721,13 +729,16 @@ async function renderEnergi(){
   const other=u==="kr"?"kwh":"kr",oun=unitName(other);
   const avg=cur.kwh.v>0&&cur.kr.v!=null?cur.kr.v/cur.kwh.v:null,pavg=prv&&prv.kwh.v>0&&prv.kr.v!=null?prv.kr.v/prv.kwh.v:null;
   const days=R.len-cur[u].missing||1,pdays=prv?R.len-prv[u].missing||1:1;
-  h+=`<div class="grid">`;
+  h+=`<h3 style="margin-top:6px">Vald period</h3><div class="grid">`;
   const ck=(html,kind)=>html.replace('<div class="card tile','<div data-daily="'+kind+'" tabindex="0" role="button" style="cursor:pointer" class="card tile');
   h+=ck(tile(u==="kr"?"Kostnad":"Energi",fmt(cur[u].v,0),un,(prv?delta(cur[u].v,prv[u].v,"mot "+fmt(prv[u].v,0)+" "+un):"")+" · klicka för detaljer","hero"),u);
   h+=ck(tile(other==="kr"?"Kostnad":"Energi",fmt(cur[other].v,0),oun,prv?delta(cur[other].v,prv[other].v,"mot "+fmt(prv[other].v,0)+" "+oun):""),other);
   h+=tile("Snittpris",fmt(avg,2),"kr/kWh",pavg!=null?delta(avg,pavg,"mot "+fmt(pavg,2)):"");
   h+=ck(tile("Per dygn",fmt(cur[u].v!=null?cur[u].v/days:null,0),un,prv&&prv[u].v!=null?delta(cur[u].v/days,prv[u].v/pdays,""):""),u);
   h+=`</div>`;
+  if(is235){const tb=state.devices[cfg.ids.tibber];
+    h+=grp("Idag och igår",tileA('data-daily="kr"',"Kostnad idag",fmt(capVal(tb,"meter_money_this_day"),0),"kr","Homeys mätare sedan midnatt")+tileA('data-daily="kr"',"Kostnad igår",fmt(capVal(tb,"meter_money_last_day"),0),"kr",delta(capVal(tb,"meter_money_this_day"),capVal(tb,"meter_money_last_day"),"idag mot igår"))+tileA('data-daily="kwh"',"Förbrukning idag",fmt(capVal(tb,"meter_kwh_this_day"),1),"kWh","Kostnad och energi redovisas var för sig")+tileA('data-daily="kwh"',"Förbrukning igår",fmt(capVal(tb,"meter_kwh_last_day"),1),"kWh",""),4);}
+  if(is235){try{h+=await kortSections(R);}catch(e){h+=`<div class="note">Energikort kunde inte läsas: ${esc(e.message)}</div>`;}}
 
   const curA=dayArray(T,u,R.s,R.len),prvA=R.ps?dayArray(T,u,R.ps,R.len):null;
   const b=R.len<=45?1:(R.len<=200?7:30);
@@ -765,6 +776,7 @@ async function renderEnergi(){
   }else{
     h+=`<div class="note">Dekarsön 236 räknas ur den kumulativa räknaren i den virtuella energiöversikten och finns därför bara sedan den togs i drift. Dagens värde visas först när dygnet är slut. Kostnaden använder Tibber-priset för 235 plus påslag.</div>`;
   }
+  if(is235)h+=costTableHtml(S,R);
   $("#p-energi").innerHTML=h;
   const c=$("#cmp");if(c)c.value=state.cmp;
 }
@@ -934,20 +946,8 @@ async function priceBlock(past=24,compact=false){
     <div class="note" id="pxr${past}" style="min-height:19px;color:var(--ink)">Håll över en stapel för att se priset.</div>
     <div class="note">Billigast framåt: ${fmt(mn.v,2)} kr/kWh kl ${mn.k.slice(11)}:00 (${mn.k.slice(8,10)}/${mn.k.slice(5,7)}) · dyrast: ${fmt(mx.v,2)} kr/kWh kl ${mx.k.slice(11)}:00 (${mx.k.slice(8,10)}/${mx.k.slice(5,7)}) · snitt ${fmt(avg,2)}. Visar alla timmar Homey har priser för (${n+extra} framåt${days>1?", inklusive imorgon":""}). Elpris SE2, utan påslag.</div>${days>1?"":tomorrowNote(ed)}</div>`;
 }
-async function renderEkonomi(){
-  if(state.prop!=="235"){$("#p-ekonomi").innerHTML=`<div class="card">Kostnader för Dekarsön 236 visas under Energi &amp; effekt (kumulativ räknare, inget elpris per timme).</div>`;return;}
-  const R=calcRange(),minDate=R.ps&&R.ps<R.s?R.ps:R.s,S=await loadSeries(minDate);
-  const tb=state.devices[cfg.ids.tibber],pr=capVal(state.devices[cfg.ids.price],"measure_price_total");
-  let h=`<div class="grid">`;
-  h+=tile("Kostnad idag",fmt(capVal(tb,"meter_money_this_day"),0),"kr","Homeys mätare sedan midnatt");
-  h+=tile("Kostnad igår",fmt(capVal(tb,"meter_money_last_day"),0),"kr",delta(capVal(tb,"meter_money_this_day"),capVal(tb,"meter_money_last_day"),"idag mot igår"));
-  h+=tile("Elpris nu",pr!=null?fmt(pr+Number(cfg.markup||0),2):"–","kr/kWh","Tibber + "+fmt(cfg.markup,3)+" påslag");
-  h+=tile("Förbrukning idag",fmt(capVal(tb,"meter_kwh_this_day"),1),"kWh","Kostnad och energi redovisas var för sig");
-  h+=`</div>`;
-  try{h+=await priceBlock();}catch(e){h+=`<div class="note">Prishistorik kunde inte läsas: ${esc(e.message)}</div>`;}
-  h+=`<h3>Period</h3>`+presetBar(R);
-  if(R.len===1){try{h+=await hourlyBlock("kr",R);}catch(e){h+=`<div class="note">Timdata kunde inte läsas: ${esc(e.message)}</div>`;}}
-  else{const c=chartBlock("Kostnad",S.tibber,R,"kr");h+=c.html||c;}
+function costTableHtml(S,R){
+  let h="";
   const rows=[["tibber","Totalt, hela huset"],["hush","Hushållsel"],["uppv","Uppvärmning"],["vp","Värmepump"],["ovr","Övrigt"],["tesla","Tesla"],["traktor","Traktor"],["golv","Golvvärme Uterum"]];
   const tot=S.tibber?sumRange(S.tibber,"kr",R.s,R.e).v:null;
   h+=`<div class="card"><h2>Kostnadstabell <span class="pill">${R.s===R.e?R.s:R.s+" – "+R.e}</span></h2><div style="overflow:auto"><table><tr><th>Kategori</th><th>kr</th><th>kWh</th><th>kr/kWh</th><th>Andel</th><th>Täckning</th><th>Underlag</th></tr>`;
@@ -957,7 +957,26 @@ async function renderEkonomi(){
     const why=k==="tibber"?"Total (räknas aldrig dubbelt)":T.derived?"Beräknad ≈ (Tibber − Hushåll − Uppvärmning)":T.est?"≈ kr = kWh × timpris när den var igång":["hush","uppv","vp"].includes(k)?"Homeys rapportenhet · överlappar totalen":"Homey";
     h+=`<tr class="kcard" data-card="${k}" tabindex="0" style="cursor:pointer"><td>${name}</td><td>${T.est||T.derived?"≈ ":""}${fmt(kr.v,0)}</td><td>${fmt(kw.v,0)}</td><td>${kw.v>0&&kr.v!=null?fmt(kr.v/kw.v,2):"–"}</td><td>${k==="tibber"?"100 %":(tot>0&&kr.v!=null?fmt(kr.v/tot*100,0)+" %":"–")}</td><td>${cov} %</td><td style="text-align:left;color:var(--mut);white-space:normal">${why}</td></tr>`;}
   h+=`</table></div><div class="note">Hushållsel, Uppvärmning och Värmepump överlappar varandra och totalen, så delposterna ska inte summeras. Klicka på en rad för detaljer.</div></div>`;
-  $("#p-ekonomi").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;
+  return h;
+}
+async function renderTimpris(){
+  if(state.prop!=="235"){$("#p-timpris").innerHTML=`<div class="card">Timpris visas för Dekarsön 235.</div>`;return;}
+  const el=state.devices[cfg.ids.elpris],pr=capVal(state.devices[cfg.ids.price],"measure_price_total");
+  const ph0=capVal(el,"meter_price_h0"),pnow=ph0!=null?ph0:(pr!=null?pr+Number(cfg.markup||0):null),g=k=>capVal(el,k),hr=k=>g(k)!=null?" kl "+pad(g(k))+":00":"";
+  let h="";
+  let a=tileA('data-chart="price"',"Elpris nu",fmt(pnow,2),"kr/kWh","Nästa 8 h i snitt: "+fmt(g("meter_price_next_8h_avg"),2),"hero");
+  a+=tile("Snitt idag",fmt(g("meter_price_this_day_avg"),2),"kr/kWh","");
+  a+=tile("Lägst idag",fmt(g("meter_price_this_day_lowest"),2),"kr/kWh",hr("hour_this_day_lowest").trim());
+  a+=tile("Högst idag",fmt(g("meter_price_this_day_highest"),2),"kr/kWh",hr("hour_this_day_highest").trim());
+  a+=tileA('data-chart="price"',"Snitt denna månad",fmt(g("meter_price_this_month_avg"),2),"kr/kWh","Förra månaden: "+fmt(g("meter_price_last_month_avg"),2));
+  h+=grp("Timpris just nu",a,5);
+  if(g("meter_price_next_day_avg")!=null){
+    h+=grp("Imorgon",tile("Snitt imorgon",fmt(g("meter_price_next_day_avg"),2),"kr/kWh","")+tile("Lägst imorgon",fmt(g("meter_price_next_day_lowest"),2),"kr/kWh",hr("hour_next_day_lowest").trim())+tile("Högst imorgon",fmt(g("meter_price_next_day_highest"),2),"kr/kWh",hr("hour_next_day_highest").trim()),3);}
+  try{h+=`<section class="grp"><h3>Elpris framåt</h3>`+await priceBlock()+`</section>`;}catch(e){h+=`<div class="note">Prishistorik kunde inte läsas: ${esc(e.message)}</div>`;}
+  try{h+=`<section class="grp"><h3>Kostnad per timme idag</h3>`+await hourlyBlock("kr",{s:todayStr(),e:todayStr(),len:1})+`</section>`;}catch(e){h+=`<div class="note">Timdata kunde inte läsas: ${esc(e.message)}</div>`;}
+  try{const c=await kortCtx(addDays(todayStr(),-400)),d=CHARTS.find(x=>x.k==="price");
+    h+=`<section class="grp"><h3>Snittpris över tid</h3><div class="card chartcard" data-chart="price" tabindex="0" role="button"><h2>${d.title}</h2>${await d.build(c)}</div></section>`;}catch(e){}
+  $("#p-timpris").innerHTML=h;
 }
 
 /* ---------- Klimat ---------- */
@@ -1676,32 +1695,27 @@ async function refresh(opts={}){
 async function draw(){
   state.keepFocus=document.activeElement&&["q","aq"].includes(document.activeElement.id);
   if(state.tab==="oversikt")await renderOversikt();
-  else if(state.tab==="kort")await renderKort();
   else if(state.tab==="energi")await renderEnergi();
   else if(state.tab==="detalj")await renderDetalj();
-  else if(state.tab==="ekonomi")await renderEkonomi();
+  else if(state.tab==="timpris")await renderTimpris();
   else if(state.tab==="klimat")await renderKlimat();
   else if(state.tab==="styr")renderStyr();
   else if(state.tab==="flows")renderFlows();
   else if(state.tab==="status")renderStatus();
   else renderAdmin();
-  if(["energi","kort","ekonomi"].includes(state.tab)){
-    const subs=[["energi","Effekt & energi"],["kort","Energikort"],["ekonomi","Kostnader & kronor"]];
-    $("#p-"+state.tab).insertAdjacentHTML("afterbegin",`<div class="bar" style="margin-bottom:14px">${subs.map(([k,l])=>`<button class="chip" data-sub="${k}" aria-pressed="${state.tab===k}">${l}</button>`).join("")}</div>`);
-  }
   if(state.modal&&$("#dlg").open)await renderModal();
 }
 function showTab(t){
   state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
-  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t||(b.dataset.tab==="energi"&&["kort","ekonomi"].includes(t))));
-  for(const k of ["oversikt","kort","energi","detalj","ekonomi","klimat","styr","flows","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  for(const k of ["oversikt","energi","timpris","detalj","klimat","styr","flows","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
 }
 
 /* =====================================================================
    HÄNDELSER
    ===================================================================== */
-document.addEventListener("click",e=>{const b=e.target.closest("[data-sub]");if(b){showTab(b.dataset.sub);}});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-goto]");if(b)showTab(b.dataset.goto);});
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)showTab(b.dataset.tab);});
 $("#segProp").addEventListener("click",e=>{const b=e.target.closest("[data-prop]");if(!b)return;state.prop=b.dataset.prop;drawProp();draw();});
 $("#segUnit").addEventListener("click",e=>{const b=e.target.closest("[data-unit]");if(!b)return;state.unit=b.dataset.unit;drawProp();draw();});
@@ -1774,7 +1788,7 @@ document.addEventListener("change",async e=>{
 });
 
 (function(){const m=/[#&]session=([a-f0-9]{64})/.exec(location.hash);if(m){cfg.session=m[1];cfg.demo=false;cfg.mode="cloud";persist();history.replaceState(null,"",location.pathname+location.search);}})();
-document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart||e.target.dataset.daily||e.target.dataset.sens||e.target.dataset.onoff)){e.preventDefault();e.target.click();}});
+document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart||e.target.dataset.daily||e.target.dataset.sens||e.target.dataset.onoff||e.target.dataset.goto)){e.preventDefault();e.target.click();}});
 document.addEventListener("mousemove",sensHover);document.addEventListener("touchmove",e=>{if(e.touches[0])sensHover({target:e.target,clientX:e.touches[0].clientX});},{passive:true});
 $("#dlg").addEventListener("close",()=>{state.modal=null;});
 try{applyTheme(localStorage.getItem("homeyTheme")||"auto");}catch(e){applyTheme("auto");}
