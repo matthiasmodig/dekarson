@@ -749,9 +749,44 @@ async function renderOversikt(){
 }
 
 /* ---------- Energi ---------- */
+/* ---------- Enskilda förbrukare: idag / månad / år, status, effekt, snittpris ---------- */
+async function trHeatSchablon(){
+  const W=Number(String(cfg.trHeatW||"").replace(",","."));if(!(W>0))return null;
+  const d=state.devices[cfg.ids.trHeat];if(!d)return null;
+  const now=Date.now(),t7=now-7*864e5,ds=new Date();ds.setHours(0,0,0,0);
+  let segs=[],ph={};try{segs=await onoffSegs(cfg.ids.trHeat,t7,now,"onoff");ph=await loadPriceHist();}catch(e){return {err:true};}
+  const calc=from=>{let h=0,kr=0,miss=false;
+    for(const g of segs){if(!g.on)continue;let a=Math.max(g.s,from);const b=g.e;
+      while(a<b){const hs=new Date(a);hs.setMinutes(0,0,0);const he=hs.getTime()+36e5,e2=Math.min(b,he),hrs=(e2-a)/36e5;h+=hrs;const p=ph[hourKey(hs)];if(p==null)miss=true;else kr+=hrs*W/1000*p;a=e2;}}
+    return {h,kwh:h*W/1000,kr,miss};};
+  return {W,today:calc(ds.getTime()),week:calc(t7),has:segs.length>0};
+}
+async function consumersHtml(S){
+  const t=todayStr(),ms=t.slice(0,7)+"-01",ys=t.slice(0,4)+"-01-01";
+  const cell=(T,s)=>{if(!T)return `<td style="color:var(--mut)">Ingen källa</td>`;
+    const k=sumRange(T,"kwh",s,t),r=sumRange(T,"kr",s,t);
+    if(k.v==null)return `<td style="color:var(--mut)">Historik saknas före första mätningen</td>`;
+    return `<td>${fmt(k.v,1)} kWh<br><b>${r.v==null?"–":(T.est?"≈ ":"")+fmt(r.v,0)+" kr"}</b>${k.missing>0?`<br><span class="note" style="margin:0;color:var(--bad)">ofullständig (${k.missing} dygn saknas)</span>`:""}</td>`;};
+  const avg=(T,s)=>{if(!T)return "–";const k=sumRange(T,"kwh",s,t),r=sumRange(T,"kr",s,t);return k.v>0&&r.v!=null?(T.est?"≈ ":"")+fmt(r.v/k.v*100,0)+" öre":"–";};
+  const upd=d=>{const c=d&&d.capabilitiesObj&&(d.capabilitiesObj.meter_power||d.capabilitiesObj.onoff||d.capabilitiesObj.measure_power);const x=c&&(c.lastUpdated||c.lastChanged);return x?new Date(x).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"–";};
+  const status=d=>{if(!d||capVal(d,"onoff")==null)return "–";return capVal(d,"onoff")?`<span class="dot on"></span> På`:`<span class="dot"></span> Av`;};
+  const pw=d=>{const w=capVal(d,"measure_power");return w!=null?fmt(w,0)+" W":"–";};
+  const rows=[["Traktor laddning",cfg.ids.trLoad,S.traktor],["Golvvärme uterum",cfg.ids.floor,S.golv],["Entrévärme utomhus",cfg.ids.entre,S.entre]];
+  let h=`<section class="grp" style="margin-top:18px"><h3>Enskilda förbrukare · Dekarsön 235</h3><div class="card"><div style="overflow:auto"><table><tr><th>Utrustning</th><th>Status</th><th>Effekt</th><th>Idag</th><th>Denna månad</th><th>I år</th><th>Snittpris månad</th><th>Uppdaterad</th></tr>`;
+  for(const [nm,id,T] of rows){const d=state.devices[id];
+    h+=`<tr class="kcard" ${d?`data-onoff="${esc(id)}" data-nm="${esc(nm)}" tabindex="0" style="cursor:pointer"`:""}><td>${nm}</td><td>${status(d)}</td><td>${pw(d)}</td>${cell(T,t)}${cell(T,ms)}${cell(T,ys)}<td>${avg(T,ms)}</td><td>${upd(d)}</td></tr>`;}
+  const te=state.devices[cfg.ids.teslaE],n=k=>capVal(te,"devicecapabilities_number."+k);
+  if(te){const tcell=(e,kr)=>n(e)!=null?`<td>${fmt(n(e),1)} kWh<br><b>${n(kr)!=null?fmt(n(kr),0)+" kr":"–"}</b></td>`:`<td>–</td>`;
+    const tk=S.tesla?sumRange(S.tesla,"kwh",t,t):{v:null},tr=S.tesla?sumRange(S.tesla,"kr",t,t):{v:null};
+    h+=`<tr><td>Tesla Model Y</td><td>–</td><td>–</td><td>${tk.v!=null?fmt(tk.v,1)+" kWh<br><b>"+(tr.v!=null?fmt(tr.v,0)+" kr":"–")+"</b>":`<span style="color:var(--mut)">–</span>`}</td>${tcell(2,3)}${tcell(5,6)}<td>${n(4)!=null?fmt(n(4),0)+" öre":"–"}</td><td>${upd(te)}</td></tr>`;}
+  const mv=state.devices[cfg.ids.trHeat],sc=await trHeatSchablon().catch(()=>null);
+  h+=`<tr><td>Traktor motorvärmare</td><td>${status(mv)}</td><td colspan="2" style="color:var(--mut)">Saknar egen energimätning</td><td colspan="4" style="color:var(--mut)">${sc&&!sc.err?`Drifttid idag ${fmt(sc.today.h,1)} h, senaste 7 dygn ${fmt(sc.week.h,1)} h. <b>Schablon (${fmt(sc.W,0)} W, ej mätt):</b> idag ≈ ${fmt(sc.today.kwh,1)} kWh${sc.today.miss?"":" / ≈ "+fmt(sc.today.kr,0)+" kr"}, 7 dygn ≈ ${fmt(sc.week.kwh,1)} kWh${sc.week.miss?" (pris saknas för någon timme, ofullständig)":" / ≈ "+fmt(sc.week.kr,0)+" kr"}`:"Förbrukning och kostnad beräknas inte utan mätunderlag. Ange en känd effekt (W) under Admin för en tydligt märkt schablonberäkning."}</td></tr>`;
+  h+=`</table></div><div class="note">Förbrukning per period är differenser mellan registrerade mätarställningar, inte mätarställningen i sig. Kronor med ≈ är timvis uppskattade (kWh × timpris för respektive timme, senaste 7 dygnen) eller dygnsuppskattade för äldre dygn. Tesla läses direkt från Homeys energiöversikt (inte omräknat). Klicka på en rad för historik. Datum enligt Europe/Stockholm.</div></div></section>`;
+  return h;
+}
 async function kortSections(R){
   const c=await kortCtx(addDays(todayStr(),-400));
-  let h=`<section class="grp" style="margin-top:18px"><h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div></section><section class="grp"><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
+  let h=`<section class="grp" style="margin-top:18px"><h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div></section>${await consumersHtml(c.S).catch(e=>`<div class="note">Förbrukare kunde inte läsas: ${esc(e.message)}</div>`)}<section class="grp"><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
   for(const d of KORTCHARTS.map(k=>CHARTS.find(x=>x.k===k))){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
     h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
   return h+`</div></section>`;
@@ -1749,6 +1784,7 @@ function renderAdmin(){
   <div class="card"><h2>Energikällor</h2>
     <label class="adm-l">Timeffekt-ark, CSV-länk (Google Sheets: Arkiv → Dela → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv" value="${esc(cfg.sheetCsv||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=…&single=true&output=csv"></label>${idf("tibber","Tibber, hela huset (enhets-ID)")}${idf("hush","Hushållsel")}${idf("uppv","Uppvärmning")}${idf("vp","Värmepump")}${idf("ovr","Övrigt (valfritt)")}${idf("d236","Dekarsön 236, virtuell energiöversikt")}${idf("live235","Effektmätare 235 (Tibber Pulse)")}${idf("price","Elpris-enhet (Tibber)")}${idf("tesla","Tesla (bil)")}${idf("teslaE","Energiöversikt Tesla")}${idf("nibe","NIBE värmepump")}${idf("trLoad","Traktor, laddning (uttag)")}${idf("trHeat","Traktor, motorvärmare")}${idf("floor","Golvvärme Uterum")}${idf("entre","Entrévärme utomhus (entréplatta)")}${idf("slab","Betongplatta Uterum (sensor)")}${idf("vp236","Luftvärmepump 236")}${idf("trRep","Traktor, rapportenhet med kr (valfritt)")}${idf("golvRep","Golvvärme, rapportenhet med kr (valfritt)")}
     <label class="adm-l">Dekarsön 236 · timeffekt-ark, CSV-länk (kalkylarket "Timmedeleffekt Dekarsön 236" → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv236" value="${esc(cfg.sheetCsv236||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=1300079826&output=csv"></label>
+    <label class="adm-l">Traktor motorvärmare, känd effekt i W (valfritt, ger en tydligt märkt schablonberäkning)<input type="text" data-cfg="trHeatW" value="${esc(cfg.trHeatW||"")}" placeholder="t.ex. 600"></label>
     <label class="adm-l">Påslag (kr/kWh)<input type="text" data-cfg="markup" value="${esc(cfg.markup)}"></label></div>
   <div class="card"><h2>Fastigheter</h2><div class="note" style="margin:0 0 8px">Rum som hör till Dekarsön 236. Allt annat räknas som 235.</div>
     ${zones.map(z=>`<label class="stat" style="cursor:pointer"><span>${esc(z.name)}</span><input type="checkbox" data-z236="${z.id}" ${cfg.zones236.includes(z.id)?"checked":""}></label>`).join("")||`<div class="note">Rum hämtas när du är ansluten.</div>`}</div>
