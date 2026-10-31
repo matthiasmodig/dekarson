@@ -563,7 +563,10 @@ async function renderOversikt(){
     h+=tile("Energi idag",fmt(kd,1),"kWh",delta(kd,kdp,"mot igår ("+fmt(kdp,0)+" kWh)"));
     h+=tile("Kr idag",fmt(rd,0),"kr",delta(rd,rdp,"mot igår ("+fmt(rdp,0)+" kr)"));
     h+=tile("Timmedel effekt just nu",thisH!=null?fmt(thisH/frac,2):"–","kW",thisH!=null?fmt(thisH,2)+" kWh på "+fmt(frac*60,0)+" min":"");
+    const ph0=capVal(state.devices[cfg.ids.elpris],"meter_price_h0"),pnow=ph0!=null?ph0:(e.price!=null?e.price:null);
+    h+=tile("Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
     h+=`</div>`;
+    try{h+=await priceBlock(0);}catch(err){}
     let hh={},keys=[];try{hh=await loadHourly();keys=Object.keys(hh).sort().slice(-24);}catch(err){}
     const v24=keys.map(k=>hh[k]);
     if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>k.slice(11)+":00"),"kW")}<div class="note">Klicka för mer.</div></div>`;
@@ -683,10 +686,10 @@ async function hourlyBlock(u,R){
     <div class="note">Summa ${fmt(tot,u==="kr"?0:1)} ${un}. Timmedata är medeleffekt per timme från elmätaren${u==="kr"?" gånger timpriset, alltså ungefärligt (≈)":""}.</div></div>`;
 }
 function hourKey(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());}
-async function priceBlock(){
+async function priceBlock(past=24){
   const ph=await loadPriceHist(),now=new Date(),nowK=hourKey(now),ed=state.devices[cfg.ids.elpris];
   const items=[];
-  for(let i=24;i>=1;i--){const k=hourKey(new Date(now.getTime()-i*36e5));if(ph[k]!=null)items.push({k,v:ph[k],t:"past"});}
+  for(let i=past;i>=1;i--){const k=hourKey(new Date(now.getTime()-i*36e5));if(ph[k]!=null)items.push({k,v:ph[k],t:"past"});}
   const h0=capVal(ed,"meter_price_h0");
   items.push({k:nowK,v:h0!=null?h0:ph[nowK],t:"now"});
   let n=0;for(let i=1;i<=48;i++){const v=capVal(ed,"meter_price_h"+i);if(v==null)continue;n++;items.push({k:hourKey(new Date(now.getTime()+i*36e5)),v,t:"fut"});}
@@ -703,8 +706,8 @@ async function priceBlock(){
   items.forEach((x,i)=>{if(i%step===0||x.t==="now")g+=`<text x="${L+i*bw+bw/2}" y="${H-12}" text-anchor="middle">${x.k.slice(11)}</text>`;});
   const avg=fut.reduce((a,b)=>a+b.v,0)/fut.length,lastD=fut[fut.length-1].k.slice(8,10);
   const tom=n>=1&&fut.some(x=>x.k.slice(8,10)!==nowK.slice(8,10));
-  return `<div class="card" style="margin:14px 0"><h2>Elpris per timme (kr/kWh) · Tibber via Homey</h2>
-    <div class="legend"><span><i style="background:var(--prev)"></i>Passerat</span><span><i style="background:var(--on)"></i>Nu</span><span><i style="background:var(--cur)"></i>Kommande</span><span><i style="background:var(--good)"></i>Billigast</span><span><i style="background:var(--bad)"></i>Dyrast</span></div>
+  return `<div class="card" style="margin:14px 0"><h2>Elpris per timme (kr/kWh) · ${past?"Tibber via Homey":"framåt, Tibber via Homey"}</h2>
+    <div class="legend">${past?`<span><i style="background:var(--prev)"></i>Passerat</span>`:""}<span><i style="background:var(--on)"></i>Nu</span><span><i style="background:var(--cur)"></i>Kommande</span><span><i style="background:var(--good)"></i>Billigast</span><span><i style="background:var(--bad)"></i>Dyrast</span></div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg>
     <div class="note">Billigast framåt: ${fmt(mn.v,2)} kr/kWh kl ${mn.k.slice(11)}:00 (${mn.k.slice(8,10)}/${mn.k.slice(5,7)}) · dyrast: ${fmt(mx.v,2)} kr/kWh kl ${mx.k.slice(11)}:00 (${mx.k.slice(8,10)}/${mx.k.slice(5,7)}) · snitt framåt ${fmt(avg,2)}. ${tom?"Imorgon ingår.":"Morgondagens priser har inte kommit från Homey ännu (brukar komma vid 13-tiden)."} Prisenhet i Homey: Elpris SE2 (utan påslag).</div></div>`;
 }
