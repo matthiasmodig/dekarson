@@ -66,6 +66,8 @@ h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transf
 .rowN{display:grid;gap:12px;grid-template-columns:repeat(var(--c,4),minmax(0,1fr))}
 .grp{margin:0 0 22px}.grp>h3{margin:0 0 10px}
 @media(max-width:900px){.rowN{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ico{width:1.1em;height:1.1em;vertical-align:-.2em;margin-right:6px;opacity:.75;flex:none}
+.side nav .ico{width:18px;height:18px;margin-right:10px;vertical-align:-4px}
 .flrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
 @media(max-width:900px){.flrow{grid-template-columns:1fr 1fr}.flrow .flow{grid-column:auto!important}}
 @media(max-width:560px){.flrow{grid-template-columns:1fr}}
@@ -554,8 +556,8 @@ function delta(cur,prev,suffix){
 function grp(title,inner,cols,note){return `<section class="grp"><h3>${title}</h3><div class="rowN" style="--c:${cols||4}">${inner}</div>${note?`<div class="note">${note}</div>`:""}</section>`;}
 function tileA(attrs,label,value,unit,sub,cls){return tile(label,value,unit,sub,cls).replace('<div class="card tile','<div '+attrs+' tabindex="0" role="button" style="cursor:pointer" class="card tile');}
 function onoffTile(d,nm,label,sub,cls,quick){if(!d)return "";const on=!!capVal(d,"onoff"),pw=capVal(d,"measure_power");
-  if(quick)return `<div class="card tile ${cls||""}" data-act="toggle" data-id="${esc(d.id)}" tabindex="0" role="switch" aria-checked="${on}" title="Klicka för att slå ${on?"av":"på"}" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${esc(label)}<button class="btn sm" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" style="float:right;padding:0 8px;min-height:24px;font-size:12px" title="Visa historik">Historik</button></div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W":""}${sub?(pw!=null?" · ":"")+sub:""}</div></div>`;
-  return `<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${esc(label)}</div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W":""}${sub?(pw!=null?" · ":"")+sub:""}</div></div>`;}
+  if(quick)return `<div class="card tile ${cls||""}" data-act="toggle" data-id="${esc(d.id)}" tabindex="0" role="switch" aria-checked="${on}" title="Klicka för att slå ${on?"av":"på"}" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${ic(label)}${esc(label)}<button class="btn sm" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" style="float:right;padding:0 8px;min-height:24px;font-size:12px" title="Visa historik">Historik</button></div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W":""}${sub?(pw!=null?" · ":"")+sub:""}</div></div>`;
+  return `<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${ic(label)}${esc(label)}</div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W":""}${sub?(pw!=null?" · ":"")+sub:""}</div></div>`;}
 function golvGroup(f,sensors){
   if(!f)return "";const v=i=>capVal(f,"measure_temperature."+i);let h=onoffTile(f,"Golvvärme","Golvvärme","");
   if(sensors){h+=v(1)!=null?sensTile(f.id,"measure_temperature.1","Framledning golvvärme",fmt(v(1),1),"°C","Givare 1"):"";
@@ -596,11 +598,43 @@ function nibeGroup(){
   const eff=sensTile(nb.id,"measure_power","Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu");
   return grp("Värmepump · NIBE",[ts[0]||"",eff,...ts.slice(1),nibeDelta()].join(""),4);
 }
+/* ---------- Ikoner (inbyggda SVG, ärver textfärgen) ---------- */
+const ICONS={
+house:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+flame:'<path d="M12 22c4 0 7-3 7-7 0-4-3-6-4-9-2 2-3 4-3 6-1-1-2-2-2-4-3 2-5 5-5 7 0 4 3 7 7 7z"/>',
+thermo:'<path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/>',
+drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+fan:'<circle cx="12" cy="12" r="1.8"/><path d="M12 10c0-4 1-7 4-7 2 0 3 2 2 4-1 2-3 3-6 3zM14 12c4 0 7 1 7 4 0 2-2 3-4 2-2-1-3-3-3-6zM12 14c0 4-1 7-4 7-2 0-3-2-2-4 1-2 3-3 6-3zM10 12c-4 0-7-1-7-4 0-2 2-3 4-2 2 1 3 3 3 6z"/>',
+lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+bulb:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c1 1 1 2 1 3h6c0-1 0-2 1-3A6 6 0 0 0 12 3z"/>',
+car:'<path d="M5 17h14v-5l-2-5H7l-2 5z"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/>',
+tractor:'<circle cx="7" cy="16" r="4"/><circle cx="18" cy="17" r="2.5"/><path d="M11 16h4.5M7 12V6h6l3 6h3"/>',
+plug:'<path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"/>',
+coin:'<circle cx="12" cy="12" r="9"/><path d="M14.5 9a3 3 0 0 0-5 1.5c0 3 5 1.5 5 4.5a3 3 0 0 1-5 1.5M12 6v2M12 16v2"/>',
+battery:'<rect x="3" y="8" width="16" height="9" rx="2"/><path d="M21 11v3"/>',
+gauge:'<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/>',
+waves:'<path d="M3 9c2-2 4 2 6 0s4 2 6 0 4 2 6 0M3 15c2-2 4 2 6 0s4 2 6 0 4 2 6 0"/>',
+speaker:'<rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="15" r="3"/><circle cx="12" cy="7" r=".8"/>',
+wind:'<path d="M3 12h13a3 3 0 1 0-3-3M3 7h8M3 17h10a3 3 0 1 1-3 3"/>',
+toggles:'<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="16" cy="12" r="3"/>',
+play:'<path d="M7 4l13 8-13 8z"/>',
+pulse:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+cog:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
+chart:'<path d="M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-3"/>',
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'};
+const ICON_RULES=[[/ytterdörr|lås\b|olåst/,"lock"],[/motorvärm|traktor mv/,"flame"],[/traktor/,"tractor"],[/ventilation|fläkt/,"fan"],[/avlopp|varmvatten|vvb|vv-ber/,"drop"],
+[/batteri/,"battery"],[/räckvidd|vägmätare/,"gauge"],[/tesla|laddgräns|laddning|tillförd energi/,"car"],[/värmepump|nibe/,"wind"],
+[/entré|golvvärme|betong/,"waves"],[/spot|lampa|lampor|belysning|julstjärna/,"bulb"],[/temperatur|framledning|returledning|inomhus|utetemp|δt/,"thermo"],
+[/elpris|snittpris|kostnad|\bpris\b|kr idag/,"coin"],[/uppvärmning/,"flame"],[/hushåll/,"plug"],[/\bhus\b|hela huset/,"house"],
+[/pågående|föregående|timmedel|medeleffekt|timmar/,"clock"],[/effekt|energi|förbrukning|idag|igår|vald period|per dygn|månad|i år|andel/,"bolt"]];
+function iconSvg(n){return ICONS[n]?`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`:"";}
+function ic(label,def){const t=String(label||"").replace(/<[^>]*>/g,"").toLowerCase();for(const [r,n] of ICON_RULES)if(r.test(t))return iconSvg(n);return def?iconSvg(def):"";}
 function dualTile(attrs,label,a,b,cls){
   const col=x=>`<div style="min-width:0"><div class="v" style="font-size:26px;white-space:nowrap">${x.est?"≈ ":""}${fmt(x.v,x.dec||0)} <small>${x.un}</small></div><div class="s" style="font-size:12.5px;min-height:18px;white-space:nowrap">${x.sub||""}</div></div>`;
-  return `<div ${attrs||""} ${attrs?'tabindex="0" role="button" style="cursor:pointer"':""} class="card tile ${cls||""}"><div class="l">${label}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">${col(a)}${col(b)}</div></div>`;
+  return `<div ${attrs||""} ${attrs?'tabindex="0" role="button" style="cursor:pointer"':""} class="card tile ${cls||""}"><div class="l">${ic(label)}${label}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">${col(a)}${col(b)}</div></div>`;
 }
-function tile(label,value,unit,sub,cls){return `<div class="card tile ${cls||""}"><div class="l">${label}</div><div class="v">${value}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`;}
+function tile(label,value,unit,sub,cls){return `<div class="card tile ${cls||""}"><div class="l">${ic(label)}${label}</div><div class="v">${value}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`;}
 
 /* =====================================================================
    VYER
@@ -1236,7 +1270,7 @@ function sensInfo(id,cap){
   return {name:devName(d)||id,title:hum?"Luftfuktighet":(co.title&&co.title!==cap?co.title:"Temperatur"),unit:hum?"%":"°C",dec:hum?0:1,now:capVal(d,cap)};
 }
 function sensLink(id,cap,inner,cls){return `<span class="${cls||""}" data-sens="${esc(id)}|${esc(cap)}" tabindex="0" role="button" title="Visa diagram över tid" style="cursor:pointer">${inner}</span>`;}
-function sensTile(id,cap,label,value,unit,sub,cls){return `<div class="card tile ${cls||""}" data-sens="${esc(id)}|${esc(cap)}" tabindex="0" role="button" title="Visa diagram över tid" style="cursor:pointer"><div class="l">${label}</div><div class="v">${value}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`;}
+function sensTile(id,cap,label,value,unit,sub,cls){return `<div class="card tile ${cls||""}" data-sens="${esc(id)}|${esc(cap)}" tabindex="0" role="button" title="Visa diagram över tid" style="cursor:pointer"><div class="l">${ic(label)}${label}</div><div class="v">${value}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`;}
 let SENSPTS=null;
 function sensChart(pts,unit,dec){
   pts=pts.filter(p=>p[1]!=null);if(pts.length<2){SENSPTS=null;return `<div class="note">Ingen historik hittades för perioden.</div>`;}
@@ -1339,7 +1373,7 @@ function kCard(k,name,S,R,u){
   const avg=kr.v!=null&&kw.v>0?fmt(kr.v/kw.v,2)+" kr/kWh":"";
   const col=(v,un,p,est)=>`<div style="min-width:0"><div class="big" style="font-size:24px;white-space:nowrap">${est?"≈ ":""}${fmt(v,0)} <small>${un}</small></div><div class="s" style="font-size:12.5px;min-height:18px;white-space:nowrap" title="${p&&p.v!=null?"Jämförelse: "+fmt(p.v,0)+" "+un:""}">${p&&p.v!=null&&v!=null?delta(v,p.v,""):""}</div></div>`;
   return `<div class="card kcard" data-card="${k}" tabindex="0" role="button" aria-label="${name}, visa detaljer">
-    <div class="top2"><span class="nm">${name}</span><span class="live">${liveOf(k)}</span></div>
+    <div class="top2"><span class="nm">${ic(name)}${name}</span><span class="live">${liveOf(k)}</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${col(kr.v,"kr",pk,T.est)}${col(kw.v,"kWh",pw,false)}</div>
     <div style="margin:4px 0 2px">${spark(sp)}</div>
     <div class="meta">${avg?`<span>${avg}</span>`:""}${share?`<span>${share}</span>`:""}${T.est?`<span>≈ kr = kWh × timpris när den var igång</span>`:""}${eu==="kwh"&&u==="kr"?`<span>Kronor finns inte för den här källan</span>`:""}</div></div>`;
@@ -1625,7 +1659,7 @@ async function viewTesla(R,u){
 async function viewTraktor(R,u){
   const l=state.devices[cfg.ids.trLoad],m=state.devices[cfg.ids.trHeat],un=unitName(u);
   const mOn=!!capVal(m,"onoff"),lOn=!!capVal(l,"onoff");
-  const oo=(d,nm,label,val,unit,sub,cls)=>d?`<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${capVal(d,"onoff")?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${capVal(d,"onoff")?"on":""}"></span> ${label}</div><div class="v">${val}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`:tile(label,val,unit,sub,cls);
+  const oo=(d,nm,label,val,unit,sub,cls)=>d?`<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${capVal(d,"onoff")?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${capVal(d,"onoff")?"on":""}"></span> ${ic(label)}${label}</div><div class="v">${val}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`:tile(label,val,unit,sub,cls);
   let h=`<div class="grid">${oo(l,"Traktor laddning","Laddning",lOn?"PÅ":"Av","","Effekt "+fmt(capVal(l,"measure_power"),0)+" W · klicka för att styra och se historik","hero")}
     ${oo(m,"Traktor MV","Motorvärmare",mOn?"PÅ":"Av","","Klicka för att styra och se historik")}${tileA('data-card="traktor"',"Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
@@ -1668,7 +1702,7 @@ async function renderDetalj(){
 function devCard(d){
   const c=d.capabilitiesObj,on=!!(c.onoff&&c.onoff.value);
   const pw=c.measure_power&&c.measure_power.value!=null?fmt(c.measure_power.value,0)+" W":"";
-  let h=`<div class="card dev ${on?"on":""}" data-id="${d.id}" data-onoff="${d.id}" data-nm="${esc(devName(d))}" ${/taklampa h[öo]ger/i.test(devName(d))&&/uterum/i.test(zoneName(d))?'data-row2="1"':""} tabindex="0" role="button" title="Visa historik" style="cursor:pointer"><div class="row"><div><div class="nm">${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${c.dim&&c.dim.value!=null?` · <b class="dimv">${Math.round(c.dim.value*100)} %</b>`:""}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
+  let h=`<div class="card dev ${on?"on":""}" data-id="${d.id}" data-onoff="${d.id}" data-nm="${esc(devName(d))}" ${/taklampa h[öo]ger/i.test(devName(d))&&/uterum/i.test(zoneName(d))?'data-row2="1"':""} tabindex="0" role="button" title="Visa historik" style="cursor:pointer"><div class="row"><div><div class="nm">${ic(devName(d))}${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${c.dim&&c.dim.value!=null?` · <b class="dimv">${Math.round(c.dim.value*100)} %</b>`:""}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
     <button class="sw" role="switch" aria-checked="${on}" data-act="toggle" aria-label="Av/på ${esc(devName(d))}"></button></div>`;
   if(d.id===cfg.ids.floor){const sl=state.devices[cfg.ids.slab],tv=sl&&capVal(sl,"measure_temperature");
     if(tv!=null)h+=`<div data-sens="${esc(sl.id)}|measure_temperature" style="margin-top:6px;cursor:pointer;font-size:14px">Betongplatta <b style="font-size:20px">${fmt(tv,1)} °C</b></div>`;}
@@ -1704,7 +1738,7 @@ function renderStyr(){
 /* ---------- Flows ---------- */
 function flowCard(f){
   const fl=state.flash[f.id];
-  return `<div class="card flow" data-id="${f.id}"><div><div class="nm">${esc(flowName(f))}</div><div class="note" style="margin:0">${f.kind==="adv"?"Avancerat flow":"Flow"}${f.enabled?"":" · avstängt"}</div></div>
+  return `<div class="card flow" data-id="${f.id}"><div><div class="nm">${ic(flowName(f),/sonos/i.test(flowName(f))?"speaker":"play")}${esc(flowName(f))}</div><div class="note" style="margin:0">${f.kind==="adv"?"Avancerat flow":"Flow"}${f.enabled?"":" · avstängt"}</div></div>
     <button class="btn ${fl?"":"pri"}" data-act="flow">${fl?"Startad ✓":"Starta"}</button></div>`;
 }
 function renderSonos(){
@@ -1952,6 +1986,8 @@ async function draw(){
   else renderAdmin();
   if(state.modal&&$("#dlg").open)await renderModal();
 }
+const NAV_ICONS={oversikt:"house",styr:"toggles",flows:"play",sonos:"speaker",energi:"bolt",timpris:"coin",detalj:"chart",klimat:"thermo",status:"pulse",admin:"cog"};
+function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.querySelector(".ico"))b.insertAdjacentHTML("afterbegin",iconSvg(NAV_ICONS[b.dataset.tab]));});}
 function showTab(t){
   state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
@@ -2045,7 +2081,7 @@ document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.ta
 document.addEventListener("mousemove",sensHover);document.addEventListener("touchmove",e=>{if(e.touches[0])sensHover({target:e.target,clientX:e.touches[0].clientX});},{passive:true});
 $("#dlg").addEventListener("close",()=>{state.modal=null;});
 try{applyTheme(localStorage.getItem("homeyTheme")||"auto");}catch(e){applyTheme("auto");}
-drawProp();
+navIcons();drawProp();
 refresh({force:true,flows:true});
 setInterval(()=>{if(!document.hidden&&state.tab!=="admin")refresh({quiet:true});},REFRESH_MS);
 </script>
