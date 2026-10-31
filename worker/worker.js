@@ -26,8 +26,8 @@ export default {
     };
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     try {
-      if (url.pathname === "/login") return login(url, env);
-      if (url.pathname === "/callback") return callback(url, env, req);
+      if (url.pathname === "/login") return await login(url, env);
+      if (url.pathname === "/callback") return await callback(url, env, req);
       if (url.pathname === "/logout") {
         const s = bearer(req);
         if (s) await env.KV.delete("sess:" + s);
@@ -41,7 +41,7 @@ export default {
         if (!(await sessionOk(req, env))) return json({ error: "Inte inloggad" }, 401, cors);
         const allowed = ALLOWED.some(([m, re]) => m === req.method && re.test(url.pathname));
         if (!allowed) return json({ error: "Anropet är inte tillåtet" }, 403, cors);
-        return proxy(req, url, env, cors);
+        return await proxy(req, url, env, cors);
       }
       return json({ ok: true, service: "dekarson-energicentral" }, 200, cors);
     } catch (e) {
