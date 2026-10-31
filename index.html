@@ -451,7 +451,7 @@ function liveEnergy(){
   const y=u==="kr"?"devicecapabilities_number.number6":"devicecapabilities_number.number5";
   return {w:capVal(d,"measure_power.number1"),price:null,day:null,prevDay:null,month:capVal(d,m),prevMonth:null,year:capVal(d,y),prevYear:null,avgM:capVal(d,"devicecapabilities_number.number4")};
 }
-function renderOversikt(){
+async function renderOversikt(){
   const e=liveEnergy(),u=unitName(state.unit),dec=state.unit==="kr"?0:0;
   let h=`<div class="grid">`;
   h+=tile("Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Aktuell förbrukning","hero");
@@ -465,6 +465,19 @@ function renderOversikt(){
   h+=tile("Denna månad",fmt(e.month,dec),u,state.prop==="235"?delta(e.month,e.prevMonth,"mot förra månaden ("+fmt(e.prevMonth,0)+" "+u+")"):"");
   h+=tile("I år",fmt(e.year,dec),u,state.prop==="235"?delta(e.year,e.prevYear,"mot förra året ("+fmt(e.prevYear,0)+" "+u+")"):"");
   h+=`</div>`;
+  if(state.prop==="235"){
+    const tb=state.devices[cfg.ids.tibber],now=new Date(),frac=Math.max(now.getMinutes()+now.getSeconds()/60,1)/60;
+    const thisH=capVal(tb,"meter_kwh_this_hour"),lastH=capVal(tb,"meter_kwh_last_hour"),avgW=capVal(tb,"measure_watt_avg"),maxW=capVal(tb,"measure_watt_max");
+    let hh={},keys=[];try{hh=await loadHourly();keys=Object.keys(hh).sort().slice(-24);}catch(e){}
+    const v24=keys.map(k=>hh[k]),peak=v24.length?Math.max(...v24):null;
+    h+=`<h3>Timmedeleffekt (medel per timme)</h3><div class="grid">`;
+    h+=tile("Denna timme, hittills",thisH!=null?fmt(thisH/frac,2):"–","kW",thisH!=null?fmt(thisH,2)+" kWh på "+fmt(frac*60,0)+" min":"");
+    h+=tile("Föregående timme",fmt(lastH,2),"kW","Medeleffekt hela timmen");
+    h+=tile("Snitt idag",avgW!=null?fmt(avgW/1000,2):"–","kW","Högsta effekt "+(maxW!=null?fmt(maxW/1000,1)+" kW":"–"));
+    h+=tile("Högsta timme senaste 24 h",fmt(peak,2),"kW",peak!=null?keys[v24.indexOf(peak)].slice(5,10)+" kl "+keys[v24.indexOf(peak)].slice(11)+":00":"");
+    h+=`</div>`;
+    if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>k.slice(11)+":00"),"kW")}<div class="note">Klicka för mer.</div></div>`;
+  }
 
   const L=statusLists();
   h+=`<h3>Just nu</h3><div class="grid">`;
@@ -1029,7 +1042,7 @@ function demoSetup(){
     mk("d13","Temperatursensor Sovrum","sensor","z3",{measure_temperature:19.8,measure_battery:15}),mk("d14","Rörelsesensor Kök","sensor","z2",{alarm_motion:false,measure_battery:90}),
     mk("d15","Frysvakt Dekarsön 236","socket","z236",{onoff:true,measure_power:68}),mk("d16","Element Dekarsön 236","socket","z236",{onoff:false,measure_power:0}),
     mk("d17","Lampa Dekarsön 236","light","z236",{onoff:false,dim:1}),mk("d18","Temperatursensor Dekarsön 236","sensor","z236",{measure_temperature:21.4,measure_battery:100}),
-    mk(cfg.ids.tibber,"Energi Tibber","other","zh",{meter_kwh_this_day:14.9,meter_kwh_last_day:48.2,meter_kwh_this_month:1460,meter_kwh_last_month:1367,meter_kwh_this_year:14345,meter_kwh_last_year:17662,meter_money_this_day:24.1,meter_money_last_day:56.5,meter_money_this_month:1818,meter_money_last_month:1990,meter_money_this_year:21770,meter_money_last_year:17704}),
+    mk(cfg.ids.tibber,"Energi Tibber","other","zh",{meter_kwh_this_day:14.9,meter_kwh_last_day:48.2,meter_kwh_this_month:1460,meter_kwh_last_month:1367,meter_kwh_this_year:14345,meter_kwh_last_year:17662,meter_money_this_day:24.1,meter_money_last_day:56.5,meter_money_this_month:1818,meter_money_last_month:1990,meter_money_this_year:21770,meter_money_last_year:17704,meter_kwh_this_hour:0.65,meter_kwh_last_hour:1.63,measure_watt_avg:1385,measure_watt_max:4186}),
     mk(cfg.ids.tesla,"Tesla Model Y","other","zh",{charging_on:false,measure_soc_level:75,measure_battery:75,measure_soc_range_estimated:319.9,measure_charge_limit_soc:80,measure_charge_energy_added:12.6,measure_climate_temperature_in:3.4,measure_climate_temperature_out:3.5,meter_car_odo:102580}),mk(cfg.ids.teslaE,"Energiöversikt Tesla","other","zh",{"devicecapabilities_number.number2":293,"devicecapabilities_number.number3":277,"devicecapabilities_number.number5":293,"devicecapabilities_number.number6":277}),mk(cfg.ids.nibe,"NIBE","thermostat","zh",{measure_power:751}),mk(cfg.ids.vp,"Energi VP","other","zh",{meter_kwh_this_day:8.3,meter_kwh_last_day:11,meter_kwh_this_month:434,meter_kwh_last_month:504,meter_kwh_this_year:5459,meter_kwh_last_year:6287,meter_money_this_day:12.6,meter_money_last_day:11.3,meter_money_this_month:465,meter_money_last_month:641,meter_money_this_year:8161,meter_money_last_year:7719,meter_money_this_month_avg:1.07,measure_watt_avg:849}),mk(cfg.ids.trLoad,"Traktor Laddning","socket","zg",{onoff:false,measure_power:0,meter_power:5.9}),mk(cfg.ids.trHeat,"Traktor Motorvärmare","socket","zg",{onoff:false}),mk(cfg.ids.floor,"Golvvärme Uterum","socket","z4",{onoff:false,measure_power:0,meter_power:173,measure_temperature:53.1,"measure_temperature.1":28.1,"measure_temperature.2":24.4,"measure_temperature.3":22.8,"measure_temperature.4":24.2}),mk(cfg.ids.slab,"Betongplatta Uterum","sensor","z4",{measure_temperature:11.7,measure_humidity:60}),
     mk(cfg.ids.live235,"Elmätare","other","zh",{measure_power:2299}),mk(cfg.ids.price,"Elpris","other","zh",{measure_price_total:0.57}),
     mk(cfg.ids.d236,"Energiöversikt 236","other","z236",{"measure_power.number1":509,"devicecapabilities_number.number2":172,"devicecapabilities_number.number3":184,"devicecapabilities_number.number4":107,"devicecapabilities_number.number5":172,"devicecapabilities_number.number6":184})
@@ -1065,7 +1078,7 @@ async function refresh(opts={}){
 }
 async function draw(){
   state.keepFocus=document.activeElement&&["q","aq"].includes(document.activeElement.id);
-  if(state.tab==="oversikt")renderOversikt();
+  if(state.tab==="oversikt")await renderOversikt();
   else if(state.tab==="kort")await renderKort();
   else if(state.tab==="energi")await renderEnergi();
   else if(state.tab==="detalj")await renderDetalj();
