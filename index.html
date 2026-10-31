@@ -154,7 +154,7 @@ dialog::backdrop{background:#0009}
    ===================================================================== */
 const PROPS=[{k:"235",name:"Dekarsön 235"},{k:"236",name:"Dekarsön 236"}];
 const DEFAULTS={
-  ip:"",key:"",mode:/\.matthiasmodig\.se$/.test(location.hostname)?"cloud":"local",workerUrl:"",session:"",demo:true,pin:"",markup:0.448,
+  ip:"",key:"",mode:/\.matthiasmodig\.se$/.test(location.hostname)?"cloud":"local",workerUrl:"https://dekarson-api.matthias-modig.workers.dev",session:"",demo:true,pin:"",markup:0.448,
   exclude:"avlopp|frysvakt|garageport|ventilation|homey|motorv|traktor",
   zones236:["34b25977-ba64-49f5-816c-90adeb4091eb"],
   ids:{
@@ -173,7 +173,7 @@ const REFRESH_MS=20000;
 function clone(o){return JSON.parse(JSON.stringify(o));}
 function loadCfg(){
   try{const s=JSON.parse(localStorage.getItem("homeyDash2")||"null");
-    if(s){const d=clone(DEFAULTS);return {...d,...s,ids:{...d.ids,...(s.ids||{})},ui:{devices:{...(s.ui&&s.ui.devices)},flows:{...(s.ui&&s.ui.flows)},status:{...d.ui.status,...(s.ui&&s.ui.status)}}};}}catch(e){}
+    if(s){const d=clone(DEFAULTS);if(!s.workerUrl)delete s.workerUrl;return {...d,...s,ids:{...d.ids,...(s.ids||{})},ui:{devices:{...(s.ui&&s.ui.devices)},flows:{...(s.ui&&s.ui.flows)},status:{...d.ui.status,...(s.ui&&s.ui.status)}}};}}catch(e){}
   return clone(DEFAULTS);
 }
 let cfg=loadCfg();
