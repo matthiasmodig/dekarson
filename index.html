@@ -1237,8 +1237,8 @@ async function sheetHourly(){
   for(const r of rows.slice(1)){
     const dm=r.map(x=>(x||"").trim()).join("|").match(/(\d{1,2})-(\d{1,2})-(\d{4})\|(\d{1,2}):(\d{2})/);if(!dm)continue;
     let w=wi>=0&&r.length===hd.length?(r[wi]||"").trim():"";
-    if(!/^\d+(\.\d+)?$/.test(w)){const src=r.findIndex(x=>/pulse|tibber|k[aä]lla/i.test(x||""));const c=r.slice(0,src>0?src:r.length).map(x=>(x||"").trim()).filter(x=>/^\d{3,}$/.test(x));w=c.length?c[c.length-1]:"";}
-    if(!/^\d+(\.\d+)?$/.test(w))continue;
+    if(!/^\d{2,6}$/.test(w)){const src=r.findIndex(x=>/pulse|tibber|k[aä]lla/i.test(x||""));const c=r.slice(0,src>0?src:r.length).map(x=>(x||"").trim()).filter(x=>/^\d{3,6}$/.test(x));w=c.length?c[c.length-1]:"";}
+    if(!/^\d{2,6}$/.test(w))continue;
     let d=new Date(+dm[3],+dm[2]-1,+dm[1],+dm[4],0);d=new Date(d.getTime()-36e5);
     const k=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());
     if(out[k]==null)out[k]=Number(w)/1000;
