@@ -581,7 +581,7 @@ async function renderOversikt(){
     const ph0=capVal(state.devices[cfg.ids.elpris],"meter_price_h0"),pnow=ph0!=null?ph0:(e.price!=null?e.price:null);
     h+=tile("Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
     h+=`</div>`;
-    try{h+=await priceBlock(0);}catch(err){}
+    try{h+=await priceBlock(0,true);}catch(err){}
     let hh={},keys=[];try{hh=await loadHourly();keys=Object.keys(hh).sort().slice(-24);}catch(err){}
     const v24=keys.map(k=>hh[k]);
     if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>k.slice(11)+":00"),"kW")}<div class="note">Klicka för mer.</div></div>`;
@@ -716,12 +716,17 @@ function extractPrices(dev){
       ks.forEach(k=>walk(o[k],d+1));}};
   walk(dev.store,0);walk(dev.settings,0);return out;
 }
+function tomorrowText(ed){
+  const lo=capVal(ed,"meter_price_next_day_lowest"),hi=capVal(ed,"meter_price_next_day_highest"),av=capVal(ed,"meter_price_next_day_avg");
+  if(lo==null&&hi==null)return "";
+  return `Imorgon: lägst ${fmt(lo,2)} kl ${fmt(capVal(ed,"hour_next_day_lowest"),0)}:00 · högst ${fmt(hi,2)} kl ${fmt(capVal(ed,"hour_next_day_highest"),0)}:00 · snitt ${fmt(av,2)} kr/kWh`;
+}
 function tomorrowNote(ed){
   const lo=capVal(ed,"meter_price_next_day_lowest"),hi=capVal(ed,"meter_price_next_day_highest"),av=capVal(ed,"meter_price_next_day_avg");
   if(lo==null&&hi==null)return `<div class="note">Homey har inte publicerat morgondagens priser ännu.</div>`;
   return `<div class="card" style="margin-top:10px"><b>Imorgon</b> (Homey ger bara sammanfattning, inte timpriserna): lägst ${fmt(lo,2)} kr/kWh kl ${fmt(capVal(ed,"hour_next_day_lowest"),0)}:00 · högst ${fmt(hi,2)} kr/kWh kl ${fmt(capVal(ed,"hour_next_day_highest"),0)}:00 · snitt ${fmt(av,2)} kr/kWh.</div>`;
 }
-async function priceBlock(past=24){
+async function priceBlock(past=24,compact=false){
   const ph=await loadPriceHist(),now=new Date(),nowK=hourKey(now),ed=state.devices[cfg.ids.elpris];
   const items=[];
   for(let i=past;i>=1;i--){const k=hourKey(new Date(now.getTime()-i*36e5));if(ph[k]!=null)items.push({k,v:ph[k],t:"past"});}
@@ -735,7 +740,7 @@ async function priceBlock(past=24){
   const fut=items.filter(x=>x.t!=="past"&&x.v!=null);
   const mn=fut.reduce((a,b)=>b.v<a.v?b:a),mx=fut.reduce((a,b)=>b.v>a.v?b:a),avg=fut.reduce((a,b)=>a+b.v,0)/fut.length;
   const lo=Math.min(...vals.map(x=>x.v)),hi=Math.max(...vals.map(x=>x.v)),rng=Math.max(hi-lo,0.01);
-  const W=1000,H=300,L=46,B=44,T=18,R=8,N=items.length,bw=(W-L-R)/N,max=niceMax(hi*1.05),y=v=>T+(H-T-B)*(1-v/max);
+  const W=1000,H=compact?170:300,L=46,B=compact?30:44,T=18,R=8,N=items.length,bw=(W-L-R)/N,max=niceMax(hi*1.05),y=v=>T+(H-T-B)*(1-v/max);
   /* färg efter relativt pris: grön (billig) -> gul -> röd (dyr) */
   const col=v=>{const f=Math.min(1,Math.max(0,(v-lo)/rng));return `hsl(${Math.round(135-135*f)} 62% ${state.dark?58:46}%)`;};
   let g=`<defs><linearGradient id="pgf" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>`;
@@ -746,7 +751,7 @@ async function priceBlock(past=24){
       if(i>0)g+=`<line x1="${L+i*bw}" x2="${L+i*bw}" y1="${T}" y2="${H-B+16}" stroke="var(--mut)" stroke-dasharray="3 4" opacity=".7"/>`;
       g+=`<text x="${L+i*bw+4}" y="${H-6}" style="font-weight:700;fill:var(--ink);font-size:12px">${dayName(x.k)}</text>`;}
     if(x.v==null)return;
-    const iw=Math.max(1,bw*.8),xx=L+i*bw+(bw-iw)/2,top=y(x.v),hgt=Math.max(1,y(0)-top),c=col(x.v),op=x.t==="past"?.45:1;
+    const iw=Math.max(1,Math.min(bw*.8,44)),xx=L+i*bw+(bw-iw)/2,top=y(x.v),hgt=Math.max(1,y(0)-top),c=col(x.v),op=x.t==="past"?.45:1;
     g+=`<g class="pb" data-t="${x.k.slice(8,10)}/${x.k.slice(5,7)} kl ${x.k.slice(11)}:00 – ${fmt(x.v,3)} kr/kWh" onmouseover="document.getElementById('pxr${past}').textContent=this.dataset.t" ontouchstart="document.getElementById('pxr${past}').textContent=this.dataset.t"><rect x="${L+i*bw}" y="${T}" width="${bw}" height="${H-B-T}" fill="transparent"/>
       <rect x="${xx}" y="${top}" width="${iw}" height="${hgt}" rx="${Math.min(4,iw/2)}" fill="${c}" opacity="${op}"${x.t==="now"?` stroke="var(--ink)" stroke-width="2"`:""}/><rect x="${xx}" y="${top}" width="${iw}" height="${hgt}" rx="${Math.min(4,iw/2)}" fill="url(#pgf)" opacity="${op}"/></g>`;
   });
@@ -758,6 +763,9 @@ async function priceBlock(past=24){
   const mark=(x,l)=>{const i=items.indexOf(x);return `<text x="${L+i*bw+bw/2}" y="${y(x.v)-5}" text-anchor="middle" style="font-weight:700;fill:var(--ink)">${l}</text>`;};
   g+=mark(mn,fmt(mn.v,2))+mark(mx,fmt(mx.v,2));
   const days=[...new Set(fut.map(x=>x.k.slice(0,10)))].length;
+  if(compact)return `<div class="card" style="margin:12px 0"><div class="top2" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px"><h2 style="margin:0">Elpris framåt (kr/kWh)</h2><span class="note" style="margin:0">Billigast ${fmt(mn.v,2)} kl ${mn.k.slice(11)}:00 · dyrast ${fmt(mx.v,2)} kl ${mx.k.slice(11)}:00 · snitt ${fmt(avg,2)}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" style="max-height:200px">${g}</svg>
+    <div class="note" id="pxr${past}" style="min-height:19px;color:var(--ink);margin-top:2px">${days>1?"":tomorrowText(ed)}</div></div>`;
   return `<div class="card" style="margin:14px 0"><h2>Elpris per timme (kr/kWh) · ${past?"Tibber via Homey":"framåt, Tibber via Homey"}</h2>
     <div class="legend"><span><i style="background:hsl(135 62% 46%)"></i>Billigt</span><span><i style="background:hsl(68 62% 46%)"></i>Medel</span><span><i style="background:hsl(0 62% 46%)"></i>Dyrt</span>${past?`<span>Ljusa staplar = passerat</span>`:""}<span>Ram = nuvarande timme</span></div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg>
