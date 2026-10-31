@@ -582,7 +582,7 @@ function nibeGroup(){
   const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^(measure_temperature|capability_\d+)/.test(k)&&nb.capabilitiesObj[k].value!=null).sort((a,b)=>a.localeCompare(b,"sv",{numeric:true}));
   const ts=temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k));
   const eff=tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu");
-  return grp("Värmepump · NIBE",[ts[0]||"",eff,nibeDelta(),...ts.slice(1)].join(""),4);
+  return grp("Värmepump · NIBE",[ts[0]||"",eff,...ts.slice(1),nibeDelta()].join(""),4);
 }
 function dualTile(attrs,label,a,b,cls){
   const col=x=>`<div style="min-width:0"><div class="v" style="font-size:26px;white-space:nowrap">${x.est?"≈ ":""}${fmt(x.v,x.dec||0)} <small>${x.un}</small></div><div class="s" style="font-size:12.5px;min-height:18px;white-space:nowrap">${x.sub||""}</div></div>`;
