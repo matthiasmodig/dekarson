@@ -466,21 +466,26 @@ function calcRange(){
   return {s,e,len,ps,pe};
 }
 function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p;}
-function barChart(cur,prev,labels,unit){
+let BCID=0;
+function barChart(cur,prev,labels,unit,plabels){
+  const rid='bcr'+(++BCID);
   const W=1000,H=300,L=52,B=28,T=10,R=8;
   const all=[...cur,...(prev||[])].filter(x=>x!=null);
   if(!all.length)return `<div class="note">Ingen data för perioden.</div>`;
   const max=niceMax(Math.max(...all,0.0001)),n=cur.length,bw=(W-L-R)/n,iw=Math.max(1,bw*.72);
   const y=v=>T+(H-T-B)*(1-v/max);let g="";
   for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,max<10?1:0)}</text>`;}
-  cur.forEach((v,i)=>{if(v==null)return;const x=L+i*bw+(bw-iw)/2,yy=y(Math.max(v,0));
-    g+=`<rect x="${x}" y="${yy}" width="${iw}" height="${Math.max(0,y(0)-yy)}" rx="2" fill="var(--cur)"><title>${labels[i]}: ${fmt(v,v<10?1:0)} ${unit}</title></rect>`;});
+  cur.forEach((v,i)=>{
+    const pv=prev?prev[i]:null,dd=v!=null&&pv?((v-pv)/Math.abs(pv)*100):null,dg=v!=null&&v<10?1:0;
+    const txt=(labels[i]||"")+": "+(v==null?"saknar data":fmt(v,dg)+" "+unit)+(pv!=null?" · jämförelse "+(plabels&&plabels[i]?plabels[i]+": ":"")+fmt(pv,pv<10?1:0)+" "+unit+(dd!=null?" ("+(dd>0?"+":"")+fmt(dd,1)+" %)":""):"");
+    const x=L+i*bw+(bw-iw)/2,yy=v==null?y(0):y(Math.max(v,0));
+    g+=`<g class="hv" data-t="${esc(txt)}" onmouseover="document.getElementById('${rid}').textContent=this.dataset.t" ontouchstart="document.getElementById('${rid}').textContent=this.dataset.t"><rect x="${L+i*bw}" y="${T}" width="${bw}" height="${H-B-T}" fill="transparent"/>${v==null?"":`<rect x="${x}" y="${yy}" width="${iw}" height="${Math.max(0,y(0)-yy)}" rx="2" fill="var(--cur)"/>`}</g>`;});
   if(prev){const segs=[];let seg=[];
     prev.forEach((v,i)=>{if(v!=null)seg.push((L+i*bw+bw/2)+","+y(Math.max(v,0)));else{if(seg.length)segs.push(seg);seg=[];}});if(seg.length)segs.push(seg);
-    for(const s of segs)g+=s.length>1?`<polyline points="${s.join(" ")}" fill="none" stroke="var(--prev)" stroke-width="2.4" stroke-dasharray="5 4"/>`:`<circle cx="${s[0].split(",")[0]}" cy="${s[0].split(",")[1]}" r="2.5" fill="var(--prev)"/>`;}
+    for(const s of segs)g+=s.length>1?`<polyline points="${s.join(" ")}" fill="none" stroke="var(--prev)" stroke-width="2.4" stroke-dasharray="5 4" pointer-events="none"/>`:`<circle cx="${s[0].split(",")[0]}" cy="${s[0].split(",")[1]}" r="2.5" fill="var(--prev)"/>`;}
   const step=Math.max(1,Math.ceil(n/10));
   for(let i=0;i<n;i+=step)g+=`<text x="${L+i*bw+bw/2}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Diagram">${g}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Diagram">${g}</svg><div class="note" id="${rid}" style="min-height:19px;color:var(--ink)">Håll muspekaren över en stapel för att se värdet.</div>`;
 }
 function delta(cur,prev,suffix){
   if(cur==null||prev==null||prev===0)return "";
@@ -631,7 +636,7 @@ async function renderEnergi(){
   const cb=bucketize(curA,b),pb=prvA?bucketize(prvA,b):null,labels=cb.map((_,i)=>labelDate(addDays(R.s,i*b)));
   if(is235&&R.len===1){try{h+=await hourlyBlock(u,R);}catch(e){h+=`<div class="note">Timdata kunde inte läsas: ${esc(e.message)}</div>`;}}
   else h+=`<div class="card" style="margin:14px 0"><h2>${u==="kr"?"Kostnad (kr)":"Förbrukning (kWh)"} per ${b===1?"dygn":(b===7?"vecka":"30 dagar")}</h2>
-    <div class="legend"><span><i style="background:var(--cur)"></i>Vald period</span>${R.ps?`<span><i style="background:var(--prev)"></i>Jämförelse</span>`:""}</div>${barChart(cb,pb,labels,un)}</div>`;
+    <div class="legend"><span><i style="background:var(--cur)"></i>Vald period</span>${R.ps?`<span><i style="background:var(--prev)"></i>Jämförelse</span>`:""}</div>${barChart(cb,pb,labels,un,R.ps?cb.map((_,i)=>labelDate(addDays(R.ps,i*b))):null)}</div>`;
 
   if(is235){
     const rows=SRC.map(src=>{const s=S[src.k];return {src,s,c:{kwh:sumRange(s,"kwh",R.s,R.e),kr:sumRange(s,"kr",R.s,R.e)},p:R.ps?{kwh:sumRange(s,"kwh",R.ps,R.pe),kr:sumRange(s,"kr",R.ps,R.pe)}:null};});
@@ -642,6 +647,16 @@ async function renderEnergi(){
       const share=tot>0&&r.c[u].v!=null?r.c[u].v/tot*100:null,k=r.c.kwh.v>0&&r.c.kr.v!=null?r.c.kr.v/r.c.kwh.v:null;
       const d=prv&&r.p&&r.p[u].v?((r.c[u].v-r.p[u].v)/Math.abs(r.p[u].v)*100):null;
       h+=`<tr><td>${r.src.name}${r.s.derived?" ≈":""}</td><td>${fmt(r.c.kwh.v,0)}</td><td>${fmt(r.c.kr.v,0)}</td><td>${fmt(k,2)}</td><td>${r.src.total?"100 %":fmt(share,0)+" %"}</td>${prv?`<td class="${d>0?"up":"down"}">${d==null?"–":(d>0?"▲ ":"▼ ")+fmt(Math.abs(d),1)+" %"}</td>`:""}</tr>`;
+      if(r.src.k==="ovr"){
+        const subs=[["traktor","Traktor"],["golv","Entreplatta / Golvvärme Uterum"],["tesla","Tesla"]];let sk=0,sr=0,any=false;
+        const sc=(T,m)=>sumRange(T,m,R.s,R.e).v,sp=(T,m)=>R.ps?sumRange(T,m,R.ps,R.pe).v:null;
+        for(const [k2,nm] of subs){const T2=S[k2];if(!T2)continue;any=true;
+          const a=sc(T2,"kwh"),b=sc(T2,"kr"),a0=sp(T2,"kwh"),b0=sp(T2,"kr"),cu=u==="kr"?b:a,pu=u==="kr"?b0:a0;sk+=a||0;sr+=b||0;
+          const d2=prv&&pu?((cu-pu)/Math.abs(pu)*100):null;
+          h+=`<tr style="color:var(--mut)"><td style="padding-left:24px">↳ ${nm}${T2.est?" ≈":""}</td><td>${fmt(a,0)}</td><td>${T2.est?"≈ ":""}${fmt(b,0)}</td><td>${a>0&&b!=null?fmt(b/a,2):"–"}</td><td>${tot>0&&cu!=null?fmt(cu/tot*100,0)+" %":"–"}</td>${prv?`<td class="${d2>0?"up":"down"}">${d2==null?"–":(d2>0?"▲ ":"▼ ")+fmt(Math.abs(d2),1)+" %"}</td>`:""}</tr>`;}
+        if(any&&r.c.kwh.v!=null){const rk=r.c.kwh.v-sk,rr=r.c.kr.v!=null?r.c.kr.v-sr:null,cu=u==="kr"?rr:rk;
+          h+=`<tr style="color:var(--mut)"><td style="padding-left:24px">↳ Övrigt, resterande ≈</td><td>${fmt(rk,0)}</td><td>${fmt(rr,0)}</td><td>${rk>0&&rr!=null?fmt(rr/rk,2):"–"}</td><td>${tot>0&&cu!=null?fmt(cu/tot*100,0)+" %":"–"}</td>${prv?"<td>–</td>":""}</tr>`;}
+      }
     }
     h+=`</table></div>`;
     const notes=[];
@@ -893,7 +908,7 @@ function polyChart(cur,prev,labels,unit){
   const max=niceMax(Math.max(...all,0.0001)),bw=(W-L-R)/Math.max(1,n-1),y=v=>T+(H-T-B)*(1-v/max);let g="";
   for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,max<10?1:0)}</text>`;}
   const pts=a=>a.map((v,i)=>v==null?null:(L+i*bw)+","+y(v)).filter(Boolean).join(" ");
-  if(prev)g+=`<polyline points="${pts(prev)}" fill="none" stroke="var(--prev)" stroke-width="2.4" stroke-dasharray="5 4"/>`;
+  if(prev)g+=`<polyline points="${pts(prev)}" fill="none" stroke="var(--prev)" stroke-width="2.4" stroke-dasharray="5 4" pointer-events="none"/>`;
   g+=`<polyline points="${pts(cur)}" fill="none" stroke="var(--cur)" stroke-width="3"/>`;
   const step=Math.max(1,Math.ceil(n/10));for(let i=0;i<n;i+=step)g+=`<text x="${L+i*bw}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg>`;
@@ -1011,7 +1026,7 @@ function chartBlock(title,T,R,u,opts={}){
   const b=R.len<=45?1:(R.len<=200?7:30);
   const cb=bucketize(curA,b),pb=prvA?bucketize(prvA,b):null,labels=cb.map((_,i)=>labelDate(addDays(R.s,i*b)));
   return {cur,prv,html:`<div class="card" style="margin:14px 0"><h2>${title} ${u==="kr"?"(kr)":"(kWh)"} per ${b===1?"dygn":(b===7?"vecka":"30 dagar")}</h2>
-    <div class="legend"><span><i style="background:var(--cur)"></i>Vald period</span>${R.ps?`<span><i style="background:var(--prev)"></i>Jämförelse</span>`:""}</div>${barChart(cb,pb,labels,un)}</div>`};
+    <div class="legend"><span><i style="background:var(--cur)"></i>Vald period</span>${R.ps?`<span><i style="background:var(--prev)"></i>Jämförelse</span>`:""}</div>${barChart(cb,pb,labels,un,R.ps?cb.map((_,i)=>labelDate(addDays(R.ps,i*b))):null)}</div>`};
 }
 function presetBar(R){
   const presets=[["idag","Idag"],["vecka","Vecka"],["manad","Månad"],["halvar","Halvår"],["ar","År"],["valfri","Valfri period"]];
