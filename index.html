@@ -11,9 +11,11 @@
   --r:16px;
 }
 @media (prefers-color-scheme:dark){
-  :root{--bg:#0e1013;--card:#171a1f;--ink:#eef0f3;--mut:#9aa3af;--line:#272c34;--soft:#1e2228;
+  :root:not([data-theme="light"]){--bg:#0e1013;--card:#171a1f;--ink:#eef0f3;--mut:#9aa3af;--line:#272c34;--soft:#1e2228;
     --cur:#6da2ff;--prev:#7b8494;--good:#4cc38a;--bad:#ff7b7b;--on:#ffc24a;--accent:#6da2ff;--accent-ink:#0b1220}
 }
+:root[data-theme="dark"]{--bg:#0e1013;--card:#171a1f;--ink:#eef0f3;--mut:#9aa3af;--line:#272c34;--soft:#1e2228;
+    --cur:#6da2ff;--prev:#7b8494;--good:#4cc38a;--bad:#ff7b7b;--on:#ffc24a;--accent:#6da2ff;--accent-ink:#0b1220}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
@@ -21,20 +23,40 @@ button,select,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 .hide{display:none!important}
 
-/* ---------- topbar ---------- */
-header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line)}
-.top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 18px}
-.brand{font-weight:750;font-size:19px;letter-spacing:-.3px;margin-right:4px}
+/* ---------- layout: vänstermeny ---------- */
+.app{display:flex;min-height:100vh}
+.side{width:230px;flex:none;background:var(--card);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;padding:14px 10px}
+.brand{font-weight:750;font-size:19px;letter-spacing:-.3px;padding:4px 10px 12px}
+.side .grp{font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--mut);padding:14px 10px 4px}
+nav{display:flex;flex-direction:column;gap:1px}
+nav button{border:0;background:transparent;padding:10px 12px;font-weight:600;color:var(--mut);text-align:left;border-radius:10px;white-space:nowrap}
+nav button:hover{background:var(--soft)}
+nav button[aria-selected=true]{background:var(--soft);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
+.side .sp{flex:1}
+.side .foot{display:flex;flex-direction:column;gap:8px;padding:10px 4px 0;border-top:1px solid var(--line);margin-top:10px}
 .seg{display:inline-flex;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px}
 .seg button{border:0;background:transparent;padding:9px 16px;border-radius:9px;font-weight:600;color:var(--mut);min-height:40px}
 .seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.seg.sm button{padding:5px 10px;min-height:30px;font-size:13px}
+.content{flex:1;min-width:0}
+.top{position:sticky;top:0;z-index:20;background:var(--bg);display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 18px;border-bottom:1px solid var(--line)}
 .grow{flex:1}
 .status{font-size:13px;color:var(--mut)}
 .err{color:var(--bad)}
-nav{display:flex;gap:2px;padding:0 12px;overflow-x:auto;border-top:1px solid var(--line)}
-nav button{border:0;background:transparent;padding:13px 16px;font-weight:600;color:var(--mut);border-bottom:3px solid transparent;white-space:nowrap}
-nav button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
-
+.attn{border-color:var(--bad)}
+.attn li{margin:3px 0}
+body.panel .side,body.panel .top{display:none}
+body.panel main{max-width:none}
+body.panel .tile .v{font-size:56px}
+#panelX{display:none;position:fixed;top:10px;right:12px;z-index:30}
+body.panel #panelX{display:block}
+@media(max-width:800px){
+  .app{display:block}
+  .side{position:sticky;top:0;z-index:25;width:auto;height:auto;flex-direction:row;align-items:center;padding:6px 8px;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden}
+  .brand,.side .grp,.side .sp,.side .foot{display:none}
+  nav{flex-direction:row}
+  .top{position:static}
+}
 main{max-width:1280px;margin:0 auto;padding:18px 18px 70px}
 h2{font-size:17px;margin:0 0 10px;font-weight:700}
 h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
@@ -43,7 +65,8 @@ h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transf
 .grid.wide{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 .note{color:var(--mut);font-size:13px;margin-top:8px}
 .warn{background:#fff4dd;color:#6f4400;border:1px solid #efd08a;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:14px}
-@media (prefers-color-scheme:dark){.warn{background:#2b2411;color:#f2d28f;border-color:#58461c}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .warn{background:#2b2411;color:#f2d28f;border-color:#58461c}}
+:root[data-theme="dark"] .warn{background:#2b2411;color:#f2d28f;border-color:#58461c}
 .btn{border:1px solid var(--line);background:var(--card);padding:9px 15px;border-radius:11px;min-height:40px;font-weight:600}
 .btn:hover{border-color:var(--accent)}
 .btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -110,29 +133,44 @@ dialog::backdrop{background:#0009}
 </style>
 </head>
 <body>
-<header>
-  <div class="top">
-    <span class="brand">Energicentral</span>
-    <div class="seg" id="segProp" role="group" aria-label="Fastighet"></div>
-    <div class="seg" id="segUnit" role="group" aria-label="Enhet">
-      <button data-unit="kr" aria-pressed="true">Kronor</button>
-      <button data-unit="kwh" aria-pressed="false">kWh</button>
-    </div>
-    <span class="grow"></span>
-    <span class="status" id="status"></span>
-  </div>
+<div class="app">
+<aside class="side">
+  <div class="brand">Energicentral</div>
   <nav id="nav">
+    <span class="grp">Hem</span>
     <button data-tab="oversikt" aria-selected="true">Översikt</button>
+    <span class="grp">Energi</span>
+    <button data-tab="energi" aria-selected="false">Energi &amp; effekt</button>
     <button data-tab="kort" aria-selected="false">Energikort</button>
-    <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="detalj" aria-selected="false">Detaljer</button>
-    <button data-tab="styr" aria-selected="false">Styrning</button>
+    <span class="grp">Ekonomi</span>
+    <button data-tab="ekonomi" aria-selected="false">Kostnader &amp; kronor</button>
+    <span class="grp">Klimat</span>
+    <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
+    <span class="grp">Styrning</span>
+    <button data-tab="styr" aria-selected="false">Enheter</button>
     <button data-tab="flows" aria-selected="false">Flows</button>
+    <span class="grp">Drift</span>
     <button data-tab="status" aria-selected="false">Status</button>
     <button data-tab="admin" aria-selected="false">Admin</button>
   </nav>
-</header>
-
+  <div class="sp"></div>
+  <div class="foot">
+    <div class="seg sm" id="segTheme" role="group" aria-label="Tema"><button data-theme="auto">Auto</button><button data-theme="light">Ljust</button><button data-theme="dark">Mörkt</button></div>
+    <button class="btn sm" id="panelBtn">Panel-läge</button>
+  </div>
+</aside>
+<div class="content">
+<div class="top">
+  <div class="seg" id="segProp" role="group" aria-label="Fastighet"></div>
+  <div class="seg" id="segUnit" role="group" aria-label="Enhet">
+    <button data-unit="kr" aria-pressed="true">Kronor</button>
+    <button data-unit="kwh" aria-pressed="false">kWh</button>
+  </div>
+  <span class="grow"></span>
+  <span class="status" id="status"></span>
+</div>
+<button class="btn sm" id="panelX">Avsluta panel-läge</button>
 <main>
   <div id="demoWarn" class="warn hide">Demoläge: allt du ser är exempeldata. Gå till Admin, ange Homeys IP och API-nyckel och stäng av demoläget.</div>
   <div id="errBox" class="warn hide"></div>
@@ -140,11 +178,14 @@ dialog::backdrop{background:#0009}
   <section id="p-kort" class="hide"></section>
   <section id="p-energi" class="hide"></section>
   <section id="p-detalj" class="hide"></section>
+  <section id="p-ekonomi" class="hide"></section>
+  <section id="p-klimat" class="hide"></section>
   <section id="p-styr" class="hide"></section>
   <section id="p-flows" class="hide"></section>
   <section id="p-status" class="hide"></section>
   <section id="p-admin" class="hide"></section>
 </main>
+</div></div>
 <dialog id="dlg"><div id="dlgBody"></div></dialog>
 
 <script>
@@ -157,7 +198,7 @@ const DEFAULTS={
   ip:"",key:"",mode:/\.matthiasmodig\.se$/.test(location.hostname)?"cloud":"local",workerUrl:"https://dekarson-api.matthias-modig.workers.dev",session:"",demo:true,pin:"",markup:0.448,
   exclude:"avlopp|frysvakt|garageport|ventilation|homey|motorv|traktor",
   lampRx:"spot|lampa|belysning|ljusstake|stjärna|slinga|lykta|lysrör",
-  zones236:["34b25977-ba64-49f5-816c-90adeb4091eb"],
+  fuse:20,zones236:["34b25977-ba64-49f5-816c-90adeb4091eb"],
   ids:{
     tibber:"9984ff30-8ea8-4a59-8b77-ca10a9722cdf",hush:"d2a46475-4494-4794-ad4a-413f89209ecf",
     uppv:"f6565b0d-0a1b-4d61-be3d-21e064f0af16",vp:"2b491c90-9448-47be-85a4-c4de18e5a711",ovr:"",
@@ -182,7 +223,7 @@ function persist(){try{localStorage.setItem("homeyDash2",JSON.stringify(cfg));}c
 const isCloud=()=>cfg.mode==="cloud";
 const isDemo=()=>cfg.demo||!(isCloud()?(cfg.workerUrl&&cfg.session):(cfg.ip&&cfg.key));
 
-const state={det:"timmar",hourly:null,prop:"235",unit:"kr",tab:"oversikt",preset:"manad",cmp:"prev",from:"",to:"",
+const state={climSel:"",climPer:"last24Hours",climZone:"",det:"timmar",hourly:null,prop:"235",unit:"kr",tab:"oversikt",preset:"manad",cmp:"prev",from:"",to:"",
   devices:{},zones:{},flows:[],flowsAt:0,cache:{},adminOk:false,flash:{},search:"",adminSearch:""};
 
 /* =====================================================================
@@ -436,6 +477,11 @@ function tile(label,value,unit,sub,cls){return `<div class="card tile ${cls||""}
 /* =====================================================================
    VYER
    ===================================================================== */
+function setTheme(m){try{localStorage.setItem("homeyTheme",m);}catch(e){}applyTheme(m);}
+function applyTheme(m){const r=document.documentElement;if(m==="light"||m==="dark")r.dataset.theme=m;else delete r.dataset.theme;
+  document.querySelectorAll("#segTheme button").forEach(b=>b.classList.toggle("on",b.dataset.theme===(m||"auto")));
+  document.querySelectorAll("#segTheme button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.theme===(m||"auto")));}
+function setPanel(on){document.body.classList.toggle("panel",on);}
 function drawProp(){
   $("#segProp").innerHTML=PROPS.map(p=>`<button data-prop="${p.k}" aria-pressed="${state.prop===p.k}">${p.name}</button>`).join("");
   $("#segUnit").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.unit===state.unit));
@@ -487,6 +533,12 @@ async function renderOversikt(){
   }
 
   const L=statusLists();
+  const att=[];
+  for(const d of L.battery)att.push(`Svagt batteri: ${esc(devName(d))} (${fmt(capVal(d,"measure_battery"),0)} %)`);
+  for(const d of L.alarms)att.push(`Larm: ${esc(devName(d))}`);
+  for(const d of L.open)att.push(`Öppet: ${esc(devName(d))} (${esc(zoneName(d))})`);
+  for(const x of L.locks.filter(x=>!x.ok))att.push(`Olåst: ${esc(devName(x.d))}`);
+  if(att.length)h=`<div class="card attn" style="margin-bottom:12px"><h2>Behöver uppmärksamhet <span class="pill bad">${att.length}</span></h2><ul style="margin:0;padding-left:18px">${att.slice(0,8).map(x=>`<li>${x}</li>`).join("")}</ul></div>`+h;
   h+=`<h3>Just nu</h3><div class="grid">`;
   h+=tile("Lampor tända",L.lights.length,"",L.lights.slice(0,3).map(x=>esc(devName(x))).join(", ")+(L.lights.length>3?" …":""));
   h+=tile("Uttag på",L.sockets.length,"",L.sockets.length?`${fmt(L.sockets.reduce((a,d)=>a+(capVal(d,"measure_power")||0),0),0)} W totalt`:"");
@@ -517,6 +569,7 @@ async function renderEnergi(){
   h+=`<div class="bar"><label>Jämför mot <select id="cmp"><option value="prev">Föregående period (lika lång)</option><option value="yoy">Samma period året innan</option><option value="none">Ingen jämförelse</option></select></label></div>`;
   h+=`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name}</div>`;
 
+  h+=faseHtml();
   if(!T){h+=`<div class="card">Ange energikälla för ${PROPS.find(p=>p.k===state.prop).name} under Admin.</div>`;$("#p-energi").innerHTML=h;$("#cmp").value=state.cmp;return;}
   const cur={kwh:sumRange(T,"kwh",R.s,R.e),kr:sumRange(T,"kr",R.s,R.e)};
   const prv=R.ps?{kwh:sumRange(T,"kwh",R.ps,R.pe),kr:sumRange(T,"kr",R.ps,R.pe)}:null;
@@ -560,6 +613,111 @@ async function renderEnergi(){
 }
 
 
+
+/* ---------- Fasbalans ---------- */
+function faseHtml(){
+  if(state.prop!=="235")return "";
+  const phases=[];
+  for(const id of [cfg.ids.live235,cfg.ids.tibber]){const d=state.devices[id];if(!d)continue;
+    for(const k of Object.keys(d.capabilitiesObj||{}).sort())if(/^measure_current/.test(k)&&d.capabilitiesObj[k].value!=null)phases.push([k,d.capabilitiesObj[k].value]);
+    if(phases.length)break;}
+  const fuse=Number(cfg.fuse)||20;
+  let h=`<div class="card" style="margin-bottom:14px"><h2>Fasbalans <span class="pill">huvudsäkring ${fuse} A per fas</span></h2>`;
+  if(!phases.length)return h+`<div class="note" style="margin:0">Ingen fasström (measure_current) hittades på elmätaren. Visas när Homey rapporterar L1–L3.</div></div>`;
+  phases.forEach(([k,v],i)=>{const pct=Math.min(100,v/fuse*100),bad=pct>85;
+    h+=`<div class="hbar"><span class="lab">${/\d$/.test(k)||/\.l\d/i.test(k)?"L"+(k.match(/(\d)$/)||[0,i+1])[1]:"Fas "+(i+1)}</span><span class="tr"><i style="width:${pct}%;background:${bad?"var(--bad)":"var(--cur)"}"></i></span><span class="val">${fmt(v,1)} A</span></div>`;});
+  const vals=phases.map(p=>p[1]);
+  h+=`<div class="note">Skillnad mellan högsta och lägsta fas: ${fmt(Math.max(...vals)-Math.min(...vals),1)} A. <label>Säkring (A) <input type="text" data-cfg="fuse" value="${fuse}" style="width:60px;min-height:30px"></label></div></div>`;
+  return h;
+}
+
+/* ---------- Ekonomi ---------- */
+async function loadPriceHist(){
+  if(state.priceH&&Date.now()-state.priceH.t<5*60*1000)return state.priceH.v;
+  const h={};
+  if(isDemo()){const R=rnd(5),now=new Date();
+    for(let i=47;i>=0;i--){const d=new Date(now.getTime()-i*36e5),hr=d.getHours();
+      h[d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(hr)]=0.5+0.4*Math.cos((hr-8)/24*2*Math.PI)+(hr>=17&&hr<=20?0.5:0)+R()*0.2;}
+  }else{
+    const es=await logEntries(cfg.ids.price,"measure_price_total","last7Days"),sm={},ct={};
+    for(const e of es){if(e.v==null)continue;const d=new Date(e.t),k=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());sm[k]=(sm[k]||0)+e.v;ct[k]=(ct[k]||0)+1;}
+    for(const k in sm)h[k]=sm[k]/ct[k]+Number(cfg.markup||0);
+  }
+  state.priceH={t:Date.now(),v:h};return h;
+}
+async function renderEkonomi(){
+  if(state.prop!=="235"){$("#p-ekonomi").innerHTML=`<div class="card">Kostnader för Dekarsön 236 visas under Energi &amp; effekt (kumulativ räknare, inget elpris per timme).</div>`;return;}
+  const R=calcRange(),minDate=R.ps&&R.ps<R.s?R.ps:R.s,S=await loadSeries(minDate);
+  const tb=state.devices[cfg.ids.tibber],pr=capVal(state.devices[cfg.ids.price],"measure_price_total");
+  let h=`<div class="grid">`;
+  h+=tile("Kostnad idag",fmt(capVal(tb,"meter_money_this_day"),0),"kr","Homeys mätare sedan midnatt");
+  h+=tile("Kostnad igår",fmt(capVal(tb,"meter_money_last_day"),0),"kr",delta(capVal(tb,"meter_money_this_day"),capVal(tb,"meter_money_last_day"),"idag mot igår"));
+  h+=tile("Elpris nu",pr!=null?fmt(pr+Number(cfg.markup||0),2):"–","kr/kWh","Tibber + "+fmt(cfg.markup,3)+" påslag");
+  h+=tile("Förbrukning idag",fmt(capVal(tb,"meter_kwh_this_day"),1),"kWh","Kostnad och energi redovisas var för sig");
+  h+=`</div>`;
+  try{const ph=await loadPriceHist(),keys=Object.keys(ph).sort().slice(-48),v=keys.map(k=>ph[k]);
+    if(v.length){const mn=Math.min(...v),mx=Math.max(...v);
+      h+=`<div class="card" style="margin:14px 0"><h2>Elpris per timme, senaste ${v.length} h (kr/kWh)</h2>${lineChart(v,keys.map(k=>k.slice(8,10)+"/"+k.slice(5,7)+" "+k.slice(11)),"kr/kWh","var(--prev)")}<div class="note">Lägst ${fmt(mn,2)} kr/kWh (${keys[v.indexOf(mn)].slice(11)}:00) · högst ${fmt(mx,2)} kr/kWh (${keys[v.indexOf(mx)].slice(11)}:00). Framtida priser visas inte, de gissas aldrig.</div></div>`;}
+  }catch(e){h+=`<div class="note">Prishistorik kunde inte läsas: ${esc(e.message)}</div>`;}
+  h+=`<h3>Period</h3>`+presetBar(R);
+  const c=chartBlock("Kostnad",S.tibber,R,"kr");h+=c.html||c;
+  const rows=[["tibber","Totalt, hela huset"],["hush","Hushållsel"],["uppv","Uppvärmning"],["vp","Värmepump"],["ovr","Övrigt"],["tesla","Tesla"],["traktor","Traktor"],["golv","Golvvärme Uterum"]];
+  const tot=S.tibber?sumRange(S.tibber,"kr",R.s,R.e).v:null;
+  h+=`<div class="card"><h2>Kostnadstabell <span class="pill">${R.s===R.e?R.s:R.s+" – "+R.e}</span></h2><div style="overflow:auto"><table><tr><th>Kategori</th><th>kr</th><th>kWh</th><th>kr/kWh</th><th>Andel</th><th>Täckning</th><th>Underlag</th></tr>`;
+  for(const [k,name] of rows){const T=S[k];
+    if(!T){h+=`<tr><td>${name}</td><td colspan="6" style="color:var(--mut)">Ej tillgänglig · ingen källa konfigurerad</td></tr>`;continue;}
+    const kr=sumRange(T,"kr",R.s,R.e),kw=sumRange(T,"kwh",R.s,R.e),cov=R.len?Math.round((R.len-Math.min(kr.missing,kw.missing))/R.len*100):0;
+    const why=k==="tibber"?"Total (räknas aldrig dubbelt)":T.derived?"Beräknad ≈ (Tibber − Hushåll − Uppvärmning)":T.est?"≈ kr uppskattat med dygnets snittpris":["hush","uppv","vp"].includes(k)?"Homeys rapportenhet · överlappar totalen":"Homey";
+    h+=`<tr class="kcard" data-card="${k}" tabindex="0" style="cursor:pointer"><td>${name}</td><td>${T.est||T.derived?"≈ ":""}${fmt(kr.v,0)}</td><td>${fmt(kw.v,0)}</td><td>${kw.v>0&&kr.v!=null?fmt(kr.v/kw.v,2):"–"}</td><td>${k==="tibber"?"100 %":(tot>0&&kr.v!=null?fmt(kr.v/tot*100,0)+" %":"–")}</td><td>${cov} %</td><td style="text-align:left;color:var(--mut);white-space:normal">${why}</td></tr>`;}
+  h+=`</table></div><div class="note">Hushållsel, Uppvärmning och Värmepump överlappar varandra och totalen, så delposterna ska inte summeras. Klicka på en rad för detaljer.</div></div>`;
+  $("#p-ekonomi").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;
+}
+
+/* ---------- Klimat ---------- */
+function tempChart(pts,unit){
+  pts=pts.filter(p=>p[1]!=null);if(pts.length<2)return `<div class="note">Ingen historik hittades för perioden.</div>`;
+  const W=1000,H=260,L=52,B=28,T=10,R=8,t0=pts[0][0],t1=pts[pts.length-1][0];
+  let mn=Math.min(...pts.map(p=>p[1])),mx=Math.max(...pts.map(p=>p[1]));if(mx-mn<2){mx+=1;mn-=1;}
+  const pad2=(mx-mn)*.1;mn-=pad2;mx+=pad2;
+  const x=t=>L+(W-L-R)*(t-t0)/Math.max(1,t1-t0),y=v=>T+(H-T-B)*(1-(v-mn)/(mx-mn));let g="";
+  for(let i=0;i<=4;i++){const v=mn+(mx-mn)*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,1)}</text>`;}
+  g+=`<polyline points="${pts.map(p=>x(p[0]).toFixed(1)+","+y(p[1]).toFixed(1)).join(" ")}" fill="none" stroke="var(--cur)" stroke-width="2.4"/>`;
+  for(let i=0;i<=4;i++){const t=t0+(t1-t0)*i/4,d=new Date(t);g+=`<text x="${x(t)}" y="${H-8}" text-anchor="middle">${d.getDate()}/${d.getMonth()+1} ${pad(d.getHours())}:00</text>`;}
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg>`;
+}
+async function climHist(id,per){
+  const bucket=per==="last24Hours"?36e5:per==="last7Days"?216e5:864e5;
+  let es=[];
+  if(isDemo()){const now=Date.now(),n=per==="last24Hours"?96:per==="last7Days"?168:31*6,step=per==="last24Hours"?9e5:per==="last7Days"?36e5:144e5,seed=id.length*7;
+    for(let i=n;i>=0;i--){const t=now-i*step;es.push({t,v:20+2*Math.sin(t/864e5*2*Math.PI)+Math.sin(t/1e7+seed)});}
+  }else es=await logEntries(id,"measure_temperature",per);
+  const m={};for(const e of es){if(e.v==null)continue;const k=Math.floor(new Date(e.t).getTime()/bucket);(m[k]=m[k]||[]).push(e.v);}
+  return Object.keys(m).sort((a,b)=>a-b).map(k=>[(+k+.5)*bucket,m[k].reduce((p,c)=>p+c,0)/m[k].length]);
+}
+async function renderKlimat(){
+  const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla);
+  const zones=[...new Set(all.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv"));
+  const list=all.filter(d=>!state.climZone||zoneName(d)===state.climZone).sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")||a.name.localeCompare(b.name,"sv"));
+  let h=`<div class="bar"><label>Rum <select id="climzone"><option value="">Alla rum</option>${zones.map(z=>`<option ${z===state.climZone?"selected":""}>${esc(z)}</option>`).join("")}</select></label>
+    ${[["last24Hours","24 timmar"],["last7Days","7 dagar"],["last31Days","30 dagar"]].map(([k,l])=>`<button class="chip" data-climper="${k}" aria-pressed="${state.climPer===k}">${l}</button>`).join("")}</div>`;
+  if(!list.length)h+=`<div class="card">Inga temperaturgivare hittades för ${PROPS.find(p=>p.k===state.prop).name}.</div>`;
+  else{
+    if(!list.find(d=>d.id===state.climSel))state.climSel=list[0].id;
+    h+=`<div class="grid">${list.map(d=>{const hu=capVal(d,"measure_humidity"),bat=capVal(d,"measure_battery");
+      return `<div class="card kcard" data-clim="${d.id}" tabindex="0" role="button" style="${d.id===state.climSel?"border-color:var(--accent)":""}"><div class="top2"><span class="nm">${esc(devName(d))}</span><span class="live">${esc(zoneName(d))}</span></div><div class="big">${fmt(capVal(d,"measure_temperature"),1)} <small>°C</small></div><div class="meta">${hu!=null?`<span>Fukt ${fmt(hu,0)} %</span>`:""}${bat!=null?`<span>Batteri ${fmt(bat,0)} %</span>`:""}</div></div>`;}).join("")}</div>`;
+    const sel=state.devices[state.climSel];
+    try{const pts=await climHist(state.climSel,state.climPer);h+=`<div class="card" style="margin:14px 0"><h2>${esc(devName(sel))} · temperatur (°C)</h2>${tempChart(pts)}<div class="note">Klicka på ett annat kort för att byta givare.</div></div>`;}
+    catch(e){h+=`<div class="note">Historik kunde inte läsas: ${esc(e.message)}</div>`;}
+  }
+  if(state.prop==="235"){
+    const nb=state.devices[cfg.ids.nibe];
+    if(nb){const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^measure_temperature/.test(k)&&nb.capabilitiesObj[k].value!=null);
+      h+=`<h3>Värmepump · NIBE</h3><div class="grid">${temps.map(k=>tile(esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")}${tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu")}</div>`;}
+    const f=state.devices[cfg.ids.floor],sl=state.devices[cfg.ids.slab];
+    if(f||sl)h+=`<h3>Uterum och entreplatta</h3><div class="grid">${tile("Betongplatta",fmt(capVal(sl,"measure_temperature"),1),"°C","Fukt "+fmt(capVal(sl,"measure_humidity"),0)+" %")}${tile("Golvvärme",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}${tile("Golvets givare",fmt(capVal(f,"measure_temperature"),1),"°C",[1,2,3,4].map(i=>fmt(capVal(f,"measure_temperature."+i),1)).join(" / "))}</div>`;
+  }
+  $("#p-klimat").innerHTML=h;
+}
 
 /* =====================================================================
    ENERGIKORT
@@ -1052,7 +1210,7 @@ function demoSetup(){
     mk("d17","Lampa Dekarsön 236","light","z236",{onoff:false,dim:1}),mk("d18","Temperatursensor Dekarsön 236","sensor","z236",{measure_temperature:21.4,measure_battery:100}),
     mk(cfg.ids.tibber,"Energi Tibber","other","zh",{meter_kwh_this_day:14.9,meter_kwh_last_day:48.2,meter_kwh_this_month:1460,meter_kwh_last_month:1367,meter_kwh_this_year:14345,meter_kwh_last_year:17662,meter_money_this_day:24.1,meter_money_last_day:56.5,meter_money_this_month:1818,meter_money_last_month:1990,meter_money_this_year:21770,meter_money_last_year:17704,meter_kwh_this_hour:0.65,meter_kwh_last_hour:1.63,measure_watt_avg:1385,measure_watt_max:4186}),
     mk(cfg.ids.tesla,"Tesla Model Y","other","zh",{charging_on:false,measure_soc_level:75,measure_battery:75,measure_soc_range_estimated:319.9,measure_charge_limit_soc:80,measure_charge_energy_added:12.6,measure_climate_temperature_in:3.4,measure_climate_temperature_out:3.5,meter_car_odo:102580}),mk(cfg.ids.teslaE,"Energiöversikt Tesla","other","zh",{"devicecapabilities_number.number2":293,"devicecapabilities_number.number3":277,"devicecapabilities_number.number5":293,"devicecapabilities_number.number6":277}),mk(cfg.ids.nibe,"NIBE","thermostat","zh",{measure_power:751}),mk(cfg.ids.vp,"Energi VP","other","zh",{meter_kwh_this_day:8.3,meter_kwh_last_day:11,meter_kwh_this_month:434,meter_kwh_last_month:504,meter_kwh_this_year:5459,meter_kwh_last_year:6287,meter_money_this_day:12.6,meter_money_last_day:11.3,meter_money_this_month:465,meter_money_last_month:641,meter_money_this_year:8161,meter_money_last_year:7719,meter_money_this_month_avg:1.07,measure_watt_avg:849}),mk(cfg.ids.trLoad,"Traktor Laddning","socket","zg",{onoff:false,measure_power:0,meter_power:5.9}),mk(cfg.ids.trHeat,"Traktor Motorvärmare","socket","zg",{onoff:false}),mk(cfg.ids.floor,"Golvvärme Uterum","socket","z4",{onoff:false,measure_power:0,meter_power:173,measure_temperature:53.1,"measure_temperature.1":28.1,"measure_temperature.2":24.4,"measure_temperature.3":22.8,"measure_temperature.4":24.2}),mk(cfg.ids.slab,"Betongplatta Uterum","sensor","z4",{measure_temperature:11.7,measure_humidity:60}),
-    mk(cfg.ids.live235,"Elmätare","other","zh",{measure_power:2299}),mk(cfg.ids.price,"Elpris","other","zh",{measure_price_total:0.57}),
+    mk(cfg.ids.live235,"Elmätare","other","zh",{measure_power:2299,"measure_current.l1":9.2,"measure_current.l2":6.1,"measure_current.l3":11.8}),mk(cfg.ids.price,"Elpris","other","zh",{measure_price_total:0.57}),
     mk(cfg.ids.d236,"Energiöversikt 236","other","z236",{"measure_power.number1":509,"devicecapabilities_number.number2":172,"devicecapabilities_number.number3":184,"devicecapabilities_number.number4":107,"devicecapabilities_number.number5":172,"devicecapabilities_number.number6":184})
   ];
   state.devices=Object.fromEntries(D.map(d=>[d.id,d]));
@@ -1090,6 +1248,8 @@ async function draw(){
   else if(state.tab==="kort")await renderKort();
   else if(state.tab==="energi")await renderEnergi();
   else if(state.tab==="detalj")await renderDetalj();
+  else if(state.tab==="ekonomi")await renderEkonomi();
+  else if(state.tab==="klimat")await renderKlimat();
   else if(state.tab==="styr")renderStyr();
   else if(state.tab==="flows")renderFlows();
   else if(state.tab==="status")renderStatus();
@@ -1097,9 +1257,9 @@ async function draw(){
   if(state.modal&&$("#dlg").open)await renderModal();
 }
 function showTab(t){
-  state.tab=t;state.search="";
+  state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
-  for(const k of ["oversikt","kort","energi","detalj","styr","flows","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  for(const k of ["oversikt","kort","energi","detalj","ekonomi","klimat","styr","flows","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
 }
 
@@ -1111,6 +1271,11 @@ $("#segProp").addEventListener("click",e=>{const b=e.target.closest("[data-prop]
 $("#segUnit").addEventListener("click",e=>{const b=e.target.closest("[data-unit]");if(!b)return;state.unit=b.dataset.unit;drawProp();draw();});
 
 document.addEventListener("click",async e=>{
+  const th=e.target.closest("#segTheme [data-theme]");if(th){setTheme(th.dataset.theme);return;}
+  if(e.target.id==="panelBtn"){showTab("oversikt");setPanel(true);return;}
+  if(e.target.id==="panelX"){setPanel(false);return;}
+  const cs=e.target.closest("[data-clim]");if(cs){state.climSel=cs.dataset.clim;draw();return;}
+  const cp=e.target.closest("[data-climper]");if(cp){state.climPer=cp.dataset.climper;draw();return;}
   const p=e.target.closest("[data-p]");
   if(p){state.preset=p.dataset.p;if(state.preset==="valfri"&&!state.from){state.to=todayStr();state.from=addDays(state.to,-29);}draw();return;}
   if(e.target.closest("[data-close]")){$("#dlg").close();state.modal=null;return;}
@@ -1147,6 +1312,7 @@ document.addEventListener("change",async e=>{
   const t=e.target;
   try{
     if(t.dataset.act==="dim"){await setCap(t.closest("[data-id]").dataset.id,"dim",Number(t.value)/100);draw();return;}
+    if(t.id==="climzone"){state.climZone=t.value;draw();return;}
     if(t.id==="mcmp"){state.cmp=t.value;draw();return;}
     if(t.id==="cmp"){state.cmp=t.value;draw();return;}
     if(t.id==="from"){state.from=t.value;draw();return;}
@@ -1168,6 +1334,7 @@ document.addEventListener("change",async e=>{
 (function(){const m=/[#&]session=([a-f0-9]{64})/.exec(location.hash);if(m){cfg.session=m[1];cfg.demo=false;cfg.mode="cloud";persist();history.replaceState(null,"",location.pathname+location.search);}})();
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart)){e.preventDefault();e.target.click();}});
 $("#dlg").addEventListener("close",()=>{state.modal=null;});
+try{applyTheme(localStorage.getItem("homeyTheme")||"auto");}catch(e){applyTheme("auto");}
 drawProp();
 refresh({force:true,flows:true});
 setInterval(()=>{if(!document.hidden&&state.tab!=="admin")refresh({quiet:true});},REFRESH_MS);
