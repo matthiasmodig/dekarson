@@ -203,7 +203,7 @@ const DEFAULTS={
     tibber:"9984ff30-8ea8-4a59-8b77-ca10a9722cdf",hush:"d2a46475-4494-4794-ad4a-413f89209ecf",
     uppv:"f6565b0d-0a1b-4d61-be3d-21e064f0af16",vp:"2b491c90-9448-47be-85a4-c4de18e5a711",ovr:"",
     d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
-    price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
+    price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",timSnitt:"f8346588-0055-474e-94eb-d4fc2026ee6a",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
     tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
     trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
   },
@@ -643,8 +643,8 @@ async function renderOversikt(){
     h+=tile("Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Aktuell förbrukning","hero");
     h+=tile("Energi idag",fmt(kd,1),"kWh",delta(kd,kdp,"mot igår ("+fmt(kdp,0)+" kWh)"));
     h+=tile("Kr idag",fmt(rd,0),"kr",delta(rd,rdp,"mot igår ("+fmt(rdp,0)+" kr)"));
-    let tnow=null;try{tnow=(await timmedelNu()).hour;}catch(err){}
-    h+=tile("Timmedel effekt just nu",tnow?fmt(tnow.v,2):(thisH!=null?fmt(thisH/frac,2):"–"),"kW",tnow?"Medeleffekt denna timme hittills":(thisH!=null?fmt(thisH,2)+" kWh på "+fmt(frac*60,0)+" min":""));
+    let md=null;try{md=await medelData();}catch(err){}
+    h+=tile("Pågående timmes medeleffekt",md&&md.hour?fmt(md.hour.v,2):"–","kW",md&&md.hour?"Ofullständig timme · "+fmt(md.hour.kwh,2)+" kWh på "+fmt(md.hour.min,0)+" min":"Inväntar mätvärde"+(md&&md.hourWhy?" · "+md.hourWhy:""));
     const ph0=capVal(state.devices[cfg.ids.elpris],"meter_price_h0"),pnow=ph0!=null?ph0:(e.price!=null?e.price:null);
     h+=tile("Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
     const ud=state.devices[cfg.ids.ute],feel=capVal(state.devices[cfg.ids.smhi],"air_temperature_feels_like_cp");
@@ -765,18 +765,44 @@ async function homeyMedel(){
     if(!state.vars||Date.now()-state.vars.t>20000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};
     const V=state.vars.v||{},g=id=>{const x=Object.values(V).find(y=>y.id===id);return x?Number(x.value):null;};
     const day=g(cfg.ids.medDay),dn=g(cfg.ids.medDayN),mo=g(cfg.ids.medMonth),mn=g(cfg.ids.medMonthN);
-    return {day:dn>0?{v:day,n:dn}:null,month:mn>0?{v:mo,n:mn}:null};
+    return {day:dn>0?{v:day,n:dn}:null,month:mn>0?{v:mo,n:mn}:null,snitt:g(cfg.ids.timSnitt),t:state.vars.t};
   }catch(e){return null;}
 }
-async function medelEffektHtml(kort){
+async function medelData(){
+  const now=new Date(),tb=state.devices[cfg.ids.tibber],lm=state.devices[cfg.ids.live235];
+  const hs=new Date(now.getFullYear(),now.getMonth(),now.getDate(),now.getHours()).getTime(),secs=(now.getTime()-hs)/1000;
+  const ds=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime(),ms=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  const doneDay=Math.floor((hs-ds)/36e5),doneMonth=Math.round((hs-ms)/36e5);
+  const D={now,secs,doneDay,doneMonth,src:"Homey"};
+  const w=capVal(lm,"measure_power");D.power=w!=null?w/1000:null;
+  const kh=capVal(tb,"meter_kwh_this_hour"),co=tb&&tb.capabilitiesObj&&tb.capabilitiesObj.meter_kwh_this_hour,lu=co&&(co.lastUpdated||co.lastChanged);
+  const fresh=!lu||new Date(lu).getTime()>=hs-1000;
+  D.hour=kh!=null&&secs>=60&&fresh?{v:kh/(secs/3600),kwh:kh,min:secs/60}:null;
+  D.hourWhy=kh==null?"Mätvärdet saknas":!fresh?"Mätvärdet hör till föregående timme":secs<60?"Timmen har just börjat":"";
+  const hm=await homeyMedel();
+  const klh=capVal(tb,"meter_kwh_last_hour");
+  if(hm){D.prev=hm.snitt!=null?{v:hm.snitt/1000}:null;D.day=hm.day;D.month=hm.month;D.varT=hm.t;}
+  if(D.prev&&klh!=null&&Math.abs(D.prev.v-klh)>Math.max(.05,klh*.1))D.prevWarn="Avviker från Tibber-mätaren ("+fmt(klh,2)+" kWh)";
+  if(!D.prev&&klh!=null)D.prev={v:klh,alt:true};
+  if(!hm||(!D.day&&!D.month)){ /* reserv: beräkna ur timloggen */
+    let t=null;try{t=await timmedelNu();}catch(e){}
+    if(t){if(!D.day&&t.day){D.day=t.day;D.calc=true;}if(!D.month&&t.month){D.month=t.month;D.calc=true;}}
+  }
+  return D;
+}
+async function medelEffektHtml(){
   if(state.prop!=="235")return "";
-  const t=await timmedelNu(),f=x=>x?fmt(x.v,2):"–",hm=await homeyMedel();
-  if(hm&&hm.day)t.day={...hm.day,home:true};if(hm&&hm.month)t.month={...hm.month,home:true};
-  return `<div class="grid" style="margin-bottom:12px">`
-   +tile(kort?"Timmedeleffekt denna timme":"Medeleffekt innevarande timme",f(t.hour),"kW","Timmedeleffekt hittills denna timme")
-   +tile(kort?"Timmedeleffekt denna dag":"Medeleffekt idag",f(t.day),"kW",t.day?"Medel av "+t.day.n+" timmedeleffekter"+(t.day.home?" · från Homey":""):"")
-   +tile(kort?"Timmedeleffekt denna månad":"Medeleffekt denna månad",f(t.month),"kW",t.month?"Medel av "+t.month.n+" timmedeleffekter"+(t.month.home?" · från Homey":""):"")
-   +`</div>`;
+  const D=await medelData(),f=x=>x!=null?fmt(x,2):"–",wait=why=>`Inväntar mätvärde${why?" · "+why:""}`;
+  const inc=(m,done,lbl)=>{if(!m)return "Inväntar mätvärde";const n=Math.round(m.n);
+    return "Medel av "+n+" timmedeleffekter"+(n<done?" · <b style=\"color:var(--bad)\">ofullständigt: "+n+" av "+done+" "+lbl+"</b>":n>done+1?" · <b style=\"color:var(--bad)\">kontrollera: fler timmar än förväntat ("+done+")</b>":"")+(D.calc?" · beräknat ur logg":"");};
+  const hh=D.now.toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  return `<div class="grid" style="margin-bottom:6px">`
+   +tile("Aktuell effekt",f(D.power),"kW",D.power!=null?"Momentan effekt, inte timmedeleffekt":wait(""),"hero")
+   +tile("Pågående timmes medeleffekt",D.hour?f(D.hour.v):"–","kW",D.hour?"<b>Ofullständig timme</b> · "+fmt(D.hour.kwh,2)+" kWh på "+fmt(D.hour.min,0)+" min":wait(D.hourWhy))
+   +tile("Föregående timmes medeleffekt",D.prev?f(D.prev.v):"–","kW",D.prev?(D.prev.alt?"Från Tibber-mätarens timenergi":"Homey TimSnitt")+(D.prevWarn?" · <b style=\"color:var(--bad)\">"+D.prevWarn+"</b>":""):wait(""))
+   +tile("Dygnsmedeleffekt",D.day?f(D.day.v):"–","kW",inc(D.day,D.doneDay,"timmar hittills idag"))
+   +tile("Månadsmedeleffekt",D.month?f(D.month.v):"–","kW",inc(D.month,D.doneMonth,"timmar hittills denna månad"))
+   +`</div><div class="note" style="margin-bottom:12px">Uppdaterad ${hh}${D.varT?" · variabler hämtade "+new Date(D.varT).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}):""} · Dekarsön 235. Dygns- och månadsmedel bygger på enskilda timmedeleffekter från Homey.</div>`;
 }
 /* ---------- Ekonomi ---------- */
 async function loadPriceHist(){
@@ -1138,7 +1164,7 @@ async function renderKort(){
   const t=todayStr(),R=calcRange();
   const c=await kortCtx(addDays(t,-400));
   let h=presetBar(R)+`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name} · klicka på ett kort eller diagram för mer information</div>`;
-  h+=`<h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div>${await medelEffektHtml(true).catch(()=>"")?`<h3>Timmedeleffekt</h3>`+await medelEffektHtml(true).catch(()=>""):""}<h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
+  h+=`<h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div>${(await medelEffektHtml().catch(()=>""))?`<h3>Effekt och timmedeleffekt</h3>`+await medelEffektHtml().catch(()=>""):""}<h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
   for(const d of KORTCHARTS.map(k=>CHARTS.find(x=>x.k===k))){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
     h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
   h+=`</div>`;
