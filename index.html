@@ -882,7 +882,7 @@ async function renderEnergi(){
   }else{
     h+=`<div class="note">Dekarsön 236 räknas ur den kumulativa räknaren i den virtuella energiöversikten och finns därför bara sedan den togs i drift. Dagens värde visas först när dygnet är slut. Kostnaden använder Tibber-priset för 235 plus påslag.</div>`;
   }
-  if(is235)h+=costTableHtml(S,R);
+
   $("#p-energi").innerHTML=h;
   const c=$("#cmp");if(c)c.value=state.cmp;
 }
