@@ -722,14 +722,14 @@ async function homeyMedel(){
     return {day:dn>0?{v:day,n:dn}:null,month:mn>0?{v:mo,n:mn}:null};
   }catch(e){return null;}
 }
-async function medelEffektHtml(){
+async function medelEffektHtml(kort){
   if(state.prop!=="235")return "";
   const t=await timmedelNu(),f=x=>x?fmt(x.v,2):"–",hm=await homeyMedel();
   if(hm&&hm.day)t.day={...hm.day,home:true};if(hm&&hm.month)t.month={...hm.month,home:true};
   return `<div class="grid" style="margin-bottom:12px">`
-   +tile("Medeleffekt innevarande timme",f(t.hour),"kW","Timmedeleffekt hittills denna timme")
-   +tile("Medeleffekt idag",f(t.day),"kW",t.day?"Medel av "+t.day.n+" timmedeleffekter"+(t.day.home?" · från Homey":""):"")
-   +tile("Medeleffekt denna månad",f(t.month),"kW",t.month?"Medel av "+t.month.n+" timmedeleffekter"+(t.month.home?" · från Homey":""):"")
+   +tile(kort?"Timmedeleffekt denna timme":"Medeleffekt innevarande timme",f(t.hour),"kW","Timmedeleffekt hittills denna timme")
+   +tile(kort?"Timmedeleffekt denna dag":"Medeleffekt idag",f(t.day),"kW",t.day?"Medel av "+t.day.n+" timmedeleffekter"+(t.day.home?" · från Homey":""):"")
+   +tile(kort?"Timmedeleffekt denna månad":"Medeleffekt denna månad",f(t.month),"kW",t.month?"Medel av "+t.month.n+" timmedeleffekter"+(t.month.home?" · från Homey":""):"")
    +`</div>`;
 }
 /* ---------- Ekonomi ---------- */
@@ -967,7 +967,7 @@ async function renderKlimat(){
    ENERGIKORT
    ===================================================================== */
 const KORT235=[["tibber","Hela huset"],["uppv","Uppvärmning"],["hush","Hushållsström"],["tesla","Tesla"],["golv","Entreplatta"],["traktor","Traktor"]];
-const KORTCHARTS=["sources","price","hours"];
+const KORTCHARTS=["sources","hours"];
 const KORT236=[["d236","Dekarsön 236"]];
 const korts=()=>state.prop==="235"?KORT235:KORT236;
 const mainKey=()=>state.prop==="235"?"tibber":"d236";
@@ -1083,7 +1083,7 @@ async function renderKort(){
   const t=todayStr(),R=calcRange();
   const c=await kortCtx(addDays(t,-400));
   let h=presetBar(R)+`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name} · klicka på ett kort eller diagram för mer information</div>`;
-  h+=`<h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
+  h+=`<h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div>${await medelEffektHtml(true).catch(()=>"")?`<h3>Timmedeleffekt</h3>`+await medelEffektHtml(true).catch(()=>""):""}<h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
   for(const d of KORTCHARTS.map(k=>CHARTS.find(x=>x.k===k))){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
     h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
   h+=`</div>`;
