@@ -1089,9 +1089,9 @@ async function renderDetalj(){
 function devCard(d){
   const c=d.capabilitiesObj,on=!!(c.onoff&&c.onoff.value);
   const pw=c.measure_power&&c.measure_power.value!=null?fmt(c.measure_power.value,0)+" W":"";
-  let h=`<div class="card dev ${on?"on":""}" data-id="${d.id}"><div class="row"><div><div class="nm">${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
+  let h=`<div class="card dev ${on?"on":""}" data-id="${d.id}"><div class="row"><div><div class="nm">${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${c.dim&&c.dim.value!=null?` · <b class="dimv">${Math.round(c.dim.value*100)} %</b>`:""}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
     <button class="sw" role="switch" aria-checked="${on}" data-act="toggle" aria-label="Av/på ${esc(devName(d))}"></button></div>`;
-  if(c.dim&&c.dim.value!=null)h+=`<input type="range" min="1" max="100" value="${Math.round(c.dim.value*100)}" data-act="dim" aria-label="Ljusstyrka">`;
+  if(c.dim&&c.dim.value!=null)h+=`<input type="range" oninput="var b=this.closest('.dev').querySelector('.dimv');if(b)b.textContent=this.value+' %'" min="1" max="100" value="${Math.round(c.dim.value*100)}" data-act="dim" aria-label="Ljusstyrka">`;
   return h+`</div>`;
 }
 function renderStyr(){
