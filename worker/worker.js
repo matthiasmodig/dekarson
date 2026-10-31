@@ -94,7 +94,7 @@ async function callback(url, env, req) {
   const state = url.searchParams.get("state");
   const cookie = (req.headers.get("Cookie") || "").match(/(?:^|;\s*)st=([a-f0-9]+)/);
   if (!state || !cookie || cookie[1] !== state) return new Response("Ogiltig inloggning (state). Försök igen.", { status: 400 });
-  const tok = await tokenCall(env, { grant_type: "authorization_code", authorization_code: code });
+  const tok = await tokenCall(env, { grant_type: "authorization_code", code, redirect_uri: url.origin + "/callback" });
   const me = await (await fetch(ATHOM + "/user/me", { headers: { Authorization: "Bearer " + tok.access } })).json();
   if (!me.email || me.email.toLowerCase() !== String(env.ALLOWED_EMAIL).toLowerCase()) {
     return new Response("Det här kontot har inte åtkomst.", { status: 403 });
