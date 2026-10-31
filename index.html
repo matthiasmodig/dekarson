@@ -415,14 +415,29 @@ async function loadSeries(minDate){
   else if(cfg.ids.trLoad)S.traktor={kwh:await safe(()=>fetchMerged(cfg.ids.trLoad,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
   if(cfg.ids.golvRep)S.golv=await rep2(cfg.ids.golvRep);
   else if(cfg.ids.floor)S.golv={kwh:await safe(()=>fetchMerged(cfg.ids.floor,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
+  if(S.traktor&&!Object.keys(S.traktor.kr||{}).length)S.traktor.hkr=await safe(()=>hourlyKr(cfg.ids.trLoad));
+  if(S.golv&&!Object.keys(S.golv.kr||{}).length)S.golv.hkr=await safe(()=>hourlyKr(cfg.ids.floor));
   return addEstKr(S);
 }
 /* kr saknas i Homey för vissa enheter: uppskatta med dygnets snittpris (kr/kWh) för hela huset. Rapportenhet i Homey ger exakt värde. */
+/* kr per dygn = summan av (kWh den timmen x timpriset den timmen), bara timmar då enheten var igång. Gäller senaste 31 dagarna (loggens upplösning). */
+async function hourlyKr(id){
+  if(!id)return {};
+  const ph=await loadPriceHist(),es=await logEntries(id,"measure_power","last31Days"),sm={},ct={};
+  for(const e of es){if(e.v==null)continue;const k=hourKey(new Date(e.t));sm[k]=(sm[k]||0)+e.v;ct[k]=(ct[k]||0)+1;}
+  const out={},bad={};
+  for(const k in sm){const kw=sm[k]/ct[k]/1000,d=k.slice(0,10);
+    if(kw<0.005){if(out[d]==null)out[d]=0;continue;}
+    if(ph[k]==null){bad[d]=1;continue;}
+    out[d]=(out[d]||0)+kw*ph[k];}
+  for(const d in bad)delete out[d];
+  return out;
+}
 function addEstKr(S){
   const T=S.tibber;if(!T)return S;
   for(const k of ["traktor","golv"]){
     const X=S[k];if(!X||Object.keys(X.kr||{}).length)continue;
-    const kr={};for(const d of Object.keys(X.kwh)){const a=T.kwh[d],b=T.kr[d];if(a>0&&b!=null)kr[d]=X.kwh[d]*b/a;}
+    const kr={};for(const d of Object.keys(X.kwh)){const a=T.kwh[d],b=T.kr[d];if(X.hkr&&X.hkr[d]!=null)kr[d]=X.hkr[d];else if(a>0&&b!=null)kr[d]=X.kwh[d]*b/a;}
     X.kr=kr;X.est=true;}
   return S;
 }
@@ -504,57 +519,67 @@ function liveEnergy(){
   const y=u==="kr"?"devicecapabilities_number.number6":"devicecapabilities_number.number5";
   return {w:capVal(d,"measure_power.number1"),price:null,day:null,prevDay:null,month:capVal(d,m),prevMonth:null,year:capVal(d,y),prevYear:null,avgM:capVal(d,"devicecapabilities_number.number4")};
 }
-async function renderOversikt(){
-  const e=liveEnergy(),u=unitName(state.unit),dec=state.unit==="kr"?0:0;
-  let h=`<div class="grid">`;
-  h+=tile("Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Aktuell förbrukning","hero");
-  if(state.prop==="235"){
-    h+=tile("Elpris just nu (inkl. påslag)",fmt(e.price,2),"kr/kWh","Tibber + "+fmt(cfg.markup,3)+" kr/kWh");
-    h+=tile("Idag",fmt(e.day,dec),u,delta(e.day,e.prevDay,"mot igår ("+fmt(e.prevDay,0)+" "+u+")"));
-  }else{
-    h+=tile("Snittpris denna månad",e.avgM!=null?fmt(e.avgM/100,2):"–","kr/kWh","Dekarsön 236");
-    h+=tile("Idag","–","","Dygnsvärden visas när dygnet är slut");
-  }
-  h+=tile("Denna månad",fmt(e.month,dec),u,state.prop==="235"?delta(e.month,e.prevMonth,"mot förra månaden ("+fmt(e.prevMonth,0)+" "+u+")"):"");
-  h+=tile("I år",fmt(e.year,dec),u,state.prop==="235"?delta(e.year,e.prevYear,"mot förra året ("+fmt(e.prevYear,0)+" "+u+")"):"");
-  h+=`</div>`;
-  if(state.prop==="235"){
-    const tb=state.devices[cfg.ids.tibber],now=new Date(),frac=Math.max(now.getMinutes()+now.getSeconds()/60,1)/60;
-    const thisH=capVal(tb,"meter_kwh_this_hour"),lastH=capVal(tb,"meter_kwh_last_hour"),avgW=capVal(tb,"measure_watt_avg"),maxW=capVal(tb,"measure_watt_max");
-    let hh={},keys=[];try{hh=await loadHourly();keys=Object.keys(hh).sort().slice(-24);}catch(e){}
-    const v24=keys.map(k=>hh[k]),peak=v24.length?Math.max(...v24):null;
-    h+=`<h3>Timmedeleffekt (medel per timme)</h3><div class="grid">`;
-    h+=tile("Denna timme, hittills",thisH!=null?fmt(thisH/frac,2):"–","kW",thisH!=null?fmt(thisH,2)+" kWh på "+fmt(frac*60,0)+" min":"");
-    h+=tile("Föregående timme",fmt(lastH,2),"kW","Medeleffekt hela timmen");
-    h+=tile("Snitt idag",avgW!=null?fmt(avgW/1000,2):"–","kW","Högsta effekt "+(maxW!=null?fmt(maxW/1000,1)+" kW":"–"));
-    h+=tile("Högsta timme senaste 24 h",fmt(peak,2),"kW",peak!=null?keys[v24.indexOf(peak)].slice(5,10)+" kl "+keys[v24.indexOf(peak)].slice(11)+":00":"");
-    h+=`</div>`;
-    if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>k.slice(11)+":00"),"kW")}<div class="note">Klicka för mer.</div></div>`;
-  }
-
-  const L=statusLists();
-  const att=[];
+function attnHtml(){
+  const L=statusLists(),att=[];
   for(const d of L.battery)att.push(`Svagt batteri: ${esc(devName(d))} (${fmt(capVal(d,"measure_battery"),0)} %)`);
   for(const d of L.alarms)att.push(`Larm: ${esc(devName(d))}`);
   for(const d of L.open)att.push(`Öppet: ${esc(devName(d))} (${esc(zoneName(d))})`);
   for(const x of L.locks.filter(x=>!x.ok))att.push(`Olåst: ${esc(devName(x.d))}`);
-  if(att.length)h=`<div class="card attn" style="margin-bottom:12px"><h2>Behöver uppmärksamhet <span class="pill bad">${att.length}</span></h2><ul style="margin:0;padding-left:18px">${att.slice(0,8).map(x=>`<li>${x}</li>`).join("")}</ul></div>`+h;
-  h+=`<h3>Just nu</h3><div class="grid">`;
-  h+=tile("Lampor tända",L.lights.length,"",L.lights.slice(0,3).map(x=>esc(devName(x))).join(", ")+(L.lights.length>3?" …":""));
-  h+=tile("Uttag på",L.sockets.length,"",L.sockets.length?`${fmt(L.sockets.reduce((a,d)=>a+(capVal(d,"measure_power")||0),0),0)} W totalt`:"");
-  const unlocked=L.locks.filter(x=>!x.ok).length;
-  h+=tile("Lås",L.locks.length?(unlocked?unlocked+" olåst":"Alla låsta"):"–","",L.locks.map(x=>esc(devName(x.d))+": "+(x.ok?"låst":"OLÅST")).join(", "));
-  const alarmN=L.alarms.length+L.open.length;
-  h+=tile("Larm och öppet",alarmN,"",alarmN?[...L.alarms,...L.open].slice(0,3).map(x=>esc(devName(x))).join(", "):"Inget aktivt",alarmN?"":"");
-  h+=`</div>`;
-
+  return `<div class="card ${att.length?"attn":""}" style="grid-column:1/-1"><h2>Behöver uppmärksamhet <span class="pill ${att.length?"bad":""}">${att.length}</span></h2>${att.length?`<ul style="margin:0;padding-left:18px">${att.map(x=>`<li>${x}</li>`).join("")}</ul>`:`<div class="note" style="margin:0">Inget just nu.</div>`}</div>`;
+}
+function statusBar(){
+  const L=statusLists(),unl=L.locks.filter(x=>!x.ok).length,al=L.alarms.length+L.open.length;
+  const chip=(k,dot,txt)=>`<button class="chip" data-status="${k}"><span class="dot ${dot}"></span>${txt}</button>`;
+  return `<div class="card" style="margin-bottom:14px"><div class="bar" style="margin:0"><b>Just nu</b>
+    ${chip("lights",L.lights.length?"on":"",`Lampor: ${L.lights.length} tända`)}
+    ${chip("sockets",L.sockets.length?"on":"",`Uttag: ${L.sockets.length} på`)}
+    ${chip("locks",!L.locks.length?"":(unl?"bad":"ok"),L.locks.length?(unl?`Lås: ${unl} olåst`:"Lås: alla låsta"):"Lås: –")}
+    ${chip("alarms",al?"bad":"ok",`Larm/öppet: ${al}`)}
+    ${chip("motion",L.motion.length?"on":"",`Rörelse: ${L.motion.length}`)}
+    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}</div>
+    <div class="note" style="margin-top:6px">Klicka på en ruta för detaljer och för att ändra.</div></div>`;
+}
+function statusModalHtml(k){
+  const L=statusLists(),tit={lights:"Lampor",sockets:"Uttag",locks:"Lås",alarms:"Larm och öppna kontakter",motion:"Rörelse just nu",battery:"Svagt batteri"}[k]||k;
+  let h=`<div class="mhead"><h2>${tit}</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`;
+  const cards=ds=>ds.length?`<div class="grid">${ds.sort((a,b)=>(capVal(b,"onoff")?1:0)-(capVal(a,"onoff")?1:0)||zoneName(a).localeCompare(zoneName(b),"sv")).map(devCard).join("")}</div>`:`<div class="note">Inga enheter.</div>`;
+  const row=(d,right)=>`<div class="stat"><span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${right}</span></div>`;
+  if(k==="lights"){const ds=propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d));h+=`<div class="bar"><button class="btn" data-act="alloff">Släck alla lampor</button><span class="note">${L.lights.length} av ${ds.length} tända</span></div>`+cards(ds);}
+  else if(k==="sockets"){h+=cards(propDevices().filter(d=>!isLamp(d)&&d.class==="socket"&&hasOnoff(d)&&isShown(d)));}
+  else if(k==="locks"){h+=L.locks.length?L.locks.map(x=>row(x.d,`<span class="dot ${x.ok?"ok":"bad"}"></span>${x.ok?"Låst":"Olåst"} <button class="btn sm" data-act="lock" data-dev="${x.d.id}" data-to="${!x.ok}">${x.ok?"Lås upp":"Lås"}</button>`)).join(""):`<div class="note">Inga lås.</div>`;}
+  else if(k==="alarms"){const a=[...L.alarms.map(d=>row(d,"Larm")),...L.open.map(d=>row(d,"Öppen"))];h+=a.length?a.join(""):`<div class="note">Inget aktivt.</div>`;}
+  else if(k==="motion"){h+=L.motion.length?L.motion.map(d=>row(d,"Rörelse")).join(""):`<div class="note">Ingen rörelse just nu.</div>`;}
+  else if(k==="battery"){h+=L.battery.length?L.battery.map(d=>row(d,fmt(capVal(d,"measure_battery"),0)+" %")).join(""):`<div class="note">Alla batterier är över 20 %.</div>`;}
+  return h;
+}
+async function renderOversikt(){
+  const e=liveEnergy();
+  let h=statusBar();
+  if(state.prop==="235"){
+    const tb=state.devices[cfg.ids.tibber],now=new Date(),frac=Math.max(now.getMinutes()+now.getSeconds()/60,1)/60;
+    const thisH=capVal(tb,"meter_kwh_this_hour"),kd=capVal(tb,"meter_kwh_this_day"),kdp=capVal(tb,"meter_kwh_last_day"),rd=capVal(tb,"meter_money_this_day"),rdp=capVal(tb,"meter_money_last_day");
+    h+=`<div class="grid">`;
+    h+=tile("Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Aktuell förbrukning","hero");
+    h+=tile("Energi idag",fmt(kd,1),"kWh",delta(kd,kdp,"mot igår ("+fmt(kdp,0)+" kWh)"));
+    h+=tile("Kr idag",fmt(rd,0),"kr",delta(rd,rdp,"mot igår ("+fmt(rdp,0)+" kr)"));
+    h+=tile("Timmedel effekt just nu",thisH!=null?fmt(thisH/frac,2):"–","kW",thisH!=null?fmt(thisH,2)+" kWh på "+fmt(frac*60,0)+" min":"");
+    h+=`</div>`;
+    let hh={},keys=[];try{hh=await loadHourly();keys=Object.keys(hh).sort().slice(-24);}catch(err){}
+    const v24=keys.map(k=>hh[k]);
+    if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>k.slice(11)+":00"),"kW")}<div class="note">Klicka för mer.</div></div>`;
+    const t=state.devices[cfg.ids.tesla];
+    if(t){const soc=capVal(t,"measure_soc_level")??capVal(t,"measure_battery"),on=capVal(t,"charging_on");
+      h+=`<h3>Tesla</h3><div class="grid">${tile("Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte")}${tile("Räckvidd",fmt(capVal(t,"measure_soc_range_estimated"),0),"km","Uppskattad")}${tile("Laddgräns",fmt(capVal(t,"measure_charge_limit_soc"),0),"%","")}${tile("Senaste laddning",fmt(capVal(t,"measure_charge_energy_added"),1),"kWh","Tillförd energi")}${tile("Temperatur ute / inne",fmt(capVal(t,"measure_climate_temperature_out"),1)+" / "+fmt(capVal(t,"measure_climate_temperature_in"),1),"°C","")}</div>`;}
+  }else{
+    h+=`<div class="grid">`+tile("Effekt just nu",e.w!=null?fmt(e.w,0):"–","W","Dekarsön 236","hero")+tile("Denna månad",fmt(e.month,0),unitName(state.unit),"")+tile("I år",fmt(e.year,0),unitName(state.unit),"")+`</div>`;
+  }
   const favs=propDevices().filter(d=>isFav(d)&&hasOnoff(d));
   const ff=state.flows.filter(f=>cfg.ui.flows[f.id]&&cfg.ui.flows[f.id].fav);
   if(favs.length||ff.length){
     h+=`<h3>Favoriter</h3>`;
     if(favs.length)h+=`<div class="grid">${favs.map(devCard).join("")}</div>`;
     if(ff.length)h+=`<div class="grid wide" style="margin-top:12px">${ff.map(flowCard).join("")}</div>`;
-  }else h+=`<div class="note">Tips: markera enheter och flows som favoriter i Admin så visas de här.</div>`;
+  }
   $("#p-oversikt").innerHTML=h;
 }
 
@@ -640,7 +665,7 @@ async function loadPriceHist(){
     for(let i=47;i>=0;i--){const d=new Date(now.getTime()-i*36e5),hr=d.getHours();
       h[d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(hr)]=0.5+0.4*Math.cos((hr-8)/24*2*Math.PI)+(hr>=17&&hr<=20?0.5:0)+R()*0.2;}
   }else{
-    const useE=!!cfg.ids.elpris,es=await logEntries(useE?cfg.ids.elpris:cfg.ids.price,useE?"meter_price_h0":"measure_price_total","last7Days"),sm={},ct={};
+    const useE=!!cfg.ids.elpris,es=await logEntries(useE?cfg.ids.elpris:cfg.ids.price,useE?"meter_price_h0":"measure_price_total","last31Days"),sm={},ct={};
     for(const e of es){if(e.v==null)continue;const d=new Date(e.t),k=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());sm[k]=(sm[k]||0)+e.v;ct[k]=(ct[k]||0)+1;}
     for(const k in sm)h[k]=sm[k]/ct[k]+(useE?0:Number(cfg.markup||0));
   }
@@ -703,7 +728,7 @@ async function renderEkonomi(){
   for(const [k,name] of rows){const T=S[k];
     if(!T){h+=`<tr><td>${name}</td><td colspan="6" style="color:var(--mut)">Ej tillgänglig · ingen källa konfigurerad</td></tr>`;continue;}
     const kr=sumRange(T,"kr",R.s,R.e),kw=sumRange(T,"kwh",R.s,R.e),cov=R.len?Math.round((R.len-Math.min(kr.missing,kw.missing))/R.len*100):0;
-    const why=k==="tibber"?"Total (räknas aldrig dubbelt)":T.derived?"Beräknad ≈ (Tibber − Hushåll − Uppvärmning)":T.est?"≈ kr uppskattat med dygnets snittpris":["hush","uppv","vp"].includes(k)?"Homeys rapportenhet · överlappar totalen":"Homey";
+    const why=k==="tibber"?"Total (räknas aldrig dubbelt)":T.derived?"Beräknad ≈ (Tibber − Hushåll − Uppvärmning)":T.est?"≈ kr = kWh × timpris när den var igång":["hush","uppv","vp"].includes(k)?"Homeys rapportenhet · överlappar totalen":"Homey";
     h+=`<tr class="kcard" data-card="${k}" tabindex="0" style="cursor:pointer"><td>${name}</td><td>${T.est||T.derived?"≈ ":""}${fmt(kr.v,0)}</td><td>${fmt(kw.v,0)}</td><td>${kw.v>0&&kr.v!=null?fmt(kr.v/kw.v,2):"–"}</td><td>${k==="tibber"?"100 %":(tot>0&&kr.v!=null?fmt(kr.v/tot*100,0)+" %":"–")}</td><td>${cov} %</td><td style="text-align:left;color:var(--mut);white-space:normal">${why}</td></tr>`;}
   h+=`</table></div><div class="note">Hushållsel, Uppvärmning och Värmepump överlappar varandra och totalen, så delposterna ska inte summeras. Klicka på en rad för detaljer.</div></div>`;
   $("#p-ekonomi").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;
@@ -792,7 +817,7 @@ function kCard(k,name,S,R,u){
     <div class="big">${T.est&&eu==="kr"?"≈ ":""}${fmt(cur.v,0)} <small>${un}</small></div>
     <div class="s" style="font-size:13.5px;min-height:19px">${prv?delta(cur.v,prv.v,"mot "+fmt(prv.v,0)+" "+un):""}</div>
     <div style="margin:6px 0 2px">${spark(sp)}</div>
-    <div class="meta"><span>${fmt(co.v,0)} ${unitName(oth)}</span>${avg?`<span>${avg}</span>`:""}${share?`<span>${share}</span>`:""}${eu!==u?`<span>endast kWh finns</span>`:""}${T.est&&eu==="kr"?`<span>≈ kr beräknat med dygnets snittpris</span>`:""}</div></div>`;
+    <div class="meta"><span>${fmt(co.v,0)} ${unitName(oth)}</span>${avg?`<span>${avg}</span>`:""}${share?`<span>${share}</span>`:""}${eu!==u?`<span>endast kWh finns</span>`:""}${T.est&&eu==="kr"?`<span>≈ kr = kWh × timpris när den var igång</span>`:""}</div></div>`;
 }
 /* ---- diagramdefinitioner ---- */
 function monthKeys(n){const t=todayStr();const y=+t.slice(0,4),m=+t.slice(5,7),a=[];for(let i=n-1;i>=0;i--){let mm=m-i,yy=y;while(mm<1){mm+=12;yy--;}a.push(yy+"-"+pad(mm));}return a;}
@@ -876,6 +901,7 @@ function modalHead(title){
 }
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
+  if(m.t==="status"){body.innerHTML=statusModalHtml(m.k);return;}
   const c=await kortCtx(addDays(todayStr(),-760)),R=c.R,u=c.u;
   if(m.t==="card"){
     const name=(korts().find(x=>x[0]===m.k)||[0,m.k])[1],T=c.S[m.k];h=modalHead(name);
@@ -1020,7 +1046,7 @@ async function viewTraktor(R,u){
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   const T=(await loadSeries(minDate)).traktor,eu=effU(T,u);
   const c=chartBlock("Traktorladdning",T,R,eu);h+=c.html||c;
-  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor är uppskattade med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
+  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor räknas timme för timme: kWh när enheten var igång gånger timpriset just då (senaste 31 dagarna), äldre dagar med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
   return h;
 }
 async function viewUterum(R,u){
@@ -1034,7 +1060,7 @@ async function viewUterum(R,u){
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   const T=(await loadSeries(minDate)).golv,eu=effU(T,u);
   const c=chartBlock("Golvvärme Uterum",T,R,eu);h+=c.html||c;
-  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor är uppskattade med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
+  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor räknas timme för timme: kWh när enheten var igång gånger timpriset just då (senaste 31 dagarna), äldre dagar med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
   return h;
 }
 async function renderDetalj(){
@@ -1173,7 +1199,7 @@ function renderAdmin(){
   const st=cfg.ui.status;
   const stNames={lights:"Tända lampor",sockets:"Uttag på",locks:"Lås",open:"Kontakter aktiva",alarms:"Larm",motion:"Rörelse",battery:"Svagt batteri",temps:"Temperaturer"};
   const idf=(k,l)=>`<label class="adm-l">${l}<input type="text" data-cfg="ids.${k}" value="${esc(cfg.ids[k])}"></label>`;
-  let h=`<div class="grid wide">
+  let h=`<div class="grid wide">${attnHtml()}
   <div class="card"><h2>Anslutning</h2>
     <label class="adm-l">Anslutningssätt<select data-cfg="mode"><option value="cloud" ${isCloud()?"selected":""}>Via inloggning (överallt)</option><option value="local" ${!isCloud()?"selected":""}>Direkt hemma (API-nyckel)</option></select></label>
     ${isCloud()?`<label class="adm-l">Serveradress<input type="text" data-cfg="workerUrl" value="${esc(cfg.workerUrl)}" placeholder="https://dekarson-api.NAMN.workers.dev"></label>
@@ -1317,6 +1343,7 @@ document.addEventListener("click",async e=>{
   if(e.target.closest("[data-close]")){$("#dlg").close();state.modal=null;return;}
   if(e.target.id==="dlg"){$("#dlg").close();state.modal=null;return;}
   const mu=e.target.closest("[data-munit]");if(mu){state.unit=mu.dataset.munit;drawProp();draw();return;}
+  const sb=e.target.closest("[data-status]");if(sb){openModal("status",sb.dataset.status);return;}
   const kc=e.target.closest("[data-card]");if(kc){openModal("card",kc.dataset.card);return;}
   const cc=e.target.closest("[data-chart]");if(cc){openModal("chart",cc.dataset.chart);return;}
   const dt=e.target.closest("[data-det]");if(dt){state.det=dt.dataset.det;draw();return;}
@@ -1328,6 +1355,7 @@ document.addEventListener("click",async e=>{
     else if(act==="flow"){await runFlow(id);state.flash[id]=true;draw();setTimeout(()=>{delete state.flash[id];draw();},1800);}
     else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
       for(const d of propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d)&&zoneName(d)===z))await setCap(d.id,"onoff",to);draw();}
+    else if(act==="lock"){const d=state.devices[b.dataset.dev],to=b.dataset.to==="true";if(!to&&!confirm("Låsa upp "+devName(d)+"?"))return;await setCap(d.id,"locked",to);draw();}
     else if(act==="alloff"){
       if(!confirm("Släcka alla tända lampor i "+PROPS.find(p=>p.k===state.prop).name+"?"))return;
       for(const d of propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d)&&d.capabilitiesObj.onoff.value))await setCap(d.id,"onoff",false);draw();}
