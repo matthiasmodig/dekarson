@@ -1,0 +1,10 @@
+name = "dekarson-api"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+SITE_ORIGIN = "https://dekarson.matthiasmodig.se"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "3c3c49f7a1e8467196eedb66b917bfa1"

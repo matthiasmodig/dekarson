@@ -1,0 +1,1155 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Energicentral</title>
+<style>
+:root{
+  --bg:#eef0f3;--card:#fff;--ink:#14171b;--mut:#626b78;--line:#dfe3e8;--soft:#f5f6f8;
+  --cur:#2f6fdd;--prev:#8f98a8;--good:#16844a;--bad:#c53838;--on:#f2a516;--accent:#2f6fdd;--accent-ink:#fff;
+  --r:16px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0e1013;--card:#171a1f;--ink:#eef0f3;--mut:#9aa3af;--line:#272c34;--soft:#1e2228;
+    --cur:#6da2ff;--prev:#7b8494;--good:#4cc38a;--bad:#ff7b7b;--on:#ffc24a;--accent:#6da2ff;--accent-ink:#0b1220}
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.hide{display:none!important}
+
+/* ---------- topbar ---------- */
+header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--line)}
+.top{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 18px}
+.brand{font-weight:750;font-size:19px;letter-spacing:-.3px;margin-right:4px}
+.seg{display:inline-flex;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:9px 16px;border-radius:9px;font-weight:600;color:var(--mut);min-height:40px}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+.grow{flex:1}
+.status{font-size:13px;color:var(--mut)}
+.err{color:var(--bad)}
+nav{display:flex;gap:2px;padding:0 12px;overflow-x:auto;border-top:1px solid var(--line)}
+nav button{border:0;background:transparent;padding:13px 16px;font-weight:600;color:var(--mut);border-bottom:3px solid transparent;white-space:nowrap}
+nav button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+
+main{max-width:1280px;margin:0 auto;padding:18px 18px 70px}
+h2{font-size:17px;margin:0 0 10px;font-weight:700}
+h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.grid.wide{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.note{color:var(--mut);font-size:13px;margin-top:8px}
+.warn{background:#fff4dd;color:#6f4400;border:1px solid #efd08a;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:14px}
+@media (prefers-color-scheme:dark){.warn{background:#2b2411;color:#f2d28f;border-color:#58461c}}
+.btn{border:1px solid var(--line);background:var(--card);padding:9px 15px;border-radius:11px;min-height:40px;font-weight:600}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:5px 10px;min-height:32px;font-size:13px}
+.chip{border:1px solid var(--line);background:var(--card);padding:9px 16px;border-radius:999px;font-weight:600;min-height:40px}
+.chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.bar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:12px}
+.bar label{color:var(--mut);font-size:14px;display:flex;gap:6px;align-items:center}
+input[type=date],input[type=text],input[type=password],input[type=search],select{border:1px solid var(--line);background:var(--card);padding:8px 10px;border-radius:10px;min-height:40px}
+
+/* ---------- tiles ---------- */
+.tile .l{color:var(--mut);font-size:14px}
+.tile .v{font-size:38px;font-weight:750;letter-spacing:-1px;margin:2px 0 0;line-height:1.1}
+.tile .v small{font-size:17px;font-weight:600;color:var(--mut);letter-spacing:0}
+.tile .s{font-size:13.5px;color:var(--mut);margin-top:4px;min-height:19px}
+.up{color:var(--bad)}.down{color:var(--good)}
+.tile.hero .v{font-size:48px}
+
+/* ---------- chart / tables ---------- */
+.legend{display:flex;gap:16px;color:var(--mut);font-size:13px;margin:2px 0 6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+svg text{fill:var(--mut);font-size:11px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:right;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:500;font-size:13px}
+tr:last-child td{border-bottom:0}
+.adm td,.adm th{text-align:left;white-space:normal}
+.adm td input[type=text]{width:100%;min-width:120px;padding:5px 8px;min-height:34px}
+
+/* ---------- devices ---------- */
+.zonehead{display:flex;align-items:center;gap:10px;margin:22px 0 8px}
+.zonehead b{font-size:17px}
+.dev{display:flex;flex-direction:column;gap:10px;padding:14px 16px}
+.dev .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dev .nm{font-weight:650;line-height:1.2}
+.dev .sub{color:var(--mut);font-size:13px;margin-top:2px}
+.dev.on{border-color:var(--on);box-shadow:inset 0 0 0 1px var(--on)}
+.sw{width:58px;height:34px;border-radius:17px;border:0;background:var(--line);position:relative;flex:none;transition:.15s}
+.sw::after{content:"";position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 3px #0005}
+.sw[aria-checked=true]{background:var(--on)}
+.sw[aria-checked=true]::after{left:28px}
+input[type=range]{width:100%;height:34px;accent-color:var(--on)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--line);margin-right:7px}
+.dot.on{background:var(--on)}.dot.ok{background:var(--good)}.dot.bad{background:var(--bad)}
+.flow{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.flow .nm{font-weight:650}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.stat:last-child{border-bottom:0}
+.pill{display:inline-block;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 10px;font-size:13px;color:var(--mut)}
+.pill.bad{color:var(--bad);border-color:var(--bad)}
+
+#dlg{max-width:1100px;width:96vw;max-height:92vh;overflow:auto;padding:0}#dlgBody{padding:16px 20px 24px}
+.mhead{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:12px}.mhead h2{font-size:22px;margin:0}
+.kcard,.chartcard{cursor:pointer;transition:.12s}.kcard:hover,.chartcard:hover{border-color:var(--accent);transform:translateY(-1px)}
+.kcard .big{font-size:34px;font-weight:750;letter-spacing:-1px;line-height:1.1}.kcard .big small{font-size:15px;color:var(--mut);font-weight:600;letter-spacing:0}
+.kcard .top2{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.kcard .nm{font-weight:650}.kcard .live{font-size:13px;color:var(--mut)}
+.kcard .meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--mut);margin-top:6px}
+.hbar{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:14px}.hbar .lab{width:140px;flex:none}.hbar .tr{flex:1;background:var(--soft);border-radius:6px;height:18px;overflow:hidden}.hbar .tr i{display:block;height:100%;background:var(--cur);border-radius:6px}.hbar .val{width:92px;text-align:right;flex:none}
+.stack{display:flex;height:30px;border-radius:8px;overflow:hidden;margin:8px 0}.stack i{display:block;height:100%}
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink);max-width:420px;width:92%}
+dialog::backdrop{background:#0009}
+.adm-l{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut);margin:0 0 10px}.adm-l input[type=text],.adm-l input[type=password]{width:100%}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <span class="brand">Energicentral</span>
+    <div class="seg" id="segProp" role="group" aria-label="Fastighet"></div>
+    <div class="seg" id="segUnit" role="group" aria-label="Enhet">
+      <button data-unit="kr" aria-pressed="true">Kronor</button>
+      <button data-unit="kwh" aria-pressed="false">kWh</button>
+    </div>
+    <span class="grow"></span>
+    <span class="status" id="status"></span>
+  </div>
+  <nav id="nav">
+    <button data-tab="oversikt" aria-selected="true">Översikt</button>
+    <button data-tab="kort" aria-selected="false">Energikort</button>
+    <button data-tab="energi" aria-selected="false">Energi</button>
+    <button data-tab="detalj" aria-selected="false">Detaljer</button>
+    <button data-tab="styr" aria-selected="false">Styrning</button>
+    <button data-tab="flows" aria-selected="false">Flows</button>
+    <button data-tab="status" aria-selected="false">Status</button>
+    <button data-tab="admin" aria-selected="false">Admin</button>
+  </nav>
+</header>
+
+<main>
+  <div id="demoWarn" class="warn hide">Demoläge: allt du ser är exempeldata. Gå till Admin, ange Homeys IP och API-nyckel och stäng av demoläget.</div>
+  <div id="errBox" class="warn hide"></div>
+  <section id="p-oversikt"></section>
+  <section id="p-kort" class="hide"></section>
+  <section id="p-energi" class="hide"></section>
+  <section id="p-detalj" class="hide"></section>
+  <section id="p-styr" class="hide"></section>
+  <section id="p-flows" class="hide"></section>
+  <section id="p-status" class="hide"></section>
+  <section id="p-admin" class="hide"></section>
+</main>
+<dialog id="dlg"><div id="dlgBody"></div></dialog>
+
+<script>
+"use strict";
+/* =====================================================================
+   KONFIGURATION
+   ===================================================================== */
+const PROPS=[{k:"235",name:"Dekarsön 235"},{k:"236",name:"Dekarsön 236"}];
+const DEFAULTS={
+  ip:"",key:"",mode:/\.matthiasmodig\.se$/.test(location.hostname)?"cloud":"local",workerUrl:"",session:"",demo:true,pin:"",markup:0.448,
+  exclude:"avlopp|frysvakt|garageport|ventilation|homey|motorv|traktor",
+  zones236:["34b25977-ba64-49f5-816c-90adeb4091eb"],
+  ids:{
+    tibber:"9984ff30-8ea8-4a59-8b77-ca10a9722cdf",hush:"d2a46475-4494-4794-ad4a-413f89209ecf",
+    uppv:"f6565b0d-0a1b-4d61-be3d-21e064f0af16",vp:"2b491c90-9448-47be-85a4-c4de18e5a711",ovr:"",
+    d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
+    price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",
+    tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
+    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
+  },
+  ui:{devices:{},flows:{},status:{lights:true,sockets:true,locks:true,open:true,alarms:true,motion:true,battery:true,temps:true}}
+};
+const SRC=[{k:"tibber",name:"Tibber, hela huset",total:true},{k:"hush",name:"Hushållsel"},{k:"uppv",name:"Uppvärmning"},{k:"vp",name:"Värmepump"},{k:"ovr",name:"Övrigt"}];
+const REFRESH_MS=20000;
+
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function loadCfg(){
+  try{const s=JSON.parse(localStorage.getItem("homeyDash2")||"null");
+    if(s){const d=clone(DEFAULTS);return {...d,...s,ids:{...d.ids,...(s.ids||{})},ui:{devices:{...(s.ui&&s.ui.devices)},flows:{...(s.ui&&s.ui.flows)},status:{...d.ui.status,...(s.ui&&s.ui.status)}}};}}catch(e){}
+  return clone(DEFAULTS);
+}
+let cfg=loadCfg();
+function persist(){try{localStorage.setItem("homeyDash2",JSON.stringify(cfg));}catch(e){}}
+const isCloud=()=>cfg.mode==="cloud";
+const isDemo=()=>cfg.demo||!(isCloud()?(cfg.workerUrl&&cfg.session):(cfg.ip&&cfg.key));
+
+const state={det:"timmar",hourly:null,prop:"235",unit:"kr",tab:"oversikt",preset:"manad",cmp:"prev",from:"",to:"",
+  devices:{},zones:{},flows:[],flowsAt:0,cache:{},adminOk:false,flash:{},search:"",adminSearch:""};
+
+/* =====================================================================
+   HJÄLPARE
+   ===================================================================== */
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,"0");
+const addDays=(s,n)=>{const [y,m,d]=s.split("-").map(Number);return new Date(Date.UTC(y,m-1,d+n)).toISOString().slice(0,10);};
+const diffDays=(a,b)=>Math.round((Date.parse(b)-Date.parse(a))/864e5);
+const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());};
+const shiftYear=(s,n)=>(parseInt(s.slice(0,4))+n)+s.slice(4);
+const fmt=(n,d=0)=>(n==null||isNaN(n))?"–":Number(n).toLocaleString("sv-SE",{minimumFractionDigits:d,maximumFractionDigits:d});
+const MON=["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"];
+const labelDate=s=>{const p=s.split("-").map(Number);return p[2]+" "+MON[p[1]-1];};
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const capVal=(d,c)=>d&&d.capabilitiesObj&&d.capabilitiesObj[c]?d.capabilitiesObj[c].value:null;
+const unitName=u=>u==="kr"?"kr":"kWh";
+
+/* =====================================================================
+   HOMEY API (lokalt nät)
+   ===================================================================== */
+function base(){if(isCloud())return cfg.workerUrl.trim().replace(/\/$/,"");const ip=cfg.ip.trim();return /^https?:\/\//.test(ip)?ip.replace(/\/$/,""):"http://"+ip;}
+async function api(path,opt={}){
+  const r=await fetch(base()+path,{...opt,headers:{"Authorization":"Bearer "+(isCloud()?cfg.session:cfg.key),"Content-Type":"application/json"}});
+  if(r.status===401&&isCloud()){cfg.session="";persist();throw new Error("Du är utloggad. Gå till Admin och logga in med Homey igen.");}
+  if(!r.ok){let bt="";try{bt=(await r.text()).slice(0,160);}catch(e){}throw new Error("Homey svarade "+r.status+" på "+path+(bt?" – "+bt:""));}
+  const t=await r.text();let j=null;try{j=t?JSON.parse(t):null;}catch(e){}
+  return (j&&j.result!==undefined)?j.result:j;
+}
+let LOGLIST=null;
+async function logList(){
+  if(LOGLIST)return LOGLIST;
+  const r=await api("/api/manager/insights/log/");
+  LOGLIST=Array.isArray(r)?r:Object.values(r||{});return LOGLIST;
+}
+async function findLog(devId,cap){
+  const uri="homey:device:"+devId,full=uri+":"+cap,L=await logList();
+  return L.find(l=>l.uri===uri&&l.id===cap)||L.find(l=>l.id===full)||L.find(l=>(l.uri+":"+l.id)===full)||null;
+}
+const LOGPATHS=[
+  (u,c,r)=>"/api/manager/insights/log/"+encodeURIComponent(u)+"/"+encodeURIComponent(c)+"/entry?resolution="+r,
+  (u,c,r)=>"/api/manager/insights/log/"+u+"/"+c+"/entry?resolution="+r,
+  (u,c,r)=>"/api/manager/insights/log/"+encodeURIComponent(u+":"+c)+"/entry?resolution="+r,
+  (u,c,r)=>"/api/manager/insights/log/"+u+":"+c+"/entry?resolution="+r,
+  (u,c,r)=>"/api/manager/insights/log/"+encodeURIComponent(u)+"/"+encodeURIComponent(c)+"?resolution="+r,
+  (u,c,r)=>"/api/manager/insights/log/"+u+"/"+c+"?resolution="+r,
+  (u,c,r)=>"/api/manager/insights/log/"+u+"/"+c+"/entry/"+r,
+  (u,c,r)=>"/api/manager/insights/log/"+encodeURIComponent(u+":"+c)+"/"+r,
+  (u,c,r)=>"/api/manager/insights/log/"+u+":"+c+"/"+r,
+  (u,c,r)=>"/api/manager/insights/log/"+u+"/"+c+"/"+r
+];
+/* Homey vill ha loggens fulla id (homey:device:<id>:<cap>) som id-delen i adressen */
+function logPairs(devId,cap,lg){
+  const uri="homey:device:"+devId,full=(lg&&lg.id)||uri+":"+cap,p=[];
+  p.push([(lg&&lg.ownerUri)||uri,full]);
+  p.push([uri,cap]);
+  p.push([full.split(":").slice(0,2).join(":"),full]);
+  p.push([uri,uri+":"+cap]);
+  p.lg=lg;return p;
+}
+let LOGVAR=null,LOGINFO="",LOGPAIR=null;
+async function logEntries(devId,cap,resolution){
+  const pairs=logPairs(devId,cap,await findLog(devId,cap).catch(()=>null)),lg=pairs.lg;
+  const order=LOGVAR?[LOGVAR[1],...LOGPATHS.keys()].filter((v,i,a)=>a.indexOf(v)===i):[...LOGPATHS.keys()];
+  let lastErr=null;
+  for(const [u,c] of pairs)for(const vi of order){
+    try{
+      const r=await api(LOGPATHS[vi](u,c,resolution));
+      const arr=Array.isArray(r)?r:((r&&(r.values||r.entries))||[]);
+      LOGVAR=[0,vi];LOGINFO="variant "+(vi+1)+", uri="+u+", id="+c+(lg?"":" (loggen hittades inte i listan)");LOGPAIR=[u,c];
+      return arr;
+    }catch(e){lastErr=e;if(!/404/.test(e.message))throw e;}
+  }
+  throw lastErr||new Error("Ingen logg hittades för "+cap);
+}
+/* "igår"-räknaren ligger konstant under hela dygnet: bucketen 12:00 UTC dag D = totalen för D-1 */
+function dailyFromLastDay(entries){
+  const m={};
+  for(const e of entries){if(e.v==null)continue;const d=new Date(e.t);if(d.getUTCHours()!==12)continue;
+    m[new Date(d.getTime()-864e5).toISOString().slice(0,10)]=e.v;}
+  return m;
+}
+function dailyFromCumulative(entries,resetsYearly){
+  const c={};
+  for(const e of entries){if(e.v==null)continue;const d=new Date(e.t);if(d.getUTCHours()!==12)continue;c[d.toISOString().slice(0,10)]=e.v;}
+  const m={};
+  for(const day of Object.keys(c)){const p=c[addDays(day,-1)];if(p==null)continue;let v=c[day]-p;if(v<0&&resetsYearly)v=c[day];if(v>=0)m[day]=v;}
+  return m;
+}
+function resolutionsFor(minDate){
+  const cy=new Date().getFullYear(),y=parseInt(minDate.slice(0,4));
+  if(y>=cy)return ["thisYear"];if(y===cy-1)return ["thisYear","lastYear"];return ["thisYear","lastYear","last2Years"];
+}
+async function fetchMerged(devId,cap,minDate,conv){
+  const key=devId+"|"+cap+"|"+minDate.slice(0,4),c=state.cache[key];
+  if(c&&Date.now()-c.t<10*60*1000)return c.v;
+  const out={};
+  for(const res of resolutionsFor(minDate)){
+    try{const m=conv(await logEntries(devId,cap,res));for(const k in m)if(!(k in out))out[k]=m[k];}
+    catch(e){if(res==="thisYear")throw e;}
+  }
+  state.cache[key]={t:Date.now(),v:out};return out;
+}
+
+/* =====================================================================
+   FASTIGHET, ENHETER, FLOWS
+   ===================================================================== */
+function propOf(d){
+  let z=d.zone,guard=0;
+  while(z&&guard++<8){if(cfg.zones236.includes(z))return "236";const zz=state.zones[z];z=zz&&zz.parent;}
+  return "235";
+}
+const zoneName=d=>(state.zones[d.zone]&&state.zones[d.zone].name)||"Övrigt";
+const devName=d=>(cfg.ui.devices[d.id]&&cfg.ui.devices[d.id].alias)||d.name;
+function excluded(d){try{return cfg.exclude&&new RegExp(cfg.exclude,"i").test(d.name);}catch(e){return false;}}
+function hasOnoff(d){return !!(d.capabilitiesObj&&d.capabilitiesObj.onoff);}
+function isShown(d){
+  const u=cfg.ui.devices[d.id];if(u&&u.show!=null)return u.show;
+  return hasOnoff(d)&&(d.class==="light"||d.class==="socket")&&!excluded(d);
+}
+const isFav=d=>!!(cfg.ui.devices[d.id]&&cfg.ui.devices[d.id].fav);
+function propDevices(){return Object.values(state.devices).filter(d=>propOf(d)===state.prop);}
+
+function flowTriggerable(f,kind){
+  if(f.triggerable===true)return true;
+  if(kind==="std"&&f.trigger&&/programmatic_trigger/.test(String(f.trigger.id||"")))return true;
+  return false;
+}
+function flowShown(f){const u=cfg.ui.flows[f.id];if(u&&u.show!=null)return u.show;return f.triggerable;}
+const flowName=f=>(cfg.ui.flows[f.id]&&cfg.ui.flows[f.id].alias)||f.name;
+async function loadFlows(force){
+  if(!force&&Date.now()-state.flowsAt<60000&&state.flows.length)return;
+  if(isDemo()){state.flows=demoFlows();state.flowsAt=Date.now();return;}
+  const [a,b]=await Promise.all([api("/api/manager/flow/flow/").catch(()=>({})),api("/api/manager/flow/advancedflow/").catch(()=>({}))]);
+  const out=[];
+  for(const f of Object.values(a||{}))out.push({id:f.id,name:f.name,kind:"std",enabled:f.enabled!==false,triggerable:flowTriggerable(f,"std")});
+  for(const f of Object.values(b||{}))out.push({id:f.id,name:f.name,kind:"adv",enabled:f.enabled!==false,triggerable:flowTriggerable(f,"adv")});
+  state.flows=out.sort((x,y)=>x.name.localeCompare(y.name,"sv"));state.flowsAt=Date.now();
+}
+async function setCap(id,cap,value){
+  const d=state.devices[id];if(!d)return;
+  if(!isDemo())await api("/api/manager/devices/device/"+id+"/capability/"+cap,{method:"PUT",body:JSON.stringify({value})});
+  d.capabilitiesObj[cap].value=value;
+}
+async function runFlow(id){
+  const f=state.flows.find(x=>x.id===id);if(!f)return;
+  if(!isDemo())await api("/api/manager/flow/"+(f.kind==="adv"?"advancedflow":"flow")+"/"+id+"/trigger",{method:"POST",body:"{}"});
+}
+
+/* =====================================================================
+   ENERGISERIER
+   ===================================================================== */
+async function loadSeries(minDate){
+  const t=todayStr(),y=addDays(t,-1);
+  if(isDemo())return addEstKr(demoSeries(minDate));
+  const S={};
+  for(const src of SRC){
+    const id=cfg.ids[src.k];if(!id){S[src.k]=null;continue;}
+    const dev=state.devices[id];
+    const kwh={...await fetchMerged(id,"meter_kwh_last_day",minDate,dailyFromLastDay)};
+    const kr={...await fetchMerged(id,"meter_money_last_day",minDate,dailyFromLastDay)};
+    const a=capVal(dev,"meter_kwh_last_day"),b=capVal(dev,"meter_money_last_day"),c=capVal(dev,"meter_kwh_this_day"),e=capVal(dev,"meter_money_this_day");
+    if(a!=null)kwh[y]=a;if(b!=null)kr[y]=b;if(c!=null)kwh[t]=c;if(e!=null)kr[t]=e;
+    S[src.k]={kwh,kr};
+  }
+  if(!S.ovr&&S.tibber&&S.hush&&S.uppv){
+    const o={kwh:{},kr:{},derived:true};
+    for(const d of Object.keys(S.tibber.kwh))for(const m of ["kwh","kr"]){
+      const a=S.tibber[m][d],b=S.hush[m][d],c=S.uppv[m][d];if(a!=null&&b!=null&&c!=null)o[m][d]=a-b-c;}
+    S.ovr=o;
+  }
+  const id=cfg.ids.d236;
+  if(id){S.d236={
+    kwh:await fetchMerged(id,"devicecapabilities_number.number8",minDate,e=>dailyFromCumulative(e,false)),
+    kr:await fetchMerged(id,"devicecapabilities_number.number6",minDate,e=>dailyFromCumulative(e,true))};}
+  const safe=async f=>{try{return await f();}catch(e){return {};}};
+  if(cfg.ids.teslaE)S.tesla={kwh:await safe(()=>fetchMerged(cfg.ids.teslaE,"devicecapabilities_number.number5",minDate,e=>dailyFromCumulative(e,true))),kr:await safe(()=>fetchMerged(cfg.ids.teslaE,"devicecapabilities_number.number6",minDate,e=>dailyFromCumulative(e,true)))};
+  const rep2=async(id)=>{
+    const dev=state.devices[id],kwh={...await safe(()=>fetchMerged(id,"meter_kwh_last_day",minDate,dailyFromLastDay))},kr={...await safe(()=>fetchMerged(id,"meter_money_last_day",minDate,dailyFromLastDay))};
+    const a=capVal(dev,"meter_kwh_last_day"),b=capVal(dev,"meter_money_last_day"),c=capVal(dev,"meter_kwh_this_day"),e=capVal(dev,"meter_money_this_day");
+    if(a!=null)kwh[y]=a;if(b!=null)kr[y]=b;if(c!=null)kwh[t]=c;if(e!=null)kr[t]=e;return {kwh,kr};};
+  if(cfg.ids.trRep)S.traktor=await rep2(cfg.ids.trRep);
+  else if(cfg.ids.trLoad)S.traktor={kwh:await safe(()=>fetchMerged(cfg.ids.trLoad,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
+  if(cfg.ids.golvRep)S.golv=await rep2(cfg.ids.golvRep);
+  else if(cfg.ids.floor)S.golv={kwh:await safe(()=>fetchMerged(cfg.ids.floor,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
+  return addEstKr(S);
+}
+/* kr saknas i Homey för vissa enheter: uppskatta med dygnets snittpris (kr/kWh) för hela huset. Rapportenhet i Homey ger exakt värde. */
+function addEstKr(S){
+  const T=S.tibber;if(!T)return S;
+  for(const k of ["traktor","golv"]){
+    const X=S[k];if(!X||Object.keys(X.kr||{}).length)continue;
+    const kr={};for(const d of Object.keys(X.kwh)){const a=T.kwh[d],b=T.kr[d];if(a>0&&b!=null)kr[d]=X.kwh[d]*b/a;}
+    X.kr=kr;X.est=true;}
+  return S;
+}
+function sumRange(series,metric,s,e){
+  if(!series)return {v:null,missing:0,n:0};
+  let v=0,miss=0,n=0;
+  for(let d=s;d<=e;d=addDays(d,1)){n++;const x=series[metric][d];if(x==null)miss++;else v+=x;}
+  return {v:miss===n?null:v,missing:miss,n};
+}
+function dayArray(series,metric,s,len){const a=[];for(let i=0;i<len;i++){const x=series?series[metric][addDays(s,i)]:null;a.push(x==null?null:x);}return a;}
+function bucketize(a,b){const o=[];for(let i=0;i<a.length;i+=b){const sl=a.slice(i,i+b).filter(x=>x!=null);o.push(sl.length?sl.reduce((p,c)=>p+c,0):null);}return o;}
+function calcRange(){
+  const t=todayStr();let s,e=t;
+  switch(state.preset){
+    case "idag":s=t;break;
+    case "vecka":{const dow=(new Date(t+"T00:00:00Z").getUTCDay()+6)%7;s=addDays(t,-dow);break;}
+    case "manad":s=t.slice(0,8)+"01";break;
+    case "halvar":s=addDays(t,-182);break;
+    case "ar":s=t.slice(0,4)+"-01-01";break;
+    default:s=state.from||addDays(t,-29);e=state.to||t;
+  }
+  if(e<s)e=s;
+  const len=diffDays(s,e)+1;let ps=null,pe=null;
+  if(state.cmp==="yoy"){ps=shiftYear(s,-1);pe=shiftYear(e,-1);}
+  else if(state.cmp==="prev"){pe=addDays(s,-1);ps=addDays(pe,-(len-1));}
+  return {s,e,len,ps,pe};
+}
+function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p;}
+function barChart(cur,prev,labels,unit){
+  const W=1000,H=300,L=52,B=28,T=10,R=8;
+  const all=[...cur,...(prev||[])].filter(x=>x!=null);
+  if(!all.length)return `<div class="note">Ingen data för perioden.</div>`;
+  const max=niceMax(Math.max(...all,0.0001)),n=cur.length,bw=(W-L-R)/n,iw=Math.max(1,bw*.72);
+  const y=v=>T+(H-T-B)*(1-v/max);let g="";
+  for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,max<10?1:0)}</text>`;}
+  cur.forEach((v,i)=>{if(v==null)return;const x=L+i*bw+(bw-iw)/2,yy=y(Math.max(v,0));
+    g+=`<rect x="${x}" y="${yy}" width="${iw}" height="${Math.max(0,y(0)-yy)}" rx="2" fill="var(--cur)"><title>${labels[i]}: ${fmt(v,v<10?1:0)} ${unit}</title></rect>`;});
+  if(prev){const segs=[];let seg=[];
+    prev.forEach((v,i)=>{if(v!=null)seg.push((L+i*bw+bw/2)+","+y(Math.max(v,0)));else{if(seg.length)segs.push(seg);seg=[];}});if(seg.length)segs.push(seg);
+    for(const s of segs)g+=s.length>1?`<polyline points="${s.join(" ")}" fill="none" stroke="var(--prev)" stroke-width="2.4" stroke-dasharray="5 4"/>`:`<circle cx="${s[0].split(",")[0]}" cy="${s[0].split(",")[1]}" r="2.5" fill="var(--prev)"/>`;}
+  const step=Math.max(1,Math.ceil(n/10));
+  for(let i=0;i<n;i+=step)g+=`<text x="${L+i*bw+bw/2}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Diagram">${g}</svg>`;
+}
+function delta(cur,prev,suffix){
+  if(cur==null||prev==null||prev===0)return "";
+  const p=(cur-prev)/Math.abs(prev)*100;
+  return `<span class="${p>0?"up":"down"}">${p>0?"▲":"▼"} ${fmt(Math.abs(p),1)} %</span>${suffix?" "+suffix:""}`;
+}
+function tile(label,value,unit,sub,cls){return `<div class="card tile ${cls||""}"><div class="l">${label}</div><div class="v">${value}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`;}
+
+/* =====================================================================
+   VYER
+   ===================================================================== */
+function drawProp(){
+  $("#segProp").innerHTML=PROPS.map(p=>`<button data-prop="${p.k}" aria-pressed="${state.prop===p.k}">${p.name}</button>`).join("");
+  $("#segUnit").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.unit===state.unit));
+}
+
+/* ---------- Översikt ---------- */
+function liveEnergy(){
+  const u=state.unit,k=u==="kr"?"meter_money_":"meter_kwh_";
+  if(state.prop==="235"){
+    const d=state.devices[cfg.ids.tibber],lv=state.devices[cfg.ids.live235],pr=state.devices[cfg.ids.price];
+    const w=capVal(lv,"measure_power")??capVal(d,"measure_watt_avg");
+    const price=capVal(pr,"measure_price_total");
+    return {w,price:price!=null?price+Number(cfg.markup||0):null,
+      day:capVal(d,k+"this_day"),prevDay:capVal(d,k+"last_day"),
+      month:capVal(d,k+"this_month"),prevMonth:capVal(d,k+"last_month"),
+      year:capVal(d,k+"this_year"),prevYear:capVal(d,k+"last_year")};
+  }
+  const d=state.devices[cfg.ids.d236];
+  const m=u==="kr"?"devicecapabilities_number.number3":"devicecapabilities_number.number2";
+  const y=u==="kr"?"devicecapabilities_number.number6":"devicecapabilities_number.number5";
+  return {w:capVal(d,"measure_power.number1"),price:null,day:null,prevDay:null,month:capVal(d,m),prevMonth:null,year:capVal(d,y),prevYear:null,avgM:capVal(d,"devicecapabilities_number.number4")};
+}
+function renderOversikt(){
+  const e=liveEnergy(),u=unitName(state.unit),dec=state.unit==="kr"?0:0;
+  let h=`<div class="grid">`;
+  h+=tile("Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Aktuell förbrukning","hero");
+  if(state.prop==="235"){
+    h+=tile("Elpris just nu (inkl. påslag)",fmt(e.price,2),"kr/kWh","Tibber + "+fmt(cfg.markup,3)+" kr/kWh");
+    h+=tile("Idag",fmt(e.day,dec),u,delta(e.day,e.prevDay,"mot igår ("+fmt(e.prevDay,0)+" "+u+")"));
+  }else{
+    h+=tile("Snittpris denna månad",e.avgM!=null?fmt(e.avgM/100,2):"–","kr/kWh","Dekarsön 236");
+    h+=tile("Idag","–","","Dygnsvärden visas när dygnet är slut");
+  }
+  h+=tile("Denna månad",fmt(e.month,dec),u,state.prop==="235"?delta(e.month,e.prevMonth,"mot förra månaden ("+fmt(e.prevMonth,0)+" "+u+")"):"");
+  h+=tile("I år",fmt(e.year,dec),u,state.prop==="235"?delta(e.year,e.prevYear,"mot förra året ("+fmt(e.prevYear,0)+" "+u+")"):"");
+  h+=`</div>`;
+
+  const L=statusLists();
+  h+=`<h3>Just nu</h3><div class="grid">`;
+  h+=tile("Lampor tända",L.lights.length,"",L.lights.slice(0,3).map(x=>esc(devName(x))).join(", ")+(L.lights.length>3?" …":""));
+  h+=tile("Uttag på",L.sockets.length,"",L.sockets.length?`${fmt(L.sockets.reduce((a,d)=>a+(capVal(d,"measure_power")||0),0),0)} W totalt`:"");
+  const unlocked=L.locks.filter(x=>!x.ok).length;
+  h+=tile("Lås",L.locks.length?(unlocked?unlocked+" olåst":"Alla låsta"):"–","",L.locks.map(x=>esc(devName(x.d))+": "+(x.ok?"låst":"OLÅST")).join(", "));
+  const alarmN=L.alarms.length+L.open.length;
+  h+=tile("Larm och öppet",alarmN,"",alarmN?[...L.alarms,...L.open].slice(0,3).map(x=>esc(devName(x))).join(", "):"Inget aktivt",alarmN?"":"");
+  h+=`</div>`;
+
+  const favs=propDevices().filter(d=>isFav(d)&&hasOnoff(d));
+  const ff=state.flows.filter(f=>cfg.ui.flows[f.id]&&cfg.ui.flows[f.id].fav);
+  if(favs.length||ff.length){
+    h+=`<h3>Favoriter</h3>`;
+    if(favs.length)h+=`<div class="grid">${favs.map(devCard).join("")}</div>`;
+    if(ff.length)h+=`<div class="grid wide" style="margin-top:12px">${ff.map(flowCard).join("")}</div>`;
+  }else h+=`<div class="note">Tips: markera enheter och flows som favoriter i Admin så visas de här.</div>`;
+  $("#p-oversikt").innerHTML=h;
+}
+
+/* ---------- Energi ---------- */
+async function renderEnergi(){
+  const R=calcRange(),minDate=R.ps&&R.ps<R.s?R.ps:R.s;
+  const S=await loadSeries(minDate),u=state.unit,un=unitName(u);
+  const is235=state.prop==="235",T=is235?S.tibber:S.d236;
+  const presets=[["idag","Idag"],["vecka","Vecka"],["manad","Månad"],["halvar","Halvår"],["ar","År"],["valfri","Valfri period"]];
+  let h=`<div class="bar">${presets.map(([k,l])=>`<button class="chip" data-p="${k}" aria-pressed="${state.preset===k}">${l}</button>`).join("")}</div>`;
+  if(state.preset==="valfri")h+=`<div class="bar"><label>Från <input type="date" id="from" value="${state.from||R.s}"></label><label>Till <input type="date" id="to" value="${state.to||R.e}"></label></div>`;
+  h+=`<div class="bar"><label>Jämför mot <select id="cmp"><option value="prev">Föregående period (lika lång)</option><option value="yoy">Samma period året innan</option><option value="none">Ingen jämförelse</option></select></label></div>`;
+  h+=`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name}</div>`;
+
+  if(!T){h+=`<div class="card">Ange energikälla för ${PROPS.find(p=>p.k===state.prop).name} under Admin.</div>`;$("#p-energi").innerHTML=h;$("#cmp").value=state.cmp;return;}
+  const cur={kwh:sumRange(T,"kwh",R.s,R.e),kr:sumRange(T,"kr",R.s,R.e)};
+  const prv=R.ps?{kwh:sumRange(T,"kwh",R.ps,R.pe),kr:sumRange(T,"kr",R.ps,R.pe)}:null;
+  const other=u==="kr"?"kwh":"kr",oun=unitName(other);
+  const avg=cur.kwh.v>0&&cur.kr.v!=null?cur.kr.v/cur.kwh.v:null,pavg=prv&&prv.kwh.v>0&&prv.kr.v!=null?prv.kr.v/prv.kwh.v:null;
+  const days=R.len-cur[u].missing||1,pdays=prv?R.len-prv[u].missing||1:1;
+  h+=`<div class="grid">`;
+  h+=tile(u==="kr"?"Kostnad":"Energi",fmt(cur[u].v,0),un,prv?delta(cur[u].v,prv[u].v,"mot "+fmt(prv[u].v,0)+" "+un):"","hero");
+  h+=tile(other==="kr"?"Kostnad":"Energi",fmt(cur[other].v,0),oun,prv?delta(cur[other].v,prv[other].v,"mot "+fmt(prv[other].v,0)+" "+oun):"");
+  h+=tile("Snittpris",fmt(avg,2),"kr/kWh",pavg!=null?delta(avg,pavg,"mot "+fmt(pavg,2)):"");
+  h+=tile("Per dygn",fmt(cur[u].v!=null?cur[u].v/days:null,0),un,prv&&prv[u].v!=null?delta(cur[u].v/days,prv[u].v/pdays,""):"");
+  h+=`</div>`;
+
+  const curA=dayArray(T,u,R.s,R.len),prvA=R.ps?dayArray(T,u,R.ps,R.len):null;
+  const b=R.len<=45?1:(R.len<=200?7:30);
+  const cb=bucketize(curA,b),pb=prvA?bucketize(prvA,b):null,labels=cb.map((_,i)=>labelDate(addDays(R.s,i*b)));
+  h+=`<div class="card" style="margin:14px 0"><h2>${u==="kr"?"Kostnad (kr)":"Förbrukning (kWh)"} per ${b===1?"dygn":(b===7?"vecka":"30 dagar")}</h2>
+    <div class="legend"><span><i style="background:var(--cur)"></i>Vald period</span>${R.ps?`<span><i style="background:var(--prev)"></i>Jämförelse</span>`:""}</div>${barChart(cb,pb,labels,un)}</div>`;
+
+  if(is235){
+    const rows=SRC.map(src=>{const s=S[src.k];return {src,s,c:{kwh:sumRange(s,"kwh",R.s,R.e),kr:sumRange(s,"kr",R.s,R.e)},p:R.ps?{kwh:sumRange(s,"kwh",R.ps,R.pe),kr:sumRange(s,"kr",R.ps,R.pe)}:null};});
+    const tot=cur[u].v;
+    h+=`<div class="card"><h2>Fördelning</h2><div style="overflow:auto"><table><tr><th>Källa</th><th>kWh</th><th>kr</th><th>kr/kWh</th><th>Andel (${un})</th>${prv?`<th>Förändring (${un})</th>`:""}</tr>`;
+    for(const r of rows){
+      if(!r.s){h+=`<tr><td>${r.src.name}</td><td colspan="${prv?5:4}" style="color:var(--mut)">Ej konfigurerad</td></tr>`;continue;}
+      const share=tot>0&&r.c[u].v!=null?r.c[u].v/tot*100:null,k=r.c.kwh.v>0&&r.c.kr.v!=null?r.c.kr.v/r.c.kwh.v:null;
+      const d=prv&&r.p&&r.p[u].v?((r.c[u].v-r.p[u].v)/Math.abs(r.p[u].v)*100):null;
+      h+=`<tr><td>${r.src.name}${r.s.derived?" ≈":""}</td><td>${fmt(r.c.kwh.v,0)}</td><td>${fmt(r.c.kr.v,0)}</td><td>${fmt(k,2)}</td><td>${r.src.total?"100 %":fmt(share,0)+" %"}</td>${prv?`<td class="${d>0?"up":"down"}">${d==null?"–":(d>0?"▲ ":"▼ ")+fmt(Math.abs(d),1)+" %"}</td>`:""}</tr>`;
+    }
+    h+=`</table></div>`;
+    const notes=[];
+    if(cur[u].missing>0)notes.push(`${cur[u].missing} av ${R.len} dygn saknar data och är inte med i summan.`);
+    if(rows.find(r=>r.s&&r.s.derived))notes.push("≈ Övrigt är beräknat (Tibber minus Hushållsel minus Uppvärmning). Skapa en rapportenhet för Övrigt i Homey och ange dess ID i Admin för att läsa det direkt.");
+    if(notes.length)h+=`<div class="note">${notes.join(" ")}</div>`;
+    h+=`</div>`;
+  }else{
+    h+=`<div class="note">Dekarsön 236 räknas ur den kumulativa räknaren i den virtuella energiöversikten och finns därför bara sedan den togs i drift. Dagens värde visas först när dygnet är slut. Kostnaden använder Tibber-priset för 235 plus påslag.</div>`;
+  }
+  $("#p-energi").innerHTML=h;
+  const c=$("#cmp");if(c)c.value=state.cmp;
+}
+
+
+
+/* =====================================================================
+   ENERGIKORT
+   ===================================================================== */
+const KORT235=[["tibber","Hela huset (Tibber)"],["hush","Hushållsel"],["uppv","Uppvärmning"],["vp","Värmepump"],["ovr","Övrigt"],["tesla","Tesla"],["traktor","Traktor"],["golv","Golvvärme Uterum"]];
+const KORT236=[["d236","Dekarsön 236"]];
+const korts=()=>state.prop==="235"?KORT235:KORT236;
+const mainKey=()=>state.prop==="235"?"tibber":"d236";
+const WD=["Mån","Tis","Ons","Tor","Fre","Lör","Sön"];
+const effU=(T,u)=>(T&&T.kr&&Object.keys(T.kr).length)?u:"kwh";
+const wdIdx=d=>(new Date(d+"T00:00:00Z").getUTCDay()+6)%7;
+function liveOf(k){
+  const D=cfg.ids,g=(id,c)=>capVal(state.devices[id],c);
+  const map={tibber:g(D.live235,"measure_power"),uppv:g(D.uppv,"measure_power"),vp:g(D.nibe,"measure_power"),traktor:g(D.trLoad,"measure_power"),golv:g(D.floor,"measure_power"),d236:g(D.d236,"measure_power.number1")};
+  const w=map[k];
+  if(k==="tesla"){const on=g(D.tesla,"charging_on");return on==null?"":(on?"Laddar nu":"Laddar inte")+(g(D.tesla,"measure_soc_level")!=null?" · "+fmt(g(D.tesla,"measure_soc_level"),0)+" %":"");}
+  return w==null?"":"Nu "+fmt(w,0)+" W";
+}
+function dayList(T,u,s,e){const a=[];for(let d=s;d<=e;d=addDays(d,1)){const v=T[u][d];if(v!=null)a.push([d,v]);}return a;}
+function spark(arr){
+  const vals=arr.filter(x=>x!=null);if(!vals.length)return "";
+  const max=Math.max(...vals,0.0001),n=arr.length,w=200/n;
+  return `<svg viewBox="0 0 200 44" width="100%" height="44" preserveAspectRatio="none">${arr.map((v,i)=>v==null?"":`<rect x="${i*w+w*.12}" width="${w*.76}" y="${44-Math.max(1,v/max*42)}" height="${Math.max(1,v/max*42)}" fill="var(--cur)" rx="1"/>`).join("")}</svg>`;
+}
+function kCard(k,name,S,R,u){
+  const T=S[k];
+  if(!T)return `<div class="card kcard" style="opacity:.6"><div class="nm">${name}</div><div class="note">Ej konfigurerad. Ange enhets-ID i Admin.</div></div>`;
+  const eu=effU(T,u),un=unitName(eu),oth=eu==="kr"?"kwh":"kr";
+  const cur=sumRange(T,eu,R.s,R.e),prv=R.ps?sumRange(T,eu,R.ps,R.pe):null,co=sumRange(T,oth,R.s,R.e);
+  const bsz=R.len<=45?1:(R.len<=200?7:30),sp=bucketize(dayArray(T,eu,R.s,R.len),bsz);
+  const tot=S[mainKey()]?sumRange(S[mainKey()],eu,R.s,R.e).v:null;
+  const share=k!==mainKey()&&tot>0&&cur.v!=null?fmt(cur.v/tot*100,0)+" % av totalen":"";
+  const avg=cur.v!=null&&eu==="kr"&&co.v>0?fmt(cur.v/co.v,2)+" kr/kWh":(oth==="kr"&&co.v!=null&&cur.v>0?fmt(co.v/cur.v,2)+" kr/kWh":"");
+  return `<div class="card kcard" data-card="${k}" tabindex="0" role="button" aria-label="${name}, visa detaljer">
+    <div class="top2"><span class="nm">${name}</span><span class="live">${liveOf(k)}</span></div>
+    <div class="big">${T.est&&eu==="kr"?"≈ ":""}${fmt(cur.v,0)} <small>${un}</small></div>
+    <div class="s" style="font-size:13.5px;min-height:19px">${prv?delta(cur.v,prv.v,"mot "+fmt(prv.v,0)+" "+un):""}</div>
+    <div style="margin:6px 0 2px">${spark(sp)}</div>
+    <div class="meta"><span>${fmt(co.v,0)} ${unitName(oth)}</span>${avg?`<span>${avg}</span>`:""}${share?`<span>${share}</span>`:""}${eu!==u?`<span>endast kWh finns</span>`:""}${T.est&&eu==="kr"?`<span>≈ kr beräknat med dygnets snittpris</span>`:""}</div></div>`;
+}
+/* ---- diagramdefinitioner ---- */
+function monthKeys(n){const t=todayStr();const y=+t.slice(0,4),m=+t.slice(5,7),a=[];for(let i=n-1;i>=0;i--){let mm=m-i,yy=y;while(mm<1){mm+=12;yy--;}a.push(yy+"-"+pad(mm));}return a;}
+function monthSum(T,u,ym){const [y,m]=ym.split("-").map(Number),dim=new Date(Date.UTC(y,m,0)).getUTCDate();let v=0,n=0;for(let d=1;d<=dim;d++){const x=T[u][ym+"-"+pad(d)];if(x!=null){v+=x;n++;}}return n?v:null;}
+function cumArr(a){let c=0;return a.map(v=>{if(v==null)return c||null;c+=v;return c;});}
+function polyChart(cur,prev,labels,unit){
+  const W=1000,H=280,L=52,B=28,T=10,R=8,n=cur.length,all=[...cur,...(prev||[])].filter(x=>x!=null);
+  if(!all.length)return `<div class="note">Ingen data.</div>`;
+  const max=niceMax(Math.max(...all,0.0001)),bw=(W-L-R)/Math.max(1,n-1),y=v=>T+(H-T-B)*(1-v/max);let g="";
+  for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,max<10?1:0)}</text>`;}
+  const pts=a=>a.map((v,i)=>v==null?null:(L+i*bw)+","+y(v)).filter(Boolean).join(" ");
+  if(prev)g+=`<polyline points="${pts(prev)}" fill="none" stroke="var(--prev)" stroke-width="2.4" stroke-dasharray="5 4"/>`;
+  g+=`<polyline points="${pts(cur)}" fill="none" stroke="var(--cur)" stroke-width="3"/>`;
+  const step=Math.max(1,Math.ceil(n/10));for(let i=0;i<n;i+=step)g+=`<text x="${L+i*bw}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg>`;
+}
+function hbars(rows,unit){
+  const max=Math.max(...rows.map(r=>r.v||0),0.0001);
+  return rows.map(r=>`<div class="hbar"><span class="lab">${esc(r.name)}</span><span class="tr"><i style="width:${Math.max(1,(r.v||0)/max*100)}%"></i></span><span class="val">${fmt(r.v,0)} ${unit}</span></div>`).join("");
+}
+function legendCP(R){return `<div class="legend"><span><i style="background:var(--cur)"></i>Vald period</span>${R.ps?`<span><i style="background:var(--prev)"></i>Jämförelse</span>`:""}</div>`;}
+function mainT(c){return c.S[mainKey()];}
+const CHARTS=[
+ {k:"months",title:"Månad för månad, senaste 12 månaderna",async build(c){
+   const T=mainT(c);if(!T)return "";const eu=effU(T,c.u),mk=monthKeys(12),cur=mk.map(m=>monthSum(T,eu,m)),prev=mk.map(m=>monthSum(T,eu,(+m.slice(0,4)-1)+m.slice(4)));
+   return `<div class="legend"><span><i style="background:var(--cur)"></i>Månad</span><span><i style="background:var(--prev)"></i>Samma månad året innan</span></div>`+barChart(cur,prev.some(x=>x!=null)?prev:null,mk.map(m=>MON[+m.slice(5)-1]),unitName(eu));},
+   async rows(c){const T=mainT(c);if(!T)return null;const mk=monthKeys(12);
+     return {head:["Månad","kWh","kr","kr/kWh","Förra året (kWh)","Förändring"],body:mk.map(m=>{const a=monthSum(T,"kwh",m),b=monthSum(T,"kr",m),p=monthSum(T,"kwh",(+m.slice(0,4)-1)+m.slice(4));return [m,fmt(a,0),fmt(b,0),a>0&&b!=null?fmt(b/a,2):"–",fmt(p,0),a!=null&&p>0?(a>p?"▲ ":"▼ ")+fmt(Math.abs(a-p)/p*100,1)+" %":"–"];})};}},
+ {k:"weekday",title:"Veckodagar: snitt per dygn i perioden",async build(c){
+   const T=mainT(c);if(!T)return "";const eu=effU(T,c.u),f=(s,e)=>{const sm=Array(7).fill(0),n=Array(7).fill(0);for(const [d,v] of dayList(T,eu,s,e)){sm[wdIdx(d)]+=v;n[wdIdx(d)]++;}return sm.map((x,i)=>n[i]?x/n[i]:null);};
+   return legendCP(c.R)+barChart(f(c.R.s,c.R.e),c.R.ps?f(c.R.ps,c.R.pe):null,WD,unitName(eu));},
+   async rows(c){const T=mainT(c);if(!T)return null;const eu=effU(T,c.u),sm=Array(7).fill(0),n=Array(7).fill(0);for(const [d,v] of dayList(T,eu,c.R.s,c.R.e)){sm[wdIdx(d)]+=v;n[wdIdx(d)]++;}
+     return {head:["Veckodag","Snitt","Antal dygn"],body:WD.map((w,i)=>[w,n[i]?fmt(sm[i]/n[i],1):"–",n[i]])};}},
+ {k:"cum",title:"Ackumulerat över perioden",async build(c){
+   const T=mainT(c);if(!T)return "";const eu=effU(T,c.u),cur=cumArr(dayArray(T,eu,c.R.s,c.R.len)),prev=c.R.ps?cumArr(dayArray(T,eu,c.R.ps,c.R.len)):null;
+   return legendCP(c.R)+polyChart(cur,prev,cur.map((_,i)=>labelDate(addDays(c.R.s,i))),unitName(eu));}},
+ {k:"price",title:"Snittpris per dygn (kr/kWh)",async build(c){
+   const T=mainT(c);if(!T||!Object.keys(T.kr||{}).length)return `<div class="note">Pris saknas för den här källan.</div>`;
+   const f=(s,len)=>Array.from({length:len},(_,i)=>{const d=addDays(s,i),a=T.kwh[d],b=T.kr[d];return a>0&&b!=null?b/a:null;});
+   const cur=f(c.R.s,c.R.len),prev=c.R.ps?f(c.R.ps,c.R.len):null;
+   return legendCP(c.R)+polyChart(cur,prev,cur.map((_,i)=>labelDate(addDays(c.R.s,i))),"kr/kWh");}},
+ {k:"sources",title:"Förbrukare i jämförelse",async build(c){
+   const rows=korts().map(([k,n])=>({name:n,v:c.S[k]?sumRange(c.S[k],effU(c.S[k],c.u),c.R.s,c.R.e).v:null})).filter(r=>r.v!=null);
+   const T0=mainT(c);return rows.length?hbars(rows,unitName(effU(T0,c.u))):`<div class="note">Ingen data.</div>`;},
+   async rows(c){return {head:["Källa","kWh","kr","Andel av totalen (kWh)"],body:korts().map(([k,n])=>{const T=c.S[k];if(!T)return [n,"–","–","–"];const a=sumRange(T,"kwh",c.R.s,c.R.e).v,b=sumRange(T,"kr",c.R.s,c.R.e).v,t=c.S[mainKey()]?sumRange(c.S[mainKey()],"kwh",c.R.s,c.R.e).v:null;return [n,fmt(a,0),fmt(b,0),t>0&&a!=null?fmt(a/t*100,0)+" %":"–"];})};}},
+ {k:"share",title:"Fördelning av förbrukningen",async build(c){
+   if(state.prop!=="235")return `<div class="note">Gäller Dekarsön 235.</div>`;
+   const eu=effU(c.S.tibber,c.u),v=k=>c.S[k]?Math.max(0,sumRange(c.S[k],eu,c.R.s,c.R.e).v||0):0,parts=[["Hushållsel",v("hush"),"var(--cur)"],["Uppvärmning",v("uppv"),"var(--on)"],["Övrigt",v("ovr"),"var(--prev)"]],tot=parts.reduce((a,p)=>a+p[1],0);
+   if(!tot)return `<div class="note">Ingen data.</div>`;
+   return `<div class="stack">${parts.map(p=>`<i style="width:${p[1]/tot*100}%;background:${p[2]}" title="${p[0]}"></i>`).join("")}</div>`+parts.map(p=>`<div class="stat"><span><span class="dot" style="background:${p[2]}"></span>${p[0]}</span><span>${fmt(p[1],0)} ${unitName(eu)} · ${fmt(p[1]/tot*100,0)} %</span></div>`).join("");}},
+ {k:"weeks",title:"Per vecka, senaste 26 veckorna",async build(c){
+   const T=mainT(c);if(!T)return "";const eu=effU(T,c.u),e=todayStr(),s=addDays(e,-181),a=bucketize(dayArray(T,eu,s,182),7);
+   return barChart(a,null,a.map((_,i)=>labelDate(addDays(s,i*7))),unitName(eu));}},
+ {k:"hours",title:"Timmedeleffekt, senaste 24 timmarna (kW)",async build(c){
+   if(state.prop!=="235")return `<div class="note">Gäller Dekarsön 235.</div>`;
+   const hh=await loadHourly(),keys=Object.keys(hh).sort().slice(-24);return lineChart(keys.map(k=>hh[k]),keys.map(k=>k.slice(11)+":00"),"kW");}},
+ {k:"top",title:"Högsta och lägsta dygnen i perioden",async build(c){
+   const T=mainT(c);if(!T)return "";const eu=effU(T,c.u),l=dayList(T,eu,c.R.s,c.R.e).sort((a,b)=>b[1]-a[1]);if(!l.length)return `<div class="note">Ingen data.</div>`;
+   const row=([d,v])=>`<div class="stat"><span>${d} (${WD[wdIdx(d)]})</span><b>${fmt(v,0)} ${unitName(eu)}</b></div>`;
+   return `<div class="note" style="margin:0 0 4px">Högst</div>${l.slice(0,3).map(row).join("")}<div class="note" style="margin:8px 0 4px">Lägst</div>${l.slice(-3).reverse().map(row).join("")}`;},
+   async rows(c){const T=mainT(c);if(!T)return null;const eu=effU(T,c.u),l=dayList(T,eu,c.R.s,c.R.e).sort((a,b)=>b[1]-a[1]);return {head:["Dygn","Veckodag",unitName(eu)],body:l.slice(0,10).map(([d,v])=>[d,WD[wdIdx(d)],fmt(v,0)])};}}
+];
+function tableHtml(r){return r?`<div style="overflow:auto"><table><tr>${r.head.map(h=>`<th>${h}</th>`).join("")}</tr>${r.body.map(b=>`<tr>${b.map(x=>`<td>${x}</td>`).join("")}</tr>`).join("")}</table></div>`:"";}
+async function kortCtx(minDate){const R=calcRange(),m=R.ps&&R.ps<R.s?R.ps:R.s;return {S:await loadSeries(minDate<m?minDate:m),R,u:state.unit};}
+async function renderKort(){
+  const t=todayStr(),R=calcRange();
+  const c=await kortCtx(addDays(t,-400));
+  let h=presetBar(R)+`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name} · klicka på ett kort eller diagram för mer information</div>`;
+  h+=`<h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
+  for(const d of CHARTS){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
+    h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
+  h+=`</div>`;
+  $("#p-kort").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;
+}
+/* ---- detaljvy (dialog) ---- */
+function modalHead(title){
+  const R=calcRange(),ps=[["idag","Idag"],["vecka","Vecka"],["manad","Månad"],["halvar","Halvår"],["ar","År"]];
+  return `<div class="mhead"><h2>${esc(title)}</h2><span class="grow"></span><div class="seg"><button data-munit="kr" aria-pressed="${state.unit==="kr"}">Kronor</button><button data-munit="kwh" aria-pressed="${state.unit==="kwh"}">kWh</button></div><button class="btn" data-close="1">Stäng</button></div>
+  <div class="bar">${ps.map(([k,l])=>`<button class="chip" data-p="${k}" aria-pressed="${state.preset===k}">${l}</button>`).join("")}<label>Jämför mot <select id="mcmp"><option value="prev">Föregående period</option><option value="yoy">Samma period året innan</option><option value="none">Ingen</option></select></label></div>
+  <div class="note" style="margin:-4px 0 12px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""}</div>`;
+}
+async function renderModal(){
+  const m=state.modal,body=$("#dlgBody");let h="";
+  const c=await kortCtx(addDays(todayStr(),-760)),R=c.R,u=c.u;
+  if(m.t==="card"){
+    const name=(korts().find(x=>x[0]===m.k)||[0,m.k])[1],T=c.S[m.k];h=modalHead(name);
+    if(!T)h+=`<div class="card">Ingen källa är angiven. Lägg till enhets-ID i Admin.</div>`;
+    else{
+      const eu=effU(T,u),un=unitName(eu),cur=sumRange(T,eu,R.s,R.e),prv=R.ps?sumRange(T,eu,R.ps,R.pe):null,co=sumRange(T,eu==="kr"?"kwh":"kr",R.s,R.e),l=dayList(T,eu,R.s,R.e).sort((a,b)=>b[1]-a[1]),days=l.length||1;
+      h+=`<div class="grid">${tile(eu==="kr"?"Kostnad":"Energi",fmt(cur.v,0),un,prv?delta(cur.v,prv.v,"mot "+fmt(prv.v,0)+" "+un):"","hero")}
+       ${tile("Snitt per dygn",fmt(cur.v!=null?cur.v/days:null,1),un,prv&&prv.v!=null?delta(cur.v/days,prv.v/Math.max(1,(R.len-prv.missing)),"mot jämförelsen"):"")}
+       ${tile("Högsta dygn",fmt(l[0]&&l[0][1],0),un,l[0]?l[0][0]+" ("+WD[wdIdx(l[0][0])]+")":"")}
+       ${tile("Lägsta dygn",fmt(l.length?l[l.length-1][1]:null,0),un,l.length?l[l.length-1][0]+" ("+WD[wdIdx(l[l.length-1][0])]+")":"")}
+       ${tile(eu==="kr"?"Energi":"Kostnad",fmt(co.v,0),eu==="kr"?"kWh":"kr","")}
+       ${tile("Dygn med data",l.length+" av "+R.len,"",cur.missing?cur.missing+" saknas":"Inga luckor")}</div>`;
+      if(eu!==u)h+=`<div class="note">Kronor finns inte i Homey för den här källan, så kWh visas.</div>`;
+      if(T.est&&eu==="kr")h+=`<div class="note">≈ Kronor är uppskattade: kWh gånger hela husets snittpris för respektive dygn. Skapa en rapportenhet i Homey för exakt kostnad (se Admin).</div>`;
+      const ch=chartBlock(name,T,R,eu);h+=(ch.html||ch);
+      const mk=monthKeys(12);
+      h+=`<div class="card" style="margin-bottom:14px"><h2>Månad för månad</h2>${barChart(mk.map(x=>monthSum(T,eu,x)),mk.map(x=>monthSum(T,eu,(+x.slice(0,4)-1)+x.slice(4))),mk.map(x=>MON[+x.slice(5)-1]),un)}
+        ${tableHtml({head:["Månad","kWh","kr","Förra året (kWh)"],body:mk.map(x=>[x,fmt(monthSum(T,"kwh",x),0),fmt(monthSum(T,"kr",x),0),fmt(monthSum(T,"kwh",(+x.slice(0,4)-1)+x.slice(4)),0)])})}</div>`;
+      const sm=Array(7).fill(0),n=Array(7).fill(0);for(const [d,v] of l){sm[wdIdx(d)]+=v;n[wdIdx(d)]++;}
+      h+=`<div class="card" style="margin-bottom:14px"><h2>Veckodagar, snitt</h2>${barChart(sm.map((x,i)=>n[i]?x/n[i]:null),null,WD,un)}</div>`;
+      h+=`<div class="card"><h2>Dyraste/högsta dygnen</h2>${tableHtml({head:["Dygn","Veckodag",un],body:l.slice(0,10).map(([d,v])=>[d,WD[wdIdx(d)],fmt(v,0)])})}</div>`;
+    }
+  }else{
+    const d=CHARTS.find(x=>x.k===m.k);h=modalHead(d.title);
+    h+=`<div class="card" style="margin-bottom:14px">${await d.build(c)}</div>`;
+    if(d.rows){const r=await d.rows(c);if(r)h+=`<div class="card">${tableHtml(r)}</div>`;}
+  }
+  body.innerHTML=h;const mc=$("#mcmp");if(mc)mc.value=state.cmp;
+}
+async function openModal(t,k){state.modal={t,k};$("#dlgBody").innerHTML="<div class='note'>Hämtar…</div>";const d=$("#dlg");if(!d.open)d.showModal();try{await renderModal();}catch(e){$("#dlgBody").innerHTML=`<div class="warn">${esc(e.message)}</div><button class="btn" data-close="1">Stäng</button>`;}}
+
+/* ---------- Detaljer: fler kort ---------- */
+const DETS=[["timmar","Timmar och effekt"],["vp","Värmepump"],["tesla","Tesla"],["traktor","Traktor"],["uterum","Uterum och entreplatta"]];
+const kwhOnly=un=>un==="kr";
+function cumSeries(id,cap,minDate,yearly){
+  return fetchMerged(id,cap,minDate,e=>dailyFromCumulative(e,yearly));
+}
+function chartBlock(title,T,R,u,opts={}){
+  if(!T)return `<div class="card">${title}: ingen källa angiven i Admin.</div>`;
+  const un=unitName(u);
+  const cur=sumRange(T,u,R.s,R.e),prv=R.ps?sumRange(T,u,R.ps,R.pe):null;
+  const curA=dayArray(T,u,R.s,R.len),prvA=R.ps?dayArray(T,u,R.ps,R.len):null;
+  const b=R.len<=45?1:(R.len<=200?7:30);
+  const cb=bucketize(curA,b),pb=prvA?bucketize(prvA,b):null,labels=cb.map((_,i)=>labelDate(addDays(R.s,i*b)));
+  return {cur,prv,html:`<div class="card" style="margin:14px 0"><h2>${title} ${u==="kr"?"(kr)":"(kWh)"} per ${b===1?"dygn":(b===7?"vecka":"30 dagar")}</h2>
+    <div class="legend"><span><i style="background:var(--cur)"></i>Vald period</span>${R.ps?`<span><i style="background:var(--prev)"></i>Jämförelse</span>`:""}</div>${barChart(cb,pb,labels,un)}</div>`};
+}
+function presetBar(R){
+  const presets=[["idag","Idag"],["vecka","Vecka"],["manad","Månad"],["halvar","Halvår"],["ar","År"],["valfri","Valfri period"]];
+  let h=`<div class="bar">${presets.map(([k,l])=>`<button class="chip" data-p="${k}" aria-pressed="${state.preset===k}">${l}</button>`).join("")}</div>`;
+  if(state.preset==="valfri")h+=`<div class="bar"><label>Från <input type="date" id="from" value="${state.from||R.s}"></label><label>Till <input type="date" id="to" value="${state.to||R.e}"></label></div>`;
+  h+=`<div class="bar"><label>Jämför mot <select id="cmp"><option value="prev">Föregående period (lika lång)</option><option value="yoy">Samma period året innan</option><option value="none">Ingen jämförelse</option></select></label></div>`;
+  return h;
+}
+function kpiRow(cur,prv,u,extra){
+  const un=unitName(u);
+  return `<div class="grid">${tile(u==="kr"?"Kostnad":"Energi",fmt(cur.v,0),un,prv?delta(cur.v,prv.v,"mot "+fmt(prv.v,0)+" "+un):"","hero")}${extra||""}</div>`;
+}
+/* timmedata: effekt (kW) per lokal timme */
+async function loadHourly(){
+  if(state.hourly&&Date.now()-state.hourly.t<5*60*1000)return state.hourly.v;
+  const h={};
+  if(isDemo()){
+    const R=rnd(11),now=new Date();
+    for(let i=24*31;i>=0;i--){const d=new Date(now.getTime()-i*36e5),hr=d.getHours();
+      const base=0.9+0.5*Math.cos((hr-7)/24*2*Math.PI)+(hr>=17&&hr<=21?0.9:0)+R()*0.6;
+      h[d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(hr)]=Math.max(0.3,base+(R()<0.04?3:0));}
+  }else{
+    const id=cfg.ids.live235,sums={},cnt={};
+    const es=await logEntries(id,"measure_power","last31Days");
+    for(const e of es){if(e.v==null)continue;const d=new Date(e.t),k=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());
+      sums[k]=(sums[k]||0)+e.v;cnt[k]=(cnt[k]||0)+1;}
+    for(const k in sums)h[k]=sums[k]/cnt[k]/1000;
+  }
+  state.hourly={t:Date.now(),v:h};return h;
+}
+function lineChart(vals,labels,unit,color){
+  const W=1000,H=260,L=52,B=28,T=10,R=8,n=vals.length;
+  const all=vals.filter(x=>x!=null);if(!all.length)return `<div class="note">Ingen data.</div>`;
+  const max=niceMax(Math.max(...all,0.0001)),bw=(W-L-R)/n,y=v=>T+(H-T-B)*(1-v/max);let g="";
+  for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,max<10?1:0)}</text>`;}
+  vals.forEach((v,i)=>{if(v==null)return;const iw=Math.max(1,bw*.7);g+=`<rect x="${L+i*bw+(bw-iw)/2}" y="${y(v)}" width="${iw}" height="${Math.max(0,y(0)-y(v))}" rx="2" fill="${color||"var(--cur)"}"><title>${labels[i]}: ${fmt(v,2)} ${unit}</title></rect>`;});
+  const step=Math.max(1,Math.ceil(n/12));
+  for(let i=0;i<n;i+=step)g+=`<text x="${L+i*bw+bw/2}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg>`;
+}
+async function viewTimmar(){
+  const hh=await loadHourly(),keys=Object.keys(hh).sort();
+  if(!keys.length)return `<div class="card">Ingen timdata hittades. Kontrollera enheten "Effektmätare 235" i Admin.</div>`;
+  const last=keys.slice(-24),lv=last.map(k=>hh[k]),ll=last.map(k=>k.slice(11)+":00");
+  const prof=Array.from({length:24},(_,h)=>{const a=keys.filter(k=>+k.slice(11)===h).map(k=>hh[k]);return a.length?a.reduce((p,c)=>p+c,0)/a.length:null;});
+  const mon=todayStr().slice(0,7),mk=keys.filter(k=>k.startsWith(mon)).sort((a,b)=>hh[b]-hh[a]);
+  const top=[];const seenDay=new Set();
+  for(const k of mk){const d=k.slice(0,10);if(seenDay.has(d))continue;seenDay.add(d);top.push(k);if(top.length===3)break;}
+  const topAvg=top.length?top.reduce((a,k)=>a+hh[k],0)/top.length:null;
+  const maxNow=Math.max(...lv),avg24=lv.reduce((a,b)=>a+b,0)/lv.length;
+  let h=`<div class="grid">${tile("Snitt senaste 24 h",fmt(avg24,2),"kW","Medeleffekt per timme","hero")}${tile("Högsta timme senaste 24 h",fmt(maxNow,2),"kW",ll[lv.indexOf(maxNow)])}${tile("Topp 3 denna månad (snitt)",fmt(topAvg,2),"kW","Tre högsta dygnstopparna, ≈ effektavgift")}${tile("Förbrukning senaste 24 h",fmt(lv.reduce((a,b)=>a+b,0),1),"kWh","Summa av timmedeleffekt")}</div>`;
+  h+=`<div class="card" style="margin:14px 0"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(lv,ll,"kW")}</div>`;
+  h+=`<div class="card" style="margin:14px 0"><h2>Typisk dag: snitt per klockslag, senaste 31 dagarna (kW)</h2>${lineChart(prof,prof.map((_,i)=>pad(i)+":00"),"kW","var(--prev)")}</div>`;
+  h+=`<div class="card"><h2>Högsta timmarna denna månad</h2><table><tr><th>Tid</th><th>Timmedeleffekt (kW)</th></tr>${top.map(k=>`<tr><td>${k.slice(0,10)} kl ${k.slice(11)}:00</td><td>${fmt(hh[k],2)}</td></tr>`).join("")||`<tr><td colspan="2">Ingen data</td></tr>`}</table>
+   <div class="note">Beräknat ur effektmätarens logg i Homey (medel per timme). Ligger nätägarens effektavgift på mätarens egen timmedata kan värdet avvika något.</div></div>`;
+  return h;
+}
+async function viewVP(R,u){
+  const minDate=R.ps&&R.ps<R.s?R.ps:R.s,S=await loadSeries(minDate),T=S.vp,d=state.devices[cfg.ids.vp],n=state.devices[cfg.ids.nibe];
+  const k=u==="kr"?"meter_money_":"meter_kwh_",un=unitName(u);
+  let h=`<div class="grid">${tile("Effekt just nu",fmt(capVal(n,"measure_power")??capVal(d,"measure_watt_avg"),0),"W","NIBE / värmepumpens mätare","hero")}${tile("Idag",fmt(capVal(d,k+"this_day"),0),un,delta(capVal(d,k+"this_day"),capVal(d,k+"last_day"),"mot igår"))}${tile("Denna månad",fmt(capVal(d,k+"this_month"),0),un,delta(capVal(d,k+"this_month"),capVal(d,k+"last_month"),"mot förra månaden"))}${tile("I år",fmt(capVal(d,k+"this_year"),0),un,delta(capVal(d,k+"this_year"),capVal(d,k+"last_year"),"mot förra året"))}`;
+  const tm=capVal(state.devices[cfg.ids.tibber],"meter_kwh_this_month"),vm=capVal(d,"meter_kwh_this_month");
+  h+=tile("Andel av hela huset (månad)",tm>0&&vm!=null?fmt(vm/tm*100,0):"–","%","Värmepump delat med Tibber-totalen");
+  h+=tile("Snittpris månad",fmt(capVal(d,"meter_money_this_month_avg"),2),"kr/kWh","Enligt Homeys rapport")+`</div>`;
+  h+=`<h3>Period</h3>`+presetBar(R);
+  const c=chartBlock("Värmepump",T,R,u);if(c.html)h+=c.html;else h+=c;
+  return h;
+}
+async function viewTesla(R,u){
+  const t=state.devices[cfg.ids.tesla],e=state.devices[cfg.ids.teslaE],un=unitName(u);
+  const soc=capVal(t,"measure_soc_level")??capVal(t,"measure_battery"),on=capVal(t,"charging_on");
+  const em=u==="kr"?"devicecapabilities_number.number3":"devicecapabilities_number.number2",ey=u==="kr"?"devicecapabilities_number.number6":"devicecapabilities_number.number5";
+  let h=`<div class="grid">${tile("Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte","hero")}
+    ${tile("Räckvidd",fmt(capVal(t,"measure_soc_range_estimated"),0),"km","Uppskattad")}
+    ${tile("Laddgräns",fmt(capVal(t,"measure_charge_limit_soc"),0),"%","Inställd gräns")}
+    ${tile("Tillförd energi senaste laddning",fmt(capVal(t,"measure_charge_energy_added"),1),"kWh","")}
+    ${tile("Temperatur ute / inne",fmt(capVal(t,"measure_climate_temperature_out"),1)+" / "+fmt(capVal(t,"measure_climate_temperature_in"),1),"°C","")}
+    ${tile("Vägmätare",fmt(capVal(t,"meter_car_odo"),0),"km","")}
+    ${tile("Laddning denna månad",fmt(capVal(e,em),0),un,"Enligt energiöversikten för Tesla")}
+    ${tile("Laddning i år",fmt(capVal(e,ey),0),un,"")}</div>`;
+  h+=`<h3>Period</h3>`+presetBar(R);
+  const minDate=R.ps&&R.ps<R.s?R.ps:R.s;let T=null;
+  if(isDemo()){const S=demoSeries(minDate);T=S.tesla;}
+  else if(cfg.ids.teslaE){T={kwh:await cumSeries(cfg.ids.teslaE,"devicecapabilities_number.number5",minDate,true),kr:await cumSeries(cfg.ids.teslaE,"devicecapabilities_number.number6",minDate,true)};}
+  const c=chartBlock("Tesla, laddning",T,R,u);h+=c.html||c;
+  h+=`<div class="note">Dygnsvärden räknas ur Tesla-översiktens årsräknare och finns från att den startades.</div>`;
+  return h;
+}
+async function viewTraktor(R,u){
+  const l=state.devices[cfg.ids.trLoad],m=state.devices[cfg.ids.trHeat],un=unitName(u);
+  const mOn=!!capVal(m,"onoff");
+  let h=`<div class="grid">${tile("Laddning effekt",fmt(capVal(l,"measure_power"),0),"W",capVal(l,"onoff")?"Uttaget är på":"Uttaget är av","hero")}
+    ${tile("Motorvärmare",mOn?"På":"Av","","Styrs under Styrning eller här")}${tile("Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
+  h+=`<div class="bar" style="margin-top:12px">${l?`<button class="btn" data-act="tgl" data-dev="${l.id}">Laddning ${capVal(l,"onoff")?"av":"på"}</button>`:""}${m?`<button class="btn" data-act="tgl" data-dev="${m.id}">Motorvärmare ${mOn?"av":"på"}</button>`:""}</div>`;
+  h+=`<h3>Period</h3>`+presetBar(R);
+  const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
+  const T=(await loadSeries(minDate)).traktor,eu=effU(T,u);
+  const c=chartBlock("Traktorladdning",T,R,eu);h+=c.html||c;
+  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor är uppskattade med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
+  return h;
+}
+async function viewUterum(R,u){
+  const f=state.devices[cfg.ids.floor],s=state.devices[cfg.ids.slab];
+  let h=`<div class="grid">${tile("Betongplatta, temperatur",fmt(capVal(s,"measure_temperature"),1),"°C","Luftfuktighet "+fmt(capVal(s,"measure_humidity"),0)+" %","hero")}
+    ${tile("Golvvärme effekt",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}
+    ${tile("Golvvärme total",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat")}
+    ${tile("Golvvärmens givare",fmt(capVal(f,"measure_temperature"),1),"°C","Temperaturer: "+[1,2,3,4].map(i=>fmt(capVal(f,"measure_temperature."+i),1)).join(" / "))}</div>`;
+  if(f)h+=`<div class="bar" style="margin-top:12px"><button class="btn" data-act="tgl" data-dev="${f.id}">Golvvärme ${capVal(f,"onoff")?"av":"på"}</button></div>`;
+  h+=`<h3>Period</h3>`+presetBar(R);
+  const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
+  const T=(await loadSeries(minDate)).golv,eu=effU(T,u);
+  const c=chartBlock("Golvvärme Uterum",T,R,eu);h+=c.html||c;
+  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor är uppskattade med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
+  return h;
+}
+async function renderDetalj(){
+  const R=calcRange(),u=state.unit;
+  let h=`<div class="bar">${DETS.map(([k,l])=>`<button class="chip" data-det="${k}" aria-pressed="${state.det===k}">${l}</button>`).join("")}</div>`;
+  if(state.prop==="236"){
+    const d=state.devices[cfg.ids.vp236];
+    h+=`<div class="grid">${tile("Luftvärmepump 236",d?(capVal(d,"onoff")===false?"Av":"På"):"–","",d?"Temperatur: "+fmt(capVal(d,"measure_temperature"),1)+" °C":"Ej hittad")}</div><div class="note">Fler kort för Dekarsön 236 läggs till när det finns fler mätare där. Byt till Dekarsön 235 för Timmar, Värmepump, Tesla, Traktor och Uterum.</div>`;
+    $("#p-detalj").innerHTML=h;return;
+  }
+  try{
+    if(state.det==="timmar")h+=await viewTimmar();
+    else if(state.det==="vp")h+=await viewVP(R,u);
+    else if(state.det==="tesla")h+=await viewTesla(R,u);
+    else if(state.det==="traktor")h+=await viewTraktor(R,u);
+    else h+=await viewUterum(R,u);
+  }catch(e){h+=`<div class="card err">Kunde inte läsa data: ${esc(e.message)}</div>`;}
+  $("#p-detalj").innerHTML=h;
+  const c=$("#cmp");if(c)c.value=state.cmp;
+}
+
+/* ---------- Styrning ---------- */
+function devCard(d){
+  const c=d.capabilitiesObj,on=!!(c.onoff&&c.onoff.value);
+  const pw=c.measure_power&&c.measure_power.value!=null?fmt(c.measure_power.value,0)+" W":"";
+  let h=`<div class="card dev ${on?"on":""}" data-id="${d.id}"><div class="row"><div><div class="nm">${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
+    <button class="sw" role="switch" aria-checked="${on}" data-act="toggle" aria-label="Av/på ${esc(devName(d))}"></button></div>`;
+  if(c.dim&&c.dim.value!=null)h+=`<input type="range" min="1" max="100" value="${Math.round(c.dim.value*100)}" data-act="dim" aria-label="Ljusstyrka">`;
+  return h+`</div>`;
+}
+function renderStyr(){
+  const devs=propDevices().filter(d=>hasOnoff(d)&&isShown(d));
+  const q=(state.search||"").toLowerCase();
+  const list=q?devs.filter(d=>(devName(d)+" "+zoneName(d)).toLowerCase().includes(q)):devs;
+  const by={};for(const d of list)(by[zoneName(d)]=by[zoneName(d)]||[]).push(d);
+  let h=`<div class="bar"><input type="search" id="q" placeholder="Sök enhet eller rum" value="${esc(state.search)}"><span class="grow"></span>
+    <button class="btn" data-act="alloff">Släck alla lampor</button></div>`;
+  for(const z of Object.keys(by).sort((a,b)=>a.localeCompare(b,"sv"))){
+    const lights=by[z].filter(d=>d.class==="light"),anyOn=lights.some(d=>d.capabilitiesObj.onoff.value);
+    h+=`<div class="zonehead"><b>${esc(z)}</b>${lights.length?`<button class="btn sm" data-act="zone" data-zone="${esc(z)}" data-to="${!anyOn}">Lampor ${anyOn?"av":"på"}</button>`:""}</div><div class="grid">${by[z].sort((a,b)=>devName(a).localeCompare(devName(b),"sv")).map(devCard).join("")}</div>`;
+  }
+  if(!list.length)h+=`<div class="card">Inga enheter att visa. Välj vilka som ska synas under Admin.</div>`;
+  $("#p-styr").innerHTML=h;
+  const qi=$("#q");if(qi&&state.keepFocus){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);}
+}
+
+/* ---------- Flows ---------- */
+function flowCard(f){
+  const fl=state.flash[f.id];
+  return `<div class="card flow" data-id="${f.id}"><div><div class="nm">${esc(flowName(f))}</div><div class="note" style="margin:0">${f.kind==="adv"?"Avancerat flow":"Flow"}${f.enabled?"":" · avstängt"}</div></div>
+    <button class="btn ${fl?"":"pri"}" data-act="flow">${fl?"Startad ✓":"Starta"}</button></div>`;
+}
+function renderFlows(){
+  const q=(state.search||"").toLowerCase();
+  const list=state.flows.filter(f=>flowShown(f)&&(!q||flowName(f).toLowerCase().includes(q)));
+  let h=`<div class="bar"><input type="search" id="q" placeholder="Sök flow" value="${esc(state.search)}"></div>`;
+  h+=list.length?`<div class="grid wide">${list.map(flowCard).join("")}</div>`:`<div class="card">Inga flows att visa. Välj vilka som ska synas under Admin.</div>`;
+  $("#p-flows").innerHTML=h;
+  const qi=$("#q");if(qi&&state.keepFocus){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);}
+}
+
+/* ---------- Status ---------- */
+function statusLists(){
+  const L={lights:[],sockets:[],locks:[],open:[],alarms:[],motion:[],battery:[],temps:[]};
+  for(const d of propDevices()){
+    const c=d.capabilitiesObj||{};
+    if(d.class==="light"&&c.onoff&&c.onoff.value)L.lights.push(d);
+    if(d.class==="socket"&&c.onoff&&c.onoff.value)L.sockets.push(d);
+    if(d.class==="lock"||c.locked)L.locks.push({d,ok:!!(c.locked&&c.locked.value)});
+    if(c.alarm_contact&&c.alarm_contact.value)L.open.push(d);
+    if((c.alarm_smoke&&c.alarm_smoke.value)||(c.alarm_water&&c.alarm_water.value)||(c.alarm_generic&&c.alarm_generic.value)||(c.alarm_battery&&c.alarm_battery.value))L.alarms.push(d);
+    if(c.alarm_motion&&c.alarm_motion.value)L.motion.push(d);
+    if(c.measure_battery&&c.measure_battery.value!=null&&c.measure_battery.value<=20)L.battery.push(d);
+    if(d.class==="sensor"&&c.measure_temperature&&c.measure_temperature.value!=null)L.temps.push(d);
+  }
+  return L;
+}
+function renderStatus(){
+  const L=statusLists(),S=cfg.ui.status;
+  const cat=(title,items,cls)=>`<div class="card"><h2>${title} <span class="pill ${cls||""}">${items.length}</span></h2>${items.length?items.map(x=>`<div class="stat"><span>${x}</span></div>`).join(""):`<div class="note" style="margin:0">Inga</div>`}</div>`;
+  let h=`<div class="grid wide">`;
+  if(S.lights)h+=cat("Tända lampor",L.lights.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
+  if(S.sockets)h+=cat("Uttag på",L.sockets.map(d=>`<span class="dot on"></span>${esc(devName(d))}</span><span>${fmt(capVal(d,"measure_power")||0,0)} W`));
+  if(S.locks)h+=cat("Lås",L.locks.map(x=>`<span class="dot ${x.ok?"ok":"bad"}"></span>${esc(devName(x.d))}</span><span>${x.ok?"Låst":"Olåst"}`),L.locks.some(x=>!x.ok)?"bad":"");
+  if(S.open)h+=cat("Kontakter aktiva (öppet)",L.open.map(d=>`<span class="dot bad"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
+  if(S.alarms)h+=cat("Larm",L.alarms.map(d=>`<span class="dot bad"></span>${esc(devName(d))}`),L.alarms.length?"bad":"");
+  if(S.motion)h+=cat("Rörelse just nu",L.motion.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
+  if(S.battery)h+=cat("Svagt batteri (20 % eller lägre)",L.battery.map(d=>`${esc(devName(d))}</span><span>${fmt(capVal(d,"measure_battery"),0)} %`),L.battery.length?"bad":"");
+  if(S.temps)h+=cat("Temperaturer",L.temps.sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")).map(d=>`${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${fmt(capVal(d,"measure_temperature"),1)} °C`));
+  h+=`</div><div class="note">Uppdateras var 20:e sekund. Vilka rutor som visas styrs i Admin.</div>`;
+  $("#p-status").innerHTML=h;
+}
+
+/* ---------- Anslutningstest ---------- */
+async function probeLog(say){
+  const id=cfg.ids.tibber,cap="meter_kwh_last_day",seen={};
+  const pairs=logPairs(id,cap,await findLog(id,cap).catch(()=>null));
+  say("    Provar adressvarianter:");
+  for(const [u,c] of pairs)for(let vi=0;vi<LOGPATHS.length;vi++){
+    const path=LOGPATHS[vi](u,c,"thisYear");
+    try{const r=await api(path);say("    TRÄFF: "+path.slice(0,160)+" -> "+JSON.stringify(r).slice(0,160));return;}
+    catch(e){const m=e.message.replace(path,"").replace(/<[^>]*>/g," ").replace(/\s+/g," ").slice(0,140);if(!seen[m]){seen[m]=1;say("    "+u.slice(-10)+"|"+c.slice(-14)+" v"+(vi+1)+": "+m);}}
+  }
+}
+async function testConn(){
+  const out=$("#connOut"),L=[];const say=t=>{L.push(t);out.textContent=L.join("\n");};
+  if(isCloud()?!(cfg.workerUrl&&cfg.session):!(cfg.ip&&cfg.key)){say(isCloud()?"Logga in först.":"Fyll i adress och API-nyckel först.");return;}
+  const origDemo=cfg.demo;
+  say("Adress: "+base()+(location.protocol==="https:"&&base().startsWith("http:")?"\nVARNING: sidan öppnades via https men Homey anropas via http. Webbläsaren blockerar det (mixed content). Använd Homeys https-adress eller öppna sidan lokalt.":""));
+  let devs,zones;
+  try{devs=await api("/api/manager/devices/device/");say("OK  Enheter: "+Object.keys(devs||{}).length);}
+  catch(e){say("FEL Enheter: "+(/Failed to fetch|NetworkError|Load failed/.test(e.message)?"ingen kontakt. Kontrollera IP och nätverk. Om adressen stämmer blockerar webbläsaren troligen anropet (CORS eller mixed content).":e.message+(/40[13]/.test(e.message)?" - kontrollera API-nyckelns behörigheter (devices).":"")));return;}
+  try{zones=await api("/api/manager/zones/zone/");say("OK  Rum: "+Object.keys(zones||{}).length);}catch(e){say("FEL Rum: "+e.message);}
+  const chk=[["Tibber hela huset","tibber","meter_kwh_last_day"],["Hushållsel","hush","meter_kwh_last_day"],["Uppvärmning","uppv","meter_kwh_last_day"],["Värmepump","vp","meter_kwh_last_day"],["Dekarsön 236","d236","devicecapabilities_number.number8"],["Tesla","tesla","measure_soc_level"],["Traktor laddning","trLoad","meter_power"],["Golvvärme","floor","meter_power"]];
+  for(const [n,k,c] of chk){const d=devs&&devs[cfg.ids[k]];
+    if(!cfg.ids[k]){say("-   "+n+": inget ID angivet");continue;}
+    if(!d){say("FEL "+n+": enheten finns inte med det ID:t");continue;}
+    const has=d.capabilitiesObj&&d.capabilitiesObj[c];
+    say((has?"OK  ":"FEL ")+n+": "+d.name+(has?" ("+c+" = "+d.capabilitiesObj[c].value+")":" saknar "+c));}
+  try{const es=await logEntries(cfg.ids.tibber,"meter_kwh_last_day","thisYear");const days=Object.keys(dailyFromLastDay(es)).length;say((days?"OK  ":"FEL ")+"Historik Tibber: "+es.length+" poster, "+days+" dygn tolkade");
+    say("    Fungerande anrop: "+LOGINFO);if(es[0])say("    Exempelpost: "+JSON.stringify(es[es.length-1]));}
+  catch(e){say("FEL Historik: "+e.message);await probeLog(say);try{const L=await logList();say("    Loggar i Homey: "+L.length);const t=L.filter(l=>JSON.stringify(l).includes(cfg.ids.tibber)).slice(0,3);say("    Exempel på loggobjekt för Tibber: "+JSON.stringify(t).slice(0,600));}catch(e2){say("    Kunde inte lista loggar: "+e2.message);}}
+  try{await loadFlows(true);say("OK  Flows: "+state.flows.length+" ("+state.flows.filter(f=>f.triggerable).length+" startbara)");}catch(e){say("FEL Flows: "+e.message);}
+  say("\nKlart. Stäng av demoläget och gå till Översikt när allt är OK.");
+}
+/* ---------- Admin ---------- */
+function renderAdmin(){
+  if(cfg.pin&&!state.adminOk){
+    $("#p-admin").innerHTML=`<div class="card" style="max-width:380px"><h2>Admin är låst</h2><input type="password" id="pinIn" placeholder="PIN" inputmode="numeric"> <button class="btn pri" data-act="pin">Öppna</button><div class="note">PIN skyddar mot oavsiktliga ändringar på en delad skärm. Det är inget säkerhetsskydd.</div></div>`;
+    return;
+  }
+  const q=(state.adminSearch||"").toLowerCase();
+  const zones=Object.values(state.zones).filter(z=>z.parent!=null||true).sort((a,b)=>a.name.localeCompare(b.name,"sv"));
+  const devs=Object.values(state.devices).filter(hasOnoff).filter(d=>!q||(d.name+" "+zoneName(d)).toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name,"sv"));
+  const fls=state.flows.filter(f=>!q||f.name.toLowerCase().includes(q));
+  const st=cfg.ui.status;
+  const stNames={lights:"Tända lampor",sockets:"Uttag på",locks:"Lås",open:"Kontakter aktiva",alarms:"Larm",motion:"Rörelse",battery:"Svagt batteri",temps:"Temperaturer"};
+  const idf=(k,l)=>`<label class="adm-l">${l}<input type="text" data-cfg="ids.${k}" value="${esc(cfg.ids[k])}"></label>`;
+  let h=`<div class="grid wide">
+  <div class="card"><h2>Anslutning</h2>
+    <label class="adm-l">Anslutningssätt<select data-cfg="mode"><option value="cloud" ${isCloud()?"selected":""}>Via inloggning (överallt)</option><option value="local" ${!isCloud()?"selected":""}>Direkt hemma (API-nyckel)</option></select></label>
+    ${isCloud()?`<label class="adm-l">Serveradress<input type="text" data-cfg="workerUrl" value="${esc(cfg.workerUrl)}" placeholder="https://dekarson-api.NAMN.workers.dev"></label>
+    <div class="bar"><button class="btn pri" data-act="login">Logga in med Homey</button><button class="btn" data-act="logout">Logga ut</button></div>
+    <div class="note">Status: ${cfg.session?"inloggad":"inte inloggad"}</div>`:`<label class="adm-l">Homey IP-adress<input type="text" data-cfg="ip" value="${esc(cfg.ip)}" placeholder="192.168.1.50"></label>
+    <label class="adm-l">API-nyckel<input type="password" data-cfg="key" value="${esc(cfg.key)}"></label>`}
+    <label class="adm-l" style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" data-cfg="demo" ${cfg.demo?"checked":""}> Demoläge (exempeldata)</label>
+    <div class="bar" style="margin-top:10px"><button class="btn pri" data-act="test">Testa anslutningen</button></div><div id="connOut" class="note" style="white-space:pre-wrap"></div>
+    <div class="note">Uppgifterna sparas bara i den här webbläsaren, aldrig på någon server. Adressen kan vara en IP (192.168.1.50) eller en hel adress med https://.</div></div>
+  <div class="card"><h2>Energikällor</h2>
+    ${idf("tibber","Tibber, hela huset (enhets-ID)")}${idf("hush","Hushållsel")}${idf("uppv","Uppvärmning")}${idf("vp","Värmepump")}${idf("ovr","Övrigt (valfritt)")}${idf("d236","Dekarsön 236, virtuell energiöversikt")}${idf("live235","Effektmätare 235 (Tibber Pulse)")}${idf("price","Elpris-enhet (Tibber)")}${idf("tesla","Tesla (bil)")}${idf("teslaE","Energiöversikt Tesla")}${idf("nibe","NIBE värmepump")}${idf("trLoad","Traktor, laddning (uttag)")}${idf("trHeat","Traktor, motorvärmare")}${idf("floor","Golvvärme Uterum")}${idf("slab","Betongplatta Uterum (sensor)")}${idf("vp236","Luftvärmepump 236")}${idf("trRep","Traktor, rapportenhet med kr (valfritt)")}${idf("golvRep","Golvvärme, rapportenhet med kr (valfritt)")}
+    <label class="adm-l">Påslag (kr/kWh)<input type="text" data-cfg="markup" value="${esc(cfg.markup)}"></label></div>
+  <div class="card"><h2>Fastigheter</h2><div class="note" style="margin:0 0 8px">Rum som hör till Dekarsön 236. Allt annat räknas som 235.</div>
+    ${zones.map(z=>`<label class="stat" style="cursor:pointer"><span>${esc(z.name)}</span><input type="checkbox" data-z236="${z.id}" ${cfg.zones236.includes(z.id)?"checked":""}></label>`).join("")||`<div class="note">Rum hämtas när du är ansluten.</div>`}</div>
+  <div class="card"><h2>Statusrutor</h2>${Object.keys(stNames).map(k=>`<label class="stat" style="cursor:pointer"><span>${stNames[k]}</span><input type="checkbox" data-st="${k}" ${st[k]?"checked":""}></label>`).join("")}
+    <h2 style="margin-top:16px">Skydd och dolda enheter</h2>
+    <label class="adm-l">PIN för Admin (tomt = ingen)<input type="text" data-cfg="pin" value="${esc(cfg.pin)}"></label>
+    <label class="adm-l">Dölj automatiskt i Styrning (regex på namn)<input type="text" data-cfg="exclude" value="${esc(cfg.exclude)}"></label></div>
+  </div>
+  <h3>Sök bland enheter och flows</h3><div class="bar"><input type="search" id="aq" placeholder="Filtrera" value="${esc(state.adminSearch)}"></div>
+  <div class="card" style="overflow:auto"><h2>Enheter med av/på (${devs.length})</h2>
+    <table class="adm"><tr><th>Enhet</th><th>Rum</th><th>Fastighet</th><th>Visa</th><th>Favorit</th><th>Eget namn</th></tr>
+    ${devs.map(d=>{const u=cfg.ui.devices[d.id]||{};return `<tr><td>${esc(d.name)}<div class="note" style="margin:0">${esc(d.class)}</div></td><td>${esc(zoneName(d))}</td><td>${propOf(d)}</td>
+      <td><input type="checkbox" data-dev="${d.id}" data-f="show" ${isShown(d)?"checked":""}></td><td><input type="checkbox" data-dev="${d.id}" data-f="fav" ${u.fav?"checked":""}></td>
+      <td><input type="text" data-dev="${d.id}" data-f="alias" value="${esc(u.alias||"")}" placeholder="${esc(d.name)}"></td></tr>`;}).join("")}</table></div>
+  <div class="card" style="overflow:auto;margin-top:12px"><h2>Flows (${fls.length})</h2>
+    <table class="adm"><tr><th>Flow</th><th>Typ</th><th>Visa</th><th>Favorit</th><th>Eget namn</th></tr>
+    ${fls.map(f=>{const u=cfg.ui.flows[f.id]||{};return `<tr><td>${esc(f.name)}</td><td>${f.kind==="adv"?"Avancerat":"Standard"}${f.triggerable?"":" · kan ej startas manuellt?"}</td>
+      <td><input type="checkbox" data-flow="${f.id}" data-f="show" ${flowShown(f)?"checked":""}></td><td><input type="checkbox" data-flow="${f.id}" data-f="fav" ${u.fav?"checked":""}></td>
+      <td><input type="text" data-flow="${f.id}" data-f="alias" value="${esc(u.alias||"")}" placeholder="${esc(f.name)}"></td></tr>`;}).join("")}</table>
+    <div class="note">Flows som inte kan startas manuellt (de som utlöses av händelser) ger fel om du försöker köra dem här. Standard visas bara de som är startbara.</div></div>
+  <div class="card" style="margin-top:12px"><h2>Säkerhetskopia</h2><div class="bar">
+    <button class="btn" data-act="export">Exportera inställningar</button>
+    <label class="btn" style="cursor:pointer">Importera<input type="file" id="imp" accept="application/json" class="hide"></label>
+    <button class="btn" data-act="reset">Återställ allt</button></div>
+    <div class="note">Exporten innehåller även API-nyckeln. Förvara filen säkert.</div></div>`;
+  $("#p-admin").innerHTML=h;
+  const aq=$("#aq");if(aq&&state.keepFocus){aq.focus();aq.setSelectionRange(aq.value.length,aq.value.length);}
+}
+
+/* =====================================================================
+   DEMODATA
+   ===================================================================== */
+function rnd(seed){let s=seed;return()=>{s=(s*1664525+1013904223)%4294967296;return s/4294967296;};}
+function demoSeries(minDate){
+  const t=todayStr(),R=rnd(7),S={tibber:{kwh:{},kr:{}},hush:{kwh:{},kr:{}},uppv:{kwh:{},kr:{}},vp:{kwh:{},kr:{}},ovr:{kwh:{},kr:{}},d236:{kwh:{},kr:{}},tesla:{kwh:{},kr:{}},traktor:{kwh:{},kr:{}},golv:{kwh:{},kr:{}}};
+  for(let d=addDays(minDate,-2);d<=t;d=addDays(d,1)){
+    const doy=(Date.parse(d)-Date.parse(d.slice(0,4)+"-01-01"))/864e5,w=(Math.cos((doy-15)/365*2*Math.PI)+1)/2;
+    const heat=8+w*52*(0.8+R()*0.4),house=20+R()*18,other=3+R()*14,tot=heat+house+other,price=0.75+w*0.55+R()*0.35;
+    const put=(k,kw)=>{S[k].kwh[d]=kw;S[k].kr[d]=kw*price*(0.95+R()*0.1);};
+    put("tibber",tot);put("hush",house);put("uppv",heat);put("vp",heat*0.92);put("ovr",other);put("d236",2+w*9*(0.7+R()*0.6));put("tesla",R()<0.4?0:8+R()*22);S.traktor.kwh[d]=R()<0.3?0:1+R()*4;S.golv.kwh[d]=w*(R()<0.2?0:6+R()*10);
+  }
+  return S;
+}
+function demoSetup(){
+  if(state.devices.d1)return;
+  state.zones={zh:{id:"zh",name:"Hem",parent:null},z1:{id:"z1",name:"Vardagsrum",parent:"zh"},z2:{id:"z2",name:"Kök",parent:"zh"},z3:{id:"z3",name:"Sovrum",parent:"zh"},z4:{id:"z4",name:"Uterum",parent:"zh"},zg:{id:"zg",name:"Garage",parent:"zh"},z236:{id:"z236",name:"Dekarsön 236",parent:"zh"}};
+  cfg.zones236=cfg.zones236.includes("z236")?cfg.zones236:[...cfg.zones236,"z236"];
+  const mk=(id,name,cls,zone,caps)=>({id,name,class:cls,zone,capabilitiesObj:Object.fromEntries(Object.entries(caps).map(([k,v])=>[k,{value:v}]))});
+  const D=[
+    mk("d1","Taklampa Vardagsrum","light","z1",{onoff:true,dim:0.7,measure_power:12}),mk("d2","Takspot Vardagsrum","light","z1",{onoff:false,dim:1,measure_power:0}),
+    mk("d3","Fönsterlampa Vardagsrum","socket","z1",{onoff:true,measure_power:9}),mk("d4","Spot köksbänk","light","z2",{onoff:true,dim:0.48,measure_power:14}),
+    mk("d5","Köksfläkt","socket","z2",{onoff:false,measure_power:0}),mk("d6","Taklampa Sovrum","light","z3",{onoff:false,dim:1}),
+    mk("d7","Julstjärna Uterum","light","z4",{onoff:true}),mk("d8","Avloppspump","socket","z4",{onoff:true,measure_power:0}),
+    mk("d9","Takbelysning Garage","socket","zg",{onoff:false,measure_power:0}),mk("d10","Ytterdörr Hall","lock","z1",{locked:true}),
+    mk("d11","Dörrsensor Garage","sensor","zg",{alarm_contact:true,alarm_battery:false}),mk("d12","Temperatursensor Kök","sensor","z2",{measure_temperature:22.2,measure_battery:100}),
+    mk("d13","Temperatursensor Sovrum","sensor","z3",{measure_temperature:19.8,measure_battery:15}),mk("d14","Rörelsesensor Kök","sensor","z2",{alarm_motion:false,measure_battery:90}),
+    mk("d15","Frysvakt Dekarsön 236","socket","z236",{onoff:true,measure_power:68}),mk("d16","Element Dekarsön 236","socket","z236",{onoff:false,measure_power:0}),
+    mk("d17","Lampa Dekarsön 236","light","z236",{onoff:false,dim:1}),mk("d18","Temperatursensor Dekarsön 236","sensor","z236",{measure_temperature:21.4,measure_battery:100}),
+    mk(cfg.ids.tibber,"Energi Tibber","other","zh",{meter_kwh_this_day:14.9,meter_kwh_last_day:48.2,meter_kwh_this_month:1460,meter_kwh_last_month:1367,meter_kwh_this_year:14345,meter_kwh_last_year:17662,meter_money_this_day:24.1,meter_money_last_day:56.5,meter_money_this_month:1818,meter_money_last_month:1990,meter_money_this_year:21770,meter_money_last_year:17704}),
+    mk(cfg.ids.tesla,"Tesla Model Y","other","zh",{charging_on:false,measure_soc_level:75,measure_battery:75,measure_soc_range_estimated:319.9,measure_charge_limit_soc:80,measure_charge_energy_added:12.6,measure_climate_temperature_in:3.4,measure_climate_temperature_out:3.5,meter_car_odo:102580}),mk(cfg.ids.teslaE,"Energiöversikt Tesla","other","zh",{"devicecapabilities_number.number2":293,"devicecapabilities_number.number3":277,"devicecapabilities_number.number5":293,"devicecapabilities_number.number6":277}),mk(cfg.ids.nibe,"NIBE","thermostat","zh",{measure_power:751}),mk(cfg.ids.vp,"Energi VP","other","zh",{meter_kwh_this_day:8.3,meter_kwh_last_day:11,meter_kwh_this_month:434,meter_kwh_last_month:504,meter_kwh_this_year:5459,meter_kwh_last_year:6287,meter_money_this_day:12.6,meter_money_last_day:11.3,meter_money_this_month:465,meter_money_last_month:641,meter_money_this_year:8161,meter_money_last_year:7719,meter_money_this_month_avg:1.07,measure_watt_avg:849}),mk(cfg.ids.trLoad,"Traktor Laddning","socket","zg",{onoff:false,measure_power:0,meter_power:5.9}),mk(cfg.ids.trHeat,"Traktor Motorvärmare","socket","zg",{onoff:false}),mk(cfg.ids.floor,"Golvvärme Uterum","socket","z4",{onoff:false,measure_power:0,meter_power:173,measure_temperature:53.1,"measure_temperature.1":28.1,"measure_temperature.2":24.4,"measure_temperature.3":22.8,"measure_temperature.4":24.2}),mk(cfg.ids.slab,"Betongplatta Uterum","sensor","z4",{measure_temperature:11.7,measure_humidity:60}),
+    mk(cfg.ids.live235,"Elmätare","other","zh",{measure_power:2299}),mk(cfg.ids.price,"Elpris","other","zh",{measure_price_total:0.57}),
+    mk(cfg.ids.d236,"Energiöversikt 236","other","z236",{"measure_power.number1":509,"devicecapabilities_number.number2":172,"devicecapabilities_number.number3":184,"devicecapabilities_number.number4":107,"devicecapabilities_number.number5":172,"devicecapabilities_number.number6":184})
+  ];
+  state.devices=Object.fromEntries(D.map(d=>[d.id,d]));
+}
+function demoFlows(){return [
+  {id:"f1",name:"Tänd garage",kind:"std",enabled:true,triggerable:true},{id:"f2",name:"Öppna ytterdörr",kind:"std",enabled:true,triggerable:true},
+  {id:"f3",name:"Sonos Play Kök",kind:"std",enabled:true,triggerable:true},{id:"f4",name:"Städ Tänd",kind:"adv",enabled:true,triggerable:true},
+  {id:"f5",name:"Adventsbelysning",kind:"adv",enabled:true,triggerable:false}];}
+
+/* =====================================================================
+   HUVUDLOOP
+   ===================================================================== */
+function setStatus(t,err){const s=$("#status");s.textContent=t;s.className="status"+(err?" err":"");}
+function showErr(msg){const b=$("#errBox");if(msg){b.textContent=msg;b.classList.remove("hide");}else b.classList.add("hide");}
+let busy=false;
+async function refresh(opts={}){
+  if(busy&&!opts.force)return;busy=true;
+  $("#demoWarn").classList.toggle("hide",!isDemo());
+  try{
+    if(!opts.quiet)setStatus("Hämtar…");
+    if(isDemo())demoSetup();
+    else{const [dv,zn]=await Promise.all([api("/api/manager/devices/device/"),api("/api/manager/zones/zone/")]);state.devices=dv||{};state.zones=zn||{};}
+    if(["flows","oversikt","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
+    drawProp();showErr(null);
+    await draw();
+    setStatus((isDemo()?"Demo · ":"")+"Uppdaterad "+new Date().toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
+  }catch(e){
+    showErr("Kunde inte hämta från Homey: "+e.message+". Kontrollera IP, API-nyckel och att sidan öppnas via http på samma nät.");
+    setStatus("Fel",true);
+  }finally{busy=false;}
+}
+async function draw(){
+  state.keepFocus=document.activeElement&&["q","aq"].includes(document.activeElement.id);
+  if(state.tab==="oversikt")renderOversikt();
+  else if(state.tab==="kort")await renderKort();
+  else if(state.tab==="energi")await renderEnergi();
+  else if(state.tab==="detalj")await renderDetalj();
+  else if(state.tab==="styr")renderStyr();
+  else if(state.tab==="flows")renderFlows();
+  else if(state.tab==="status")renderStatus();
+  else renderAdmin();
+  if(state.modal&&$("#dlg").open)await renderModal();
+}
+function showTab(t){
+  state.tab=t;state.search="";
+  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  for(const k of ["oversikt","kort","energi","detalj","styr","flows","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  refresh({force:true});
+}
+
+/* =====================================================================
+   HÄNDELSER
+   ===================================================================== */
+$("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)showTab(b.dataset.tab);});
+$("#segProp").addEventListener("click",e=>{const b=e.target.closest("[data-prop]");if(!b)return;state.prop=b.dataset.prop;drawProp();draw();});
+$("#segUnit").addEventListener("click",e=>{const b=e.target.closest("[data-unit]");if(!b)return;state.unit=b.dataset.unit;drawProp();draw();});
+
+document.addEventListener("click",async e=>{
+  const p=e.target.closest("[data-p]");
+  if(p){state.preset=p.dataset.p;if(state.preset==="valfri"&&!state.from){state.to=todayStr();state.from=addDays(state.to,-29);}draw();return;}
+  if(e.target.closest("[data-close]")){$("#dlg").close();state.modal=null;return;}
+  if(e.target.id==="dlg"){$("#dlg").close();state.modal=null;return;}
+  const mu=e.target.closest("[data-munit]");if(mu){state.unit=mu.dataset.munit;drawProp();draw();return;}
+  const kc=e.target.closest("[data-card]");if(kc){openModal("card",kc.dataset.card);return;}
+  const cc=e.target.closest("[data-chart]");if(cc){openModal("chart",cc.dataset.chart);return;}
+  const dt=e.target.closest("[data-det]");if(dt){state.det=dt.dataset.det;draw();return;}
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const act=b.dataset.act,card=b.closest("[data-id]"),id=card&&card.dataset.id;
+  try{
+    if(act==="tgl"){const d=state.devices[b.dataset.dev];await setCap(d.id,"onoff",!d.capabilitiesObj.onoff.value);draw();}
+    else if(act==="toggle"){const d=state.devices[id];await setCap(id,"onoff",!d.capabilitiesObj.onoff.value);draw();}
+    else if(act==="flow"){await runFlow(id);state.flash[id]=true;draw();setTimeout(()=>{delete state.flash[id];draw();},1800);}
+    else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
+      for(const d of propDevices().filter(d=>d.class==="light"&&hasOnoff(d)&&isShown(d)&&zoneName(d)===z))await setCap(d.id,"onoff",to);draw();}
+    else if(act==="alloff"){
+      if(!confirm("Släcka alla tända lampor i "+PROPS.find(p=>p.k===state.prop).name+"?"))return;
+      for(const d of propDevices().filter(d=>d.class==="light"&&hasOnoff(d)&&isShown(d)&&d.capabilitiesObj.onoff.value))await setCap(d.id,"onoff",false);draw();}
+    else if(act==="test"){await testConn();}
+    else if(act==="login"){if(!cfg.workerUrl){showErr("Fyll i serveradressen först.");return;}location.href=cfg.workerUrl.replace(/\/$/,"")+"/login";}
+    else if(act==="logout"){try{await fetch(base()+"/logout",{method:"POST",headers:{"Authorization":"Bearer "+cfg.session}});}catch(e){}cfg.session="";persist();state.devices={};draw();refresh({force:true});}
+    else if(act==="pin"){if($("#pinIn").value===cfg.pin){state.adminOk=true;draw();}else{$("#pinIn").value="";$("#pinIn").placeholder="Fel PIN";}}
+    else if(act==="export"){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"}));a.download="energicentral-installningar.json";a.click();}
+    else if(act==="reset"){if(confirm("Återställa alla inställningar i den här webbläsaren?")){localStorage.removeItem("homeyDash2");cfg=loadCfg();state.cache={};state.devices={};refresh({force:true});}}
+  }catch(err){showErr("Åtgärden misslyckades: "+err.message);}
+});
+document.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.id==="q"){state.search=t.value;state.keepFocus=true;draw();}
+  else if(t.id==="aq"){state.adminSearch=t.value;state.keepFocus=true;renderAdmin();}
+});
+document.addEventListener("change",async e=>{
+  const t=e.target;
+  try{
+    if(t.dataset.act==="dim"){await setCap(t.closest("[data-id]").dataset.id,"dim",Number(t.value)/100);draw();return;}
+    if(t.id==="mcmp"){state.cmp=t.value;draw();return;}
+    if(t.id==="cmp"){state.cmp=t.value;draw();return;}
+    if(t.id==="from"){state.from=t.value;draw();return;}
+    if(t.id==="to"){state.to=t.value;draw();return;}
+    if(t.id==="imp"){const f=t.files[0];if(!f)return;const j=JSON.parse(await f.text());const d=clone(DEFAULTS);
+      cfg={...d,...j,ids:{...d.ids,...(j.ids||{})},ui:{devices:{...(j.ui&&j.ui.devices)},flows:{...(j.ui&&j.ui.flows)},status:{...d.ui.status,...(j.ui&&j.ui.status)}}};persist();state.cache={};refresh({force:true});return;}
+    if(t.dataset.cfg){
+      const path=t.dataset.cfg.split("."),val=t.type==="checkbox"?t.checked:t.value.trim();
+      if(path[0]==="ids")cfg.ids[path[1]]=val;else if(path[0]==="markup")cfg.markup=parseFloat(String(val).replace(",","."))||0;else cfg[path[0]]=val;
+      persist();state.cache={};if(["ip","key","demo","workerUrl","mode"].includes(path[0])){state.devices={};refresh({force:true,flows:true});}else draw();return;}
+    if(t.dataset.z236){const s=new Set(cfg.zones236);t.checked?s.add(t.dataset.z236):s.delete(t.dataset.z236);cfg.zones236=[...s];persist();draw();return;}
+    if(t.dataset.st){cfg.ui.status[t.dataset.st]=t.checked;persist();return;}
+    if(t.dataset.dev||t.dataset.flow){
+      const map=t.dataset.dev?cfg.ui.devices:cfg.ui.flows,id=t.dataset.dev||t.dataset.flow,f=t.dataset.f;
+      (map[id]=map[id]||{})[f]=f==="alias"?t.value.trim():t.checked;persist();return;}
+  }catch(err){showErr(err.message);}
+});
+
+(function(){const m=/[#&]session=([a-f0-9]{64})/.exec(location.hash);if(m){cfg.session=m[1];cfg.demo=false;cfg.mode="cloud";persist();history.replaceState(null,"",location.pathname+location.search);}})();
+document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart)){e.preventDefault();e.target.click();}});
+$("#dlg").addEventListener("close",()=>{state.modal=null;});
+drawProp();
+refresh({force:true,flows:true});
+setInterval(()=>{if(!document.hidden&&state.tab!=="admin")refresh({quiet:true});},REFRESH_MS);
+</script>
+</body>
+</html>
