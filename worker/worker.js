@@ -9,6 +9,7 @@ const ALLOWED = [
   ["GET", /^\/api\/manager\/devices\/device\/?$/],
   ["GET", /^\/api\/manager\/zones\/zone\/?$/],
   ["GET", /^\/api\/manager\/insights\/log\/.*$/],
+  ["GET", /^\/api\/manager\/logic\/variable\/?$/],
   ["GET", /^\/api\/manager\/flow\/(flow|advancedflow)\/?$/],
   ["PUT", /^\/api\/manager\/devices\/device\/[0-9a-f-]{36}\/capability\/[A-Za-z0-9_.]+$/],
   ["POST", /^\/api\/manager\/flow\/(flow|advancedflow)\/[0-9a-f-]{36}\/trigger$/],

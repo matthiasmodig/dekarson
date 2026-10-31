@@ -203,7 +203,7 @@ const DEFAULTS={
     tibber:"9984ff30-8ea8-4a59-8b77-ca10a9722cdf",hush:"d2a46475-4494-4794-ad4a-413f89209ecf",
     uppv:"f6565b0d-0a1b-4d61-be3d-21e064f0af16",vp:"2b491c90-9448-47be-85a4-c4de18e5a711",ovr:"",
     d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
-    price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
+    price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
     tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
     trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
   },
@@ -712,13 +712,24 @@ async function timmedelNu(){
   const now=new Date(),k=hourKey(now),d=k.slice(0,10),m=k.slice(0,7);
   return {hh,hour:hh[k]!=null?{v:hh[k],n:1}:null,day:meanOfHours(hh,d),month:meanOfHours(hh,m)};
 }
+/* Homey räknar dygns- och månadsmedel av timmedeleffekterna (flow "Beräkna TIMeffekt"). Läs dem därifrån när de finns. */
+async function homeyMedel(){
+  if(isDemo())return null;
+  try{
+    if(!state.vars||Date.now()-state.vars.t>20000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};
+    const V=state.vars.v||{},g=id=>{const x=Object.values(V).find(y=>y.id===id);return x?Number(x.value):null;};
+    const day=g(cfg.ids.medDay),dn=g(cfg.ids.medDayN),mo=g(cfg.ids.medMonth),mn=g(cfg.ids.medMonthN);
+    return {day:dn>0?{v:day,n:dn}:null,month:mn>0?{v:mo,n:mn}:null};
+  }catch(e){return null;}
+}
 async function medelEffektHtml(){
   if(state.prop!=="235")return "";
-  const t=await timmedelNu(),f=x=>x?fmt(x.v,2):"–";
+  const t=await timmedelNu(),f=x=>x?fmt(x.v,2):"–",hm=await homeyMedel();
+  if(hm&&hm.day)t.day={...hm.day,home:true};if(hm&&hm.month)t.month={...hm.month,home:true};
   return `<div class="grid" style="margin-bottom:12px">`
    +tile("Medeleffekt innevarande timme",f(t.hour),"kW","Timmedeleffekt hittills denna timme")
-   +tile("Medeleffekt idag",f(t.day),"kW",t.day?"Medel av "+t.day.n+" timmedeleffekter":"")
-   +tile("Medeleffekt denna månad",f(t.month),"kW",t.month?"Medel av "+t.month.n+" timmedeleffekter":"")
+   +tile("Medeleffekt idag",f(t.day),"kW",t.day?"Medel av "+t.day.n+" timmedeleffekter"+(t.day.home?" · från Homey":""):"")
+   +tile("Medeleffekt denna månad",f(t.month),"kW",t.month?"Medel av "+t.month.n+" timmedeleffekter"+(t.month.home?" · från Homey":""):"")
    +`</div>`;
 }
 /* ---------- Ekonomi ---------- */
