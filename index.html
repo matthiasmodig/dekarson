@@ -943,6 +943,11 @@ async function sensModalHtml(k){
   h+=`<div class="card" style="margin-top:14px">${sensChart(pts,inf.unit,inf.dec)}</div>`;
   return h;
 }
+function floorSensTiles(f){
+  if(!f)return "";
+  return [1,2,3,4].filter(i=>capVal(f,"measure_temperature."+i)!=null).map(i=>{const c="measure_temperature."+i,t=((f.capabilitiesObj||{})[c]||{}).title;
+    return sensTile(f.id,c,esc(t&&!/^temperatur/i.test(t)?t:"Golvgivare "+i),fmt(capVal(f,c),1),"°C",t&&!/^temperatur/i.test(t)?"Givare "+i:"Namn saknas i Homey");}).join("");
+}
 async function renderKlimat(){
   const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla);
   const zones=[...new Set(all.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv"));
@@ -958,7 +963,7 @@ async function renderKlimat(){
     if(nb){const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^(measure_temperature|capability_\d+)/.test(k)&&nb.capabilitiesObj[k].value!=null).sort((a,b)=>a.localeCompare(b,"sv",{numeric:true}));
       h+=`<h3>Värmepump · NIBE</h3><div class="grid">${temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")}${tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu")}</div>`;}
     const f=state.devices[cfg.ids.floor],sl=state.devices[cfg.ids.slab];
-    if(f||sl)h+=`<h3>Uterum och entreplatta</h3><div class="grid">${sl?sensTile(sl.id,"measure_temperature","Betongplatta",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(sl.id,"measure_humidity","Fukt "+fmt(capVal(sl,"measure_humidity"),0)+" %"):""):""}${tile("Golvvärme",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}${f?sensTile(f.id,"measure_temperature","Golvets givare",fmt(capVal(f,"measure_temperature"),1),"°C",[1,2,3,4].map(i=>capVal(f,"measure_temperature."+i)!=null?sensLink(f.id,"measure_temperature."+i,fmt(capVal(f,"measure_temperature."+i),1)):"–").join(" / ")):""}</div>`;
+    if(f||sl)h+=`<h3>Uterum och entreplatta</h3><div class="grid">${sl?sensTile(sl.id,"measure_temperature","Betongplatta",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(sl.id,"measure_humidity","Fukt "+fmt(capVal(sl,"measure_humidity"),0)+" %"):""):""}${tile("Golvvärme",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}${floorSensTiles(f)}</div>`;
   }
   $("#p-klimat").innerHTML=h;
 }
@@ -1263,7 +1268,7 @@ async function viewUterum(R,u){
   let h=`<div class="grid">${tile("Betongplatta, temperatur",fmt(capVal(s,"measure_temperature"),1),"°C","Luftfuktighet "+fmt(capVal(s,"measure_humidity"),0)+" %","hero")}
     ${tile("Golvvärme effekt",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}
     ${tile("Golvvärme total",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat")}
-    ${tile("Golvvärmens givare",fmt(capVal(f,"measure_temperature"),1),"°C","Temperaturer: "+[1,2,3,4].map(i=>fmt(capVal(f,"measure_temperature."+i),1)).join(" / "))}</div>`;
+    ${floorSensTiles(f)}</div>`;
   if(f)h+=`<div class="bar" style="margin-top:12px"><button class="btn" data-act="tgl" data-dev="${f.id}">Golvvärme ${capVal(f,"onoff")?"av":"på"}</button></div>`;
   h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
