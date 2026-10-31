@@ -597,7 +597,8 @@ async function renderOversikt(){
     h+=tile("Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Aktuell förbrukning","hero");
     h+=tile("Energi idag",fmt(kd,1),"kWh",delta(kd,kdp,"mot igår ("+fmt(kdp,0)+" kWh)"));
     h+=tile("Kr idag",fmt(rd,0),"kr",delta(rd,rdp,"mot igår ("+fmt(rdp,0)+" kr)"));
-    h+=tile("Timmedel effekt just nu",thisH!=null?fmt(thisH/frac,2):"–","kW",thisH!=null?fmt(thisH,2)+" kWh på "+fmt(frac*60,0)+" min":"");
+    let tnow=null;try{tnow=(await timmedelNu()).hour;}catch(err){}
+    h+=tile("Timmedel effekt just nu",tnow?fmt(tnow.v,2):(thisH!=null?fmt(thisH/frac,2):"–"),"kW",tnow?"Medeleffekt denna timme hittills":(thisH!=null?fmt(thisH,2)+" kWh på "+fmt(frac*60,0)+" min":""));
     const ph0=capVal(state.devices[cfg.ids.elpris],"meter_price_h0"),pnow=ph0!=null?ph0:(e.price!=null?e.price:null);
     h+=tile("Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
     const ud=state.devices[cfg.ids.ute],feel=capVal(state.devices[cfg.ids.smhi],"air_temperature_feels_like_cp");
@@ -634,7 +635,7 @@ async function renderEnergi(){
   h+=`<div class="bar"><label>Jämför mot <select id="cmp"><option value="prev">Föregående period (lika lång)</option><option value="yoy">Samma period året innan</option><option value="none">Ingen jämförelse</option></select></label></div>`;
   h+=`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name}</div>`;
 
-  h+=faseHtml()+medelEffektHtml();
+  h+=faseHtml()+await medelEffektHtml();
   if(!T){h+=`<div class="card">Ange energikälla för ${PROPS.find(p=>p.k===state.prop).name} under Admin.</div>`;$("#p-energi").innerHTML=h;$("#cmp").value=state.cmp;return;}
   const cur={kwh:sumRange(T,"kwh",R.s,R.e),kr:sumRange(T,"kr",R.s,R.e)};
   const prv=R.ps?{kwh:sumRange(T,"kwh",R.ps,R.pe),kr:sumRange(T,"kr",R.ps,R.pe)}:null;
@@ -702,16 +703,20 @@ function faseHtml(){
   if(!phases.length)return `<div class="note" style="margin:0 0 12px">Fasström (L1–L3) visas när Homey rapporterar measure_current på elmätaren.</div>`;
   return `<div class="card" style="margin-bottom:12px;padding:10px 16px"><div class="bar" style="margin:0;gap:6px 22px"><b>Fasbalans</b>${phases.map(([k,v],i)=>{const n=(k.match(/(\d)$/)||[0,i+1])[1];return `<span><span style="color:var(--mut)">L${n}</span> <b style="font-size:20px;${v/fuse>.85?"color:var(--bad)":""}">${fmt(v,1)}</b> A</span>`;}).join("")}<span class="note" style="margin:0">säkring <input type="text" data-cfg="fuse" value="${fuse}" style="width:44px;min-height:26px;padding:2px 6px"> A</span></div></div>`;
 }
-function medelEffektHtml(){
+/* Medeleffekt = medelvärdet av timmedeleffekterna (kW per timme), inte energi delat med tid. */
+function meanOfHours(hh,prefix){const ks=Object.keys(hh).filter(k=>k.startsWith(prefix));if(!ks.length)return null;return {v:ks.reduce((a,k)=>a+hh[k],0)/ks.length,n:ks.length};}
+async function timmedelNu(){
+  let hh={};try{hh=await loadHourly();}catch(e){}
+  const now=new Date(),k=hourKey(now),d=k.slice(0,10),m=k.slice(0,7);
+  return {hh,hour:hh[k]!=null?{v:hh[k],n:1}:null,day:meanOfHours(hh,d),month:meanOfHours(hh,m)};
+}
+async function medelEffektHtml(){
   if(state.prop!=="235")return "";
-  const tb=state.devices[cfg.ids.tibber];if(!tb)return "";
-  const now=new Date(),frac=Math.max(now.getMinutes()+now.getSeconds()/60,1)/60,hToday=Math.max(now.getHours()+frac,0.05);
-  const hMonth=Math.max(((now-new Date(now.getFullYear(),now.getMonth(),1))/36e5),0.05);
-  const th=capVal(tb,"meter_kwh_this_hour"),kd=capVal(tb,"meter_kwh_this_day"),km=capVal(tb,"meter_kwh_this_month");
+  const t=await timmedelNu(),f=x=>x?fmt(x.v,2):"–";
   return `<div class="grid" style="margin-bottom:12px">`
-   +tile("Medeleffekt innevarande timme",th!=null?fmt(th/frac,2):"–","kW",th!=null?fmt(th,2)+" kWh på "+fmt(frac*60,0)+" min":"")
-   +tile("Medeleffekt idag",kd!=null?fmt(kd/hToday,2):"–","kW",kd!=null?fmt(kd,1)+" kWh på "+fmt(hToday,1)+" h":"")
-   +tile("Medeleffekt denna månad",km!=null?fmt(km/hMonth,2):"–","kW",km!=null?fmt(km,0)+" kWh på "+fmt(hMonth/24,1)+" dygn":"")
+   +tile("Medeleffekt innevarande timme",f(t.hour),"kW","Timmedeleffekt hittills denna timme")
+   +tile("Medeleffekt idag",f(t.day),"kW",t.day?"Medel av "+t.day.n+" timmedeleffekter":"")
+   +tile("Medeleffekt denna månad",f(t.month),"kW",t.month?"Medel av "+t.month.n+" timmedeleffekter":"")
    +`</div>`;
 }
 /* ---------- Ekonomi ---------- */
