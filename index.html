@@ -466,6 +466,18 @@ function calcRange(){
   return {s,e,len,ps,pe};
 }
 function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p;}
+function multiLine(ser,labels){
+  const rid='bcr'+(++BCID),W=1000,H=300,L=52,B=28,T=10,R=8,n=labels.length;
+  const all=ser.flatMap(x=>x.vals).filter(v=>v!=null);if(!all.length||n<2)return `<div class="note">Ingen data för perioden.</div>`;
+  const max=niceMax(Math.max(...all,0.0001)),bw=(W-L-R)/(n-1),y=v=>T+(H-T-B)*(1-v/max),x=i=>L+i*bw;let g="";
+  for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,max<10?1:0)}</text>`;}
+  for(const s of ser){const segs=[];let seg=[];s.vals.forEach((v,i)=>{if(v!=null)seg.push(x(i)+","+y(v));else{if(seg.length)segs.push(seg);seg=[];}});if(seg.length)segs.push(seg);
+    for(const sg of segs)g+=sg.length>1?`<polyline points="${sg.join(" ")}" fill="none" stroke="${s.color}" stroke-width="2.4" pointer-events="none"/>`:`<circle cx="${sg[0].split(",")[0]}" cy="${sg[0].split(",")[1]}" r="3" fill="${s.color}"/>`;}
+  const step=Math.max(1,Math.ceil(n/10));for(let i=0;i<n;i+=step)g+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
+  for(let i=0;i<n;i++){const txt=labels[i]+": "+ser.map(s=>s.name+" "+(s.vals[i]==null?"–":fmt(s.vals[i],s.vals[i]<10?1:0)+" "+s.unit)).join(" · ");
+    g+=`<rect x="${x(i)-bw/2}" y="${T}" width="${bw}" height="${H-B-T}" fill="transparent" data-t="${esc(txt)}" onmouseover="document.getElementById('${rid}').textContent=this.dataset.t" ontouchstart="document.getElementById('${rid}').textContent=this.dataset.t"/>`;}
+  return `<div class="legend">${ser.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join("")}</div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg><div class="note" id="${rid}" style="min-height:19px;color:var(--ink)">Håll muspekaren över diagrammet för att se värdena.</div>`;
+}
 let BCID=0;
 function barChart(cur,prev,labels,unit,plabels){
   const rid='bcr'+(++BCID);
@@ -862,7 +874,8 @@ async function renderKlimat(){
 /* =====================================================================
    ENERGIKORT
    ===================================================================== */
-const KORT235=[["tibber","Hela huset (Tibber)"],["hush","Hushållsel"],["uppv","Uppvärmning"],["vp","Värmepump"],["ovr","Övrigt"],["tesla","Tesla"],["traktor","Traktor"],["golv","Golvvärme Uterum"]];
+const KORT235=[["tibber","Hela huset"],["uppv","Uppvärmning"],["hush","Hushållsström"],["tesla","Tesla"],["golv","Entreplatta"],["traktor","Traktor"]];
+const KORTCHARTS=["sources","price","hours"];
 const KORT236=[["d236","Dekarsön 236"]];
 const korts=()=>state.prop==="235"?KORT235:KORT236;
 const mainKey=()=>state.prop==="235"?"tibber":"d236";
@@ -937,10 +950,19 @@ const CHARTS=[
    const T=mainT(c);if(!T||!Object.keys(T.kr||{}).length)return `<div class="note">Pris saknas för den här källan.</div>`;
    const f=(s,len)=>Array.from({length:len},(_,i)=>{const d=addDays(s,i),a=T.kwh[d],b=T.kr[d];return a>0&&b!=null?b/a:null;});
    const cur=f(c.R.s,c.R.len),prev=c.R.ps?f(c.R.ps,c.R.len):null;
-   return legendCP(c.R)+polyChart(cur,prev,cur.map((_,i)=>labelDate(addDays(c.R.s,i))),"kr/kWh");}},
+   return legendCP(c.R)+polyChart(cur,prev,cur.map((_,i)=>labelDate(addDays(c.R.s,i))),"kr/kWh");},
+   async more(c){const T=mainT(c);if(!T||!Object.keys(T.kr||{}).length)return "";const mk=monthKeys(12),f=m=>{const a=monthSum(T,"kwh",m),b=monthSum(T,"kr",m);return a>0&&b!=null?b/a:null;},py=m=>(+m.slice(0,4)-1)+m.slice(4);
+     const cur=mk.map(f),prev=mk.map(m=>f(py(m)));
+     return `<div class="card" style="margin-top:14px"><h2>Snittpris per månad (kr/kWh)</h2><div class="legend"><span><i style="background:var(--cur)"></i>Månad</span><span><i style="background:var(--prev)"></i>Samma månad året innan</span></div>${barChart(cur,prev.some(x=>x!=null)?prev:null,mk.map(m=>MON[+m.slice(5)-1]),"kr/kWh",mk.map(m=>py(m)))}</div>`;}},
  {k:"sources",title:"Förbrukare i jämförelse",async build(c){
-   const rows=korts().map(([k,n])=>({name:n,v:c.S[k]?sumRange(c.S[k],effU(c.S[k],c.u),c.R.s,c.R.e).v:null})).filter(r=>r.v!=null);
+   const rows=korts().filter(x=>x[0]!==mainKey()).map(([k,n])=>({name:n,v:c.S[k]?sumRange(c.S[k],effU(c.S[k],c.u),c.R.s,c.R.e).v:null})).filter(r=>r.v!=null);
    const T0=mainT(c);return rows.length?hbars(rows,unitName(effU(T0,c.u))):`<div class="note">Ingen data.</div>`;},
+   async more(c){
+     const list=korts().filter(x=>x[0]!==mainKey()&&c.S[x[0]]),b=c.R.len<=45?1:(c.R.len<=200?7:30),cols=["var(--cur)","var(--on)","var(--good)","var(--bad)","#a56bd6","#2bb3c0"];
+     if(!list.length)return "";
+     const ser=list.map(([k,n],i)=>{const T=c.S[k],eu=effU(T,c.u);return {name:n,color:cols[i%cols.length],vals:bucketize(dayArray(T,eu,c.R.s,c.R.len),b),unit:unitName(eu)};});
+     const labels=ser[0].vals.map((_,i)=>labelDate(addDays(c.R.s,i*b)));
+     return `<div class="card" style="margin-top:14px"><h2>Förbrukare över tid (per ${b===1?"dygn":b===7?"vecka":"30 dagar"})</h2>${multiLine(ser,labels)}</div>`;},
    async rows(c){return {head:["Källa","kWh","kr","Andel av totalen (kWh)"],body:korts().map(([k,n])=>{const T=c.S[k];if(!T)return [n,"–","–","–"];const a=sumRange(T,"kwh",c.R.s,c.R.e).v,b=sumRange(T,"kr",c.R.s,c.R.e).v,t=c.S[mainKey()]?sumRange(c.S[mainKey()],"kwh",c.R.s,c.R.e).v:null;return [n,fmt(a,0),fmt(b,0),t>0&&a!=null?fmt(a/t*100,0)+" %":"–"];})};}},
  {k:"share",title:"Fördelning av förbrukningen",async build(c){
    if(state.prop!=="235")return `<div class="note">Gäller Dekarsön 235.</div>`;
@@ -952,7 +974,11 @@ const CHARTS=[
    return barChart(a,null,a.map((_,i)=>labelDate(addDays(s,i*7))),unitName(eu));}},
  {k:"hours",title:"Timmedeleffekt, senaste 24 timmarna (kW)",async build(c){
    if(state.prop!=="235")return `<div class="note">Gäller Dekarsön 235.</div>`;
-   const hh=await loadHourly(),keys=Object.keys(hh).sort().slice(-24);return lineChart(keys.map(k=>hh[k]),keys.map(k=>k.slice(11)+":00"),"kW");}},
+   const hh=await loadHourly(),keys=Object.keys(hh).sort().slice(-24);return lineChart(keys.map(k=>hh[k]),keys.map(k=>k.slice(11)+":00"),"kW");},
+   async more(c){if(state.prop!=="235")return "";const hh=await loadHourly(),all=Object.keys(hh).sort(),k7=all.slice(-168);
+     const sm=Array(24).fill(0),n=Array(24).fill(0);for(const k of all){const hr=+k.slice(11);sm[hr]+=hh[k];n[hr]++;}
+     return `<div class="card" style="margin-top:14px"><h2>Senaste 7 dygnen, timme för timme (kW)</h2>${barChart(k7.map(k=>hh[k]),null,k7.map(k=>k.slice(8,10)+"/"+k.slice(5,7)+" "+k.slice(11)+":00"),"kW")}</div>
+       <div class="card" style="margin-top:14px"><h2>Snitt per klockslag, senaste ${Math.round(all.length/24)} dygnen (kW)</h2>${barChart(sm.map((x,i)=>n[i]?x/n[i]:null),null,sm.map((_,i)=>pad(i)+":00"),"kW")}</div>`;}},
  {k:"top",title:"Högsta och lägsta dygnen i perioden",async build(c){
    const T=mainT(c);if(!T)return "";const eu=effU(T,c.u),l=dayList(T,eu,c.R.s,c.R.e).sort((a,b)=>b[1]-a[1]);if(!l.length)return `<div class="note">Ingen data.</div>`;
    const row=([d,v])=>`<div class="stat"><span>${d} (${WD[wdIdx(d)]})</span><b>${fmt(v,0)} ${unitName(eu)}</b></div>`;
@@ -966,7 +992,7 @@ async function renderKort(){
   const c=await kortCtx(addDays(t,-400));
   let h=presetBar(R)+`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name} · klicka på ett kort eller diagram för mer information</div>`;
   h+=`<h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
-  for(const d of CHARTS){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
+  for(const d of KORTCHARTS.map(k=>CHARTS.find(x=>x.k===k))){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
     h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
   h+=`</div>`;
   $("#p-kort").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;
@@ -1006,7 +1032,8 @@ async function renderModal(){
   }else{
     const d=CHARTS.find(x=>x.k===m.k);h=modalHead(d.title);
     h+=`<div class="card" style="margin-bottom:14px">${await d.build(c)}</div>`;
-    if(d.rows){const r=await d.rows(c);if(r)h+=`<div class="card">${tableHtml(r)}</div>`;}
+    if(d.more)h+=await d.more(c);
+    if(d.rows){const r=await d.rows(c);if(r)h+=`<div class="card" style="margin-top:14px">${tableHtml(r)}</div>`;}
   }
   body.innerHTML=h;const mc=$("#mcmp");if(mc)mc.value=state.cmp;
 }
