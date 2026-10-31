@@ -66,6 +66,9 @@ h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transf
 .rowN{display:grid;gap:12px;grid-template-columns:repeat(var(--c,4),minmax(0,1fr))}
 .grp{margin:0 0 22px}.grp>h3{margin:0 0 10px}
 @media(max-width:900px){.rowN{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.flrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
+@media(max-width:900px){.flrow{grid-template-columns:1fr 1fr}.flrow .flow{grid-column:auto!important}}
+@media(max-width:560px){.flrow{grid-template-columns:1fr}}
 .grid.wide{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 .note{color:var(--mut);font-size:13px;margin-top:8px}
 .warn{background:#fff4dd;color:#6f4400;border:1px solid #efd08a;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:14px}
@@ -1733,13 +1736,13 @@ function renderFlows(){
   const pick=names=>names.map(n=>list.find(f=>f.name.toLowerCase()===n.toLowerCase())).filter(Boolean);
   const r1=pick(["Home Control – Städ Tänd","Home Control – Städ Släck"]),r2a=pick(["Öppna ytterdörr","Lås ytterdörr"]),r2b=pick(["Öppna/Stäng Port"]),r1b=pick(["Tänd garage"]),r3=pick(["Kontroll hem","Kontroll Timmerflotte 24h","Shelly kontroll"]),r4=pick(["Status hem","Starta upp efter strömavbrott","Meddela Betongplattans Temp"]),r5=pick(["Energi just nu","Luftfuktighet vinden","Driftläge värme"]);
   const used=new Set([...r1,...r1b,...r2a,...r2b,...r3,...r4,...r5].map(f=>f.id)),rest=list.filter(f=>!used.has(f.id));
-  const fx=(a,b)=>`<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px">${a.map(f=>`<div style="flex:0 1 300px;min-width:240px">${flowCard(f)}</div>`).join("")}${b&&b.length?`<div style="flex:0 1 300px;min-width:240px;margin-left:auto">${b.map(flowCard).join("")}</div>`:""}</div>`;
+  const fx=(a,b)=>`<div class="flrow">${a.map(f=>flowCard(f)).join("")}${b&&b.length?b.map(f=>flowCard(f).replace('class="card flow"','class="card flow" style="grid-column:3"')).join(""):""}</div>`;
   if(r1.length||r1b.length)h+=fx(r1,r1b);
   if(r2a.length||r2b.length)h+=fx(r2a,r2b);
-  if(r3.length)h+=`<div style="margin-top:20px"></div>`+fx(r3);
+  if(r3.length)h+=fx(r3);
   if(r4.length)h+=fx(r4);
   if(r5.length)h+=fx(r5);
-  h+=rest.length?`<div class="grid wide">${rest.map(flowCard).join("")}</div>`:(list.length?"":`<div class="card">Inga flows att visa. Välj vilka som ska synas under Admin.</div>`);
+  h+=rest.length?`<div class="flrow">${rest.map(flowCard).join("")}</div>`:(list.length?"":`<div class="card">Inga flows att visa. Välj vilka som ska synas under Admin.</div>`);
   $("#p-flows").innerHTML=h;
   const qi=$("#q");if(qi&&state.keepFocus){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);}
 }
