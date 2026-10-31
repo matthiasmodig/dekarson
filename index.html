@@ -757,9 +757,6 @@ async function renderOversikt(){
     g2+=sensTile(cfg.ids.slab,"measure_temperature","Betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
     h+=grp("Temperatur",g2,3)+elGrp;
     try{h+=await priceBlock(0,true);}catch(err){}
-    let hh={},keys=[];try{hh=await loadHourly();keys=doneKeys(hh).slice(-24);}catch(err){}
-    const v24=keys.map(k=>hh[k]);
-    if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>hourLbl(k)),"kW")}<div class="note">Klicka för mer.</div></div>`;
     if(state.devices[cfg.ids.tesla])h+=`<section class="grp" style="margin-top:14px"><h3>Tesla</h3>`+teslaTiles(state.unit)+`</section>`;
   }else{
     h+=`<section class="grp" style="margin-top:14px"><h3>Effekt · Dekarsön 236</h3>`+await medelEffektHtml()+`</section>`;
