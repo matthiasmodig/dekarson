@@ -1724,6 +1724,7 @@ function statusLists(){
 function renderStatus(){
   const L=statusLists(),S=cfg.ui.status;
   const cat=(title,items,cls,cnt,sty)=>`<div class="card" style="${sty||""}"><h2>${title} <span class="pill ${cls||""}">${cnt!=null?cnt:items.length}</span></h2>${items.length?items.map(x=>`<div class="stat"><span>${x}</span></div>`).join(""):`<div class="note" style="margin:0">Inga</div>`}</div>`;
+  const tbl=(title,head,rows,cnt,sty,cls,L0)=>`<div class="card" style="${sty||""}"><h2>${title} <span class="pill ${cls||""}">${cnt!=null?cnt:rows.length}</span></h2>${rows.length?`<table class="cols"><tr>${head.map((x,i)=>`<th${i>=(L0||1)?` style="text-align:right"`:""}>${x}</th>`).join("")}</tr>${rows.map(r=>`<tr>${r.map((x,i)=>`<td${i>=(L0||1)?` style="text-align:right;white-space:nowrap"`:""}>${x}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="note" style="margin:0">Inga</div>`}</div>`;
   let h=`<div class="grid wide">`;
   if(S.lights)h+=cat("Tända lampor",L.lights.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
   if(S.sockets){const skip=new Set([cfg.ids.fastighet,cfg.ids.tibber,cfg.ids.live235,cfg.ids.d236,cfg.ids.price,cfg.ids.elpris,cfg.ids.l236_1,cfg.ids.l236_2,cfg.ids.l236_3]);
@@ -1739,13 +1740,13 @@ function renderStatus(){
       if(d){const co=d.capabilitiesObj;for(const k of Object.keys(co).filter(k=>/^measure_current/.test(k)).sort()){const n=(k.match(/(\d)$/)||[0,ph.length+1])[1],pk=Object.keys(co).find(x=>/^measure_power/.test(x)&&new RegExp("[._]?(l|phase)?"+n+"$","i").test(x)&&x!=="measure_power"),vk=Object.keys(co).find(x=>/^measure_voltage/.test(x)&&new RegExp(n+"$").test(x));
         ph.push({n:"L"+n,a:co[k].value,w:pk?co[pk].value:null,v:vk?co[vk].value:null});}}}
     if(ph.length){const fuse=Number(cfg.fuse)||20;
-      h+=cat("Faser · "+PROPS.find(p=>p.k===state.prop).name,ph.map(x=>`<b>${x.n}</b> </span><span>${x.w!=null?fmt(x.w,0)+" W":""}${x.w!=null&&x.a!=null?" · ":""}${x.a!=null?`<span style="${state.prop==="235"&&x.n!=="Totalt"&&x.a/fuse>.85?"color:var(--bad)":""}">${fmt(x.a,1)} A</span>`:""}${x.v!=null?" · "+fmt(x.v,0)+" V":""}`),"",null,"min-width:0;max-width:380px;white-space:nowrap");}}
+      h+=tbl("Faser · "+PROPS.find(p=>p.k===state.prop).name,["Fas","Effekt","Ström","Spänning"],ph.map(x=>[`<b>${x.n}</b>`,x.w!=null?fmt(x.w,0)+" W":"–",x.a!=null?`<span style="${state.prop==="235"&&x.n!=="Totalt"&&x.a/fuse>.85?"color:var(--bad)":""}">${fmt(x.a,1)} A</span>`:"–",x.v!=null?fmt(x.v,0)+" V":"–"]),ph.length,"grid-column:span 2;min-width:0");}}
   if(S.locks)h+=cat("Lås",L.locks.map(x=>`<span class="dot ${x.ok?"ok":"bad"}"></span>${esc(devName(x.d))}</span><span>${x.ok?"Låst":"Olåst"}`),L.locks.some(x=>!x.ok)?"bad":"");
   if(S.open)h+=cat("Kontakter aktiva (öppet)",L.open.map(d=>`<span class="dot bad"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
   if(S.alarms)h+=cat("Larm",L.alarms.map(d=>`<span class="dot bad"></span>${esc(devName(d))}`),L.alarms.length?"bad":"");
   if(S.motion)h+=cat("Rörelse just nu",L.motion.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
   if(S.battery)h+=cat("Svagt batteri (20 % eller lägre)",L.battery.map(d=>`${esc(devName(d))}</span><span>${fmt(capVal(d,"measure_battery"),0)} %`),L.battery.length?"bad":"");
-  if(S.temps)h+=cat("Temperaturer",L.temps.sort((a,b)=>capVal(b,"measure_temperature")-capVal(a,"measure_temperature")).map(d=>`<span data-sens="${esc(d.id)}|measure_temperature" style="cursor:pointer;display:contents">${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${fmt(capVal(d,"measure_temperature"),1)} °C</span>`),"",null,"grid-column:span 2;min-width:0");
+  if(S.temps)h+=tbl("Temperaturer",["Givare","Rum","Temperatur"],L.temps.sort((a,b)=>capVal(b,"measure_temperature")-capVal(a,"measure_temperature")).map(d=>[`<span data-sens="${esc(d.id)}|measure_temperature" style="cursor:pointer">${esc(devName(d))}</span>`,esc(zoneName(d)),`<b>${fmt(capVal(d,"measure_temperature"),1)} °C</b>`]),L.temps.length,"grid-column:span 2;min-width:0","",2);
   h+=`</div><div class="note">Uppdateras var 20:e sekund. Vilka rutor som visas styrs i Admin.</div>`;
   $("#p-status").innerHTML=h;
 }
