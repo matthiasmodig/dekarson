@@ -359,7 +359,7 @@ function flowTriggerable(f,kind){
 }
 const isSonos=f=>/sonos/i.test(flowName(f));
 /* Dolda som standard (kan visas igen under Admin → Flows). Flowen påverkas inte i Homey. */
-const FLOW_HIDE=[/^Appinventering/i,/^Beräkna TIMeffekt/i,/^Energiöversikt virtuella/i,/^Home Control – Garageport (enkel|dubbel) puls/i,/^Köksfläkt$/i,/^Meddela temp 05:45/i,/^Starta värme traktor/i,/^Tesla/i,/^Utomhustemperatur$/i];
+const FLOW_HIDE=[/^Appinventering/i,/^Beräkna TIMeffekt/i,/^Energiöversikt virtuella/i,/^Home Control – Garageport (enkel|dubbel) puls/i,/^Köksfläkt$/i,/^Meddela temp 05:45/i,/^Starta värme traktor/i,/^Tesla/i,/^Utomhustemperatur$/i,/värmecykel analys/i,/^Garageport dubbel$/i];
 function flowShown(f){const u=cfg.ui.flows[f.id];if(u&&u.show!=null)return u.show;if(FLOW_HIDE.some(r=>r.test(f.name)))return false;return f.triggerable;}
 const flowName=f=>(cfg.ui.flows[f.id]&&cfg.ui.flows[f.id].alias)||f.name;
 async function loadFlows(force){
@@ -1730,13 +1730,15 @@ function renderFlows(){
   const q=(state.search||"").toLowerCase();
   const list=state.flows.filter(f=>flowShown(f)&&!isSonos(f)&&(!q||flowName(f).toLowerCase().includes(q)));
   let h=`<div class="bar"><input type="search" id="q" placeholder="Sök flow" value="${esc(state.search)}"></div>`;
-  const pick=names=>names.map(n=>list.find(f=>f.name===n)).filter(Boolean);
-  const r1=pick(["Home Control – Städ Tänd","Home Control – Städ Släck"]),r2a=pick(["Öppna ytterdörr","Lås ytterdörr"]),r2b=pick(["Öppna/Stäng Port"]),r1b=pick(["Tänd garage"]),r3=pick(["Kontroll hem","Kontroll Timmerflotte 24h","Shelly kontroll"]);
-  const used=new Set([...r1,...r1b,...r2a,...r2b,...r3].map(f=>f.id)),rest=list.filter(f=>!used.has(f.id));
+  const pick=names=>names.map(n=>list.find(f=>f.name.toLowerCase()===n.toLowerCase())).filter(Boolean);
+  const r1=pick(["Home Control – Städ Tänd","Home Control – Städ Släck"]),r2a=pick(["Öppna ytterdörr","Lås ytterdörr"]),r2b=pick(["Öppna/Stäng Port"]),r1b=pick(["Tänd garage"]),r3=pick(["Kontroll hem","Kontroll Timmerflotte 24h","Shelly kontroll"]),r4=pick(["Status hem","Starta upp efter strömavbrott","Meddela Betongplattans Temp"]),r5=pick(["Energi just nu","Luftfuktighet vinden","Driftläge värme"]);
+  const used=new Set([...r1,...r1b,...r2a,...r2b,...r3,...r4,...r5].map(f=>f.id)),rest=list.filter(f=>!used.has(f.id));
   const fx=(a,b)=>`<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px">${a.map(f=>`<div style="flex:0 1 300px;min-width:240px">${flowCard(f)}</div>`).join("")}${b&&b.length?`<div style="flex:0 1 300px;min-width:240px;margin-left:auto">${b.map(flowCard).join("")}</div>`:""}</div>`;
   if(r1.length||r1b.length)h+=fx(r1,r1b);
   if(r2a.length||r2b.length)h+=fx(r2a,r2b);
   if(r3.length)h+=`<div style="margin-top:20px"></div>`+fx(r3);
+  if(r4.length)h+=fx(r4);
+  if(r5.length)h+=fx(r5);
   h+=rest.length?`<div class="grid wide">${rest.map(flowCard).join("")}</div>`:(list.length?"":`<div class="card">Inga flows att visa. Välj vilka som ska synas under Admin.</div>`);
   $("#p-flows").innerHTML=h;
   const qi=$("#q");if(qi&&state.keepFocus){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);}
