@@ -944,12 +944,12 @@ async function sensModalHtml(k){
   return h;
 }
 const FLOORSENS=["Framledning golvvärme","Returledning golvvärme","Framledning uterum","Returledning uterum"];
-function floorSensTiles(f){
+function floorSensTiles(f,onlyGolv){
   if(!f)return "";
   const v=i=>capVal(f,"measure_temperature."+i);
-  let h=[1,2,3,4].filter(i=>v(i)!=null).map(i=>sensTile(f.id,"measure_temperature."+i,FLOORSENS[i-1],fmt(v(i),1),"°C","Givare "+i)).join("");
+  let h=[1,2,3,4].filter(i=>v(i)!=null&&(!onlyGolv||i<=2)).map(i=>sensTile(f.id,"measure_temperature."+i,FLOORSENS[i-1],fmt(v(i),1),"°C","Givare "+i)).join("");
   const dt=(a,b,n)=>v(a)!=null&&v(b)!=null?tile(n,fmt(v(a)-v(b),1),"°C","Givare "+a+" − givare "+b):"";
-  return h+dt(1,2,"ΔT golvvärme")+dt(3,4,"ΔT uterum");
+  return h+dt(1,2,"ΔT golvvärme")+(onlyGolv?"":dt(3,4,"ΔT uterum"));
 }
 async function renderKlimat(){
   const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla);
@@ -1269,7 +1269,7 @@ async function viewUterum(R,u){
   const f=state.devices[cfg.ids.floor],s=state.devices[cfg.ids.slab];
   let h=`<div class="grid">${tile("Betongplatta, temperatur",fmt(capVal(s,"measure_temperature"),1),"°C","Luftfuktighet "+fmt(capVal(s,"measure_humidity"),0)+" %","hero")}
     ${tile("Golvvärme effekt",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}
-    ${tile("Golvvärme total",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat")}</div>`;
+    ${tile("Golvvärme total",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat")}${floorSensTiles(f,true)}</div>`;
   if(f)h+=`<div class="bar" style="margin-top:12px"><button class="btn" data-act="tgl" data-dev="${f.id}">Golvvärme ${capVal(f,"onoff")?"av":"på"}</button></div>`;
   h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
