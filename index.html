@@ -1730,7 +1730,13 @@ function renderFlows(){
   const q=(state.search||"").toLowerCase();
   const list=state.flows.filter(f=>flowShown(f)&&!isSonos(f)&&(!q||flowName(f).toLowerCase().includes(q)));
   let h=`<div class="bar"><input type="search" id="q" placeholder="Sök flow" value="${esc(state.search)}"></div>`;
-  h+=list.length?`<div class="grid wide">${list.map(flowCard).join("")}</div>`:`<div class="card">Inga flows att visa. Välj vilka som ska synas under Admin.</div>`;
+  const pick=names=>names.map(n=>list.find(f=>f.name===n)).filter(Boolean);
+  const r1=pick(["Home Control – Städ Tänd","Home Control – Städ Släck"]),r2a=pick(["Öppna ytterdörr","Lås ytterdörr"]),r2b=pick(["Öppna/Stäng Port"]);
+  const used=new Set([...r1,...r2a,...r2b].map(f=>f.id)),rest=list.filter(f=>!used.has(f.id));
+  const fx=(a,b)=>`<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px">${a.map(f=>`<div style="flex:0 1 300px;min-width:240px">${flowCard(f)}</div>`).join("")}${b&&b.length?`<div style="flex:0 1 300px;min-width:240px;margin-left:auto">${b.map(flowCard).join("")}</div>`:""}</div>`;
+  if(r1.length)h+=fx(r1);
+  if(r2a.length||r2b.length)h+=fx(r2a,r2b);
+  h+=rest.length?`<div class="grid wide" style="margin-top:${r1.length||r2a.length||r2b.length?"20":"0"}px">${rest.map(flowCard).join("")}</div>`:(list.length?"":`<div class="card">Inga flows att visa. Välj vilka som ska synas under Admin.</div>`);
   $("#p-flows").innerHTML=h;
   const qi=$("#q");if(qi&&state.keepFocus){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);}
 }
