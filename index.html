@@ -943,10 +943,13 @@ async function sensModalHtml(k){
   h+=`<div class="card" style="margin-top:14px">${sensChart(pts,inf.unit,inf.dec)}</div>`;
   return h;
 }
+const FLOORSENS=["Framledning golvvärme","Returledning golvvärme","Framledning uterum","Returledning uterum"];
 function floorSensTiles(f){
   if(!f)return "";
-  return [1,2,3,4].filter(i=>capVal(f,"measure_temperature."+i)!=null).map(i=>{const c="measure_temperature."+i,t=((f.capabilitiesObj||{})[c]||{}).title;
-    return sensTile(f.id,c,esc(t&&!/^temperatur/i.test(t)?t:"Golvgivare "+i),fmt(capVal(f,c),1),"°C",t&&!/^temperatur/i.test(t)?"Givare "+i:"Namn saknas i Homey");}).join("");
+  const v=i=>capVal(f,"measure_temperature."+i);
+  let h=[1,2,3,4].filter(i=>v(i)!=null).map(i=>sensTile(f.id,"measure_temperature."+i,FLOORSENS[i-1],fmt(v(i),1),"°C","Givare "+i)).join("");
+  const dt=(a,b,n)=>v(a)!=null&&v(b)!=null?tile(n,fmt(v(a)-v(b),1),"°C","Givare "+a+" − givare "+b):"";
+  return h+dt(1,2,"ΔT golvvärme")+dt(3,4,"ΔT uterum");
 }
 async function renderKlimat(){
   const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla);
