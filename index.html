@@ -1269,8 +1269,7 @@ async function viewUterum(R,u){
   const f=state.devices[cfg.ids.floor],s=state.devices[cfg.ids.slab];
   let h=`<div class="grid">${tile("Betongplatta, temperatur",fmt(capVal(s,"measure_temperature"),1),"°C","Luftfuktighet "+fmt(capVal(s,"measure_humidity"),0)+" %","hero")}
     ${tile("Golvvärme effekt",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}
-    ${tile("Golvvärme total",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat")}
-    ${floorSensTiles(f)}</div>`;
+    ${tile("Golvvärme total",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat")}</div>`;
   if(f)h+=`<div class="bar" style="margin-top:12px"><button class="btn" data-act="tgl" data-dev="${f.id}">Golvvärme ${capVal(f,"onoff")?"av":"på"}</button></div>`;
   h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
