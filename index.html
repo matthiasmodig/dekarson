@@ -595,15 +595,12 @@ function lockTile(d){
 }
 function heatCards(){
   if(state.prop!=="235")return "";
-  const dv=id=>state.devices[id],nm=d=>devName(d);
-  const sub=d=>{const dim=capVal(d,"dim"),kw=capVal(d,"meter_power");return (dim!=null&&capVal(d,"onoff")?Math.round(dim*100)+" % · ":"")+(kw!=null?fmt(kw,1)+" kWh totalt":"");};
-  let r1=lockTile(dv(cfg.ids.ytterdorr));
-  const hemIds=[[cfg.ids.ventilation,"Ventilation"],[cfg.ids.koksfläkt,"Köksfläkt"],[cfg.ids.spotKok,"Spot köksbänk"]];
-  for(const [id,n] of hemIds){const d=dv(id);if(d)r1+=onoffTile(d,n,n,sub(d));}
-  const hd=heatDevs();
-  const r2=hd.map(([d,n])=>onoffTile(d,n,n,capVal(d,"meter_power")!=null?fmt(capVal(d,"meter_power"),1)+" kWh totalt":"Ingen energimätare")).join("");
-  const sl=t=>`<div class="note" style="margin:0 0 6px;font-weight:600">${t}</div>`;
-  return `<section class="grp"><h3>Styrning och kontroll</h3>${r1?sl("Hem")+`<div class="rowN" style="--c:4;margin-bottom:12px">${r1}</div>`:""}${r2?sl("Värme & laddning")+`<div class="rowN" style="--c:4">${r2}</div>`:""}</section>`;
+  const dv=id=>state.devices[id];
+  const sub=d=>{const dim=capVal(d,"dim"),kw=capVal(d,"meter_power");return (dim!=null&&capVal(d,"onoff")?Math.round(dim*100)+" % · ":"")+(kw!=null?fmt(kw,1)+" kWh totalt":"Ingen energimätare");};
+  const t=(id,n)=>{const d=dv(id);return d&&hasOnoff(d)?onoffTile(d,n,n,sub(d)):"";};
+  const r1=lockTile(dv(cfg.ids.ytterdorr))+t(cfg.ids.ventilation,"Ventilation")+t(cfg.ids.avlopp,"Avloppsbrunn")+t(cfg.ids.floor,"Entreplatta");
+  const r2=t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+t(cfg.ids.trLoad,"Traktor laddning")+t(cfg.ids.trHeat,"Traktor MV");
+  return `<section class="grp"><h3>Styrning och kontroll</h3>${r1?`<div class="rowN" style="--c:4;margin-bottom:12px">${r1}</div>`:""}${r2?`<div class="rowN" style="--c:4">${r2}</div>`:""}</section>`;
 }
 const PWRON=5;
 async function onoffSegs(id,f,t,cap){
