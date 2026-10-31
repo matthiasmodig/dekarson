@@ -203,7 +203,7 @@ const DEFAULTS={
     tibber:"9984ff30-8ea8-4a59-8b77-ca10a9722cdf",hush:"d2a46475-4494-4794-ad4a-413f89209ecf",
     uppv:"f6565b0d-0a1b-4d61-be3d-21e064f0af16",vp:"2b491c90-9448-47be-85a4-c4de18e5a711",ovr:"",
     d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
-    price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",
+    price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",
     tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
     trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
   },
@@ -639,11 +639,37 @@ async function loadPriceHist(){
     for(let i=47;i>=0;i--){const d=new Date(now.getTime()-i*36e5),hr=d.getHours();
       h[d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(hr)]=0.5+0.4*Math.cos((hr-8)/24*2*Math.PI)+(hr>=17&&hr<=20?0.5:0)+R()*0.2;}
   }else{
-    const es=await logEntries(cfg.ids.price,"measure_price_total","last7Days"),sm={},ct={};
+    const useE=!!cfg.ids.elpris,es=await logEntries(useE?cfg.ids.elpris:cfg.ids.price,useE?"meter_price_h0":"measure_price_total","last7Days"),sm={},ct={};
     for(const e of es){if(e.v==null)continue;const d=new Date(e.t),k=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());sm[k]=(sm[k]||0)+e.v;ct[k]=(ct[k]||0)+1;}
-    for(const k in sm)h[k]=sm[k]/ct[k]+Number(cfg.markup||0);
+    for(const k in sm)h[k]=sm[k]/ct[k]+(useE?0:Number(cfg.markup||0));
   }
   state.priceH={t:Date.now(),v:h};return h;
+}
+function hourKey(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());}
+async function priceBlock(){
+  const ph=await loadPriceHist(),now=new Date(),nowK=hourKey(now),ed=state.devices[cfg.ids.elpris];
+  const items=[];
+  for(let i=24;i>=1;i--){const k=hourKey(new Date(now.getTime()-i*36e5));if(ph[k]!=null)items.push({k,v:ph[k],t:"past"});}
+  const h0=capVal(ed,"meter_price_h0");
+  items.push({k:nowK,v:h0!=null?h0:ph[nowK],t:"now"});
+  let n=0;for(let i=1;i<=48;i++){const v=capVal(ed,"meter_price_h"+i);if(v==null)continue;n++;items.push({k:hourKey(new Date(now.getTime()+i*36e5)),v,t:"fut"});}
+  const vals=items.filter(x=>x.v!=null);if(!vals.length)return `<div class="note">Inga priser hittades. Kontrollera prisenhetens ID (Admin).</div>`;
+  const fut=items.filter(x=>x.t!=="past"&&x.v!=null);
+  const mn=fut.reduce((a,b)=>b.v<a.v?b:a),mx=fut.reduce((a,b)=>b.v>a.v?b:a);
+  const W=1000,H=280,L=52,B=34,T=10,R=8,N=items.length,bw=(W-L-R)/N,max=niceMax(Math.max(...vals.map(x=>x.v))),y=v=>T+(H-T-B)*(1-v/max);let g="";
+  for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,2)}</text>`;}
+  const midnight=[];
+  items.forEach((x,i)=>{if(x.v==null)return;const iw=Math.max(1,bw*.78),xx=L+i*bw+(bw-iw)/2,col=x.t==="past"?"var(--prev)":x.t==="now"?"var(--on)":(x===mn?"var(--good)":x===mx?"var(--bad)":"var(--cur)");
+    g+=`<rect x="${xx}" y="${y(x.v)}" width="${iw}" height="${Math.max(0,y(0)-y(x.v))}" rx="2" fill="${col}"><title>${x.k.slice(8,10)}/${x.k.slice(5,7)} kl ${x.k.slice(11)}:00 – ${fmt(x.v,3)} kr/kWh</title></rect>`;
+    if(x.k.slice(11)==="00"){g+=`<line x1="${L+i*bw}" x2="${L+i*bw}" y1="${T}" y2="${H-B}" stroke="var(--mut)" stroke-dasharray="3 4"/>`;}});
+  const step=Math.max(1,Math.ceil(N/16));
+  items.forEach((x,i)=>{if(i%step===0||x.t==="now")g+=`<text x="${L+i*bw+bw/2}" y="${H-12}" text-anchor="middle">${x.k.slice(11)}</text>`;});
+  const avg=fut.reduce((a,b)=>a+b.v,0)/fut.length,lastD=fut[fut.length-1].k.slice(8,10);
+  const tom=n>=1&&fut.some(x=>x.k.slice(8,10)!==nowK.slice(8,10));
+  return `<div class="card" style="margin:14px 0"><h2>Elpris per timme (kr/kWh) · Tibber via Homey</h2>
+    <div class="legend"><span><i style="background:var(--prev)"></i>Passerat</span><span><i style="background:var(--on)"></i>Nu</span><span><i style="background:var(--cur)"></i>Kommande</span><span><i style="background:var(--good)"></i>Billigast</span><span><i style="background:var(--bad)"></i>Dyrast</span></div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg>
+    <div class="note">Billigast framåt: ${fmt(mn.v,2)} kr/kWh kl ${mn.k.slice(11)}:00 (${mn.k.slice(8,10)}/${mn.k.slice(5,7)}) · dyrast: ${fmt(mx.v,2)} kr/kWh kl ${mx.k.slice(11)}:00 (${mx.k.slice(8,10)}/${mx.k.slice(5,7)}) · snitt framåt ${fmt(avg,2)}. ${tom?"Imorgon ingår.":"Morgondagens priser har inte kommit från Homey ännu (brukar komma vid 13-tiden)."} Prisenhet i Homey: Elpris SE2 (utan påslag).</div></div>`;
 }
 async function renderEkonomi(){
   if(state.prop!=="235"){$("#p-ekonomi").innerHTML=`<div class="card">Kostnader för Dekarsön 236 visas under Energi &amp; effekt (kumulativ räknare, inget elpris per timme).</div>`;return;}
@@ -655,10 +681,7 @@ async function renderEkonomi(){
   h+=tile("Elpris nu",pr!=null?fmt(pr+Number(cfg.markup||0),2):"–","kr/kWh","Tibber + "+fmt(cfg.markup,3)+" påslag");
   h+=tile("Förbrukning idag",fmt(capVal(tb,"meter_kwh_this_day"),1),"kWh","Kostnad och energi redovisas var för sig");
   h+=`</div>`;
-  try{const ph=await loadPriceHist(),keys=Object.keys(ph).sort().slice(-48),v=keys.map(k=>ph[k]);
-    if(v.length){const mn=Math.min(...v),mx=Math.max(...v);
-      h+=`<div class="card" style="margin:14px 0"><h2>Elpris per timme, senaste ${v.length} h (kr/kWh)</h2>${lineChart(v,keys.map(k=>k.slice(8,10)+"/"+k.slice(5,7)+" "+k.slice(11)),"kr/kWh","var(--prev)")}<div class="note">Lägst ${fmt(mn,2)} kr/kWh (${keys[v.indexOf(mn)].slice(11)}:00) · högst ${fmt(mx,2)} kr/kWh (${keys[v.indexOf(mx)].slice(11)}:00). Framtida priser visas inte, de gissas aldrig.</div></div>`;}
-  }catch(e){h+=`<div class="note">Prishistorik kunde inte läsas: ${esc(e.message)}</div>`;}
+  try{h+=await priceBlock();}catch(e){h+=`<div class="note">Prishistorik kunde inte läsas: ${esc(e.message)}</div>`;}
   h+=`<h3>Period</h3>`+presetBar(R);
   const c=chartBlock("Kostnad",S.tibber,R,"kr");h+=c.html||c;
   const rows=[["tibber","Totalt, hela huset"],["hush","Hushållsel"],["uppv","Uppvärmning"],["vp","Värmepump"],["ovr","Övrigt"],["tesla","Tesla"],["traktor","Traktor"],["golv","Golvvärme Uterum"]];
@@ -1210,7 +1233,7 @@ function demoSetup(){
     mk("d17","Lampa Dekarsön 236","light","z236",{onoff:false,dim:1}),mk("d18","Temperatursensor Dekarsön 236","sensor","z236",{measure_temperature:21.4,measure_battery:100}),
     mk(cfg.ids.tibber,"Energi Tibber","other","zh",{meter_kwh_this_day:14.9,meter_kwh_last_day:48.2,meter_kwh_this_month:1460,meter_kwh_last_month:1367,meter_kwh_this_year:14345,meter_kwh_last_year:17662,meter_money_this_day:24.1,meter_money_last_day:56.5,meter_money_this_month:1818,meter_money_last_month:1990,meter_money_this_year:21770,meter_money_last_year:17704,meter_kwh_this_hour:0.65,meter_kwh_last_hour:1.63,measure_watt_avg:1385,measure_watt_max:4186}),
     mk(cfg.ids.tesla,"Tesla Model Y","other","zh",{charging_on:false,measure_soc_level:75,measure_battery:75,measure_soc_range_estimated:319.9,measure_charge_limit_soc:80,measure_charge_energy_added:12.6,measure_climate_temperature_in:3.4,measure_climate_temperature_out:3.5,meter_car_odo:102580}),mk(cfg.ids.teslaE,"Energiöversikt Tesla","other","zh",{"devicecapabilities_number.number2":293,"devicecapabilities_number.number3":277,"devicecapabilities_number.number5":293,"devicecapabilities_number.number6":277}),mk(cfg.ids.nibe,"NIBE","thermostat","zh",{measure_power:751}),mk(cfg.ids.vp,"Energi VP","other","zh",{meter_kwh_this_day:8.3,meter_kwh_last_day:11,meter_kwh_this_month:434,meter_kwh_last_month:504,meter_kwh_this_year:5459,meter_kwh_last_year:6287,meter_money_this_day:12.6,meter_money_last_day:11.3,meter_money_this_month:465,meter_money_last_month:641,meter_money_this_year:8161,meter_money_last_year:7719,meter_money_this_month_avg:1.07,measure_watt_avg:849}),mk(cfg.ids.trLoad,"Traktor Laddning","socket","zg",{onoff:false,measure_power:0,meter_power:5.9}),mk(cfg.ids.trHeat,"Traktor Motorvärmare","socket","zg",{onoff:false}),mk(cfg.ids.floor,"Golvvärme Uterum","socket","z4",{onoff:false,measure_power:0,meter_power:173,measure_temperature:53.1,"measure_temperature.1":28.1,"measure_temperature.2":24.4,"measure_temperature.3":22.8,"measure_temperature.4":24.2}),mk(cfg.ids.slab,"Betongplatta Uterum","sensor","z4",{measure_temperature:11.7,measure_humidity:60}),
-    mk(cfg.ids.live235,"Elmätare","other","zh",{measure_power:2299,"measure_current.l1":9.2,"measure_current.l2":6.1,"measure_current.l3":11.8}),mk(cfg.ids.price,"Elpris","other","zh",{measure_price_total:0.57}),
+    mk(cfg.ids.live235,"Elmätare","other","zh",{measure_power:2299,"measure_current.l1":9.2,"measure_current.l2":6.1,"measure_current.l3":11.8}),mk(cfg.ids.price,"Elpris","other","zh",{measure_price_total:0.57}),mk(cfg.ids.elpris,"Elpris SE2","other","zh",Object.fromEntries(Array.from({length:36},(_,i)=>["meter_price_h"+i,0.55+0.4*Math.cos(((new Date().getHours()+i-8)%24)/24*2*Math.PI)+((new Date().getHours()+i)%24>=17&&(new Date().getHours()+i)%24<=20?0.5:0)]))),
     mk(cfg.ids.d236,"Energiöversikt 236","other","z236",{"measure_power.number1":509,"devicecapabilities_number.number2":172,"devicecapabilities_number.number3":184,"devicecapabilities_number.number4":107,"devicecapabilities_number.number5":172,"devicecapabilities_number.number6":184})
   ];
   state.devices=Object.fromEntries(D.map(d=>[d.id,d]));
