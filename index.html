@@ -627,8 +627,9 @@ async function renderOversikt(){
 /* ---------- Energi ---------- */
 async function renderEnergi(){
   const R=calcRange(),minDate=R.ps&&R.ps<R.s?R.ps:R.s;
-  const S=await loadSeries(minDate),u=state.unit,un=unitName(u);
-  const is235=state.prop==="235",T=is235?S.tibber:S.d236;
+  let S=null,serr=null;try{S=await loadSeries(minDate);}catch(e){serr=e.message;}
+  const u=state.unit,un=unitName(u);
+  const is235=state.prop==="235",T=S?(is235?S.tibber:S.d236):null;
   const presets=[["idag","Idag"],["vecka","Vecka"],["manad","Månad"],["halvar","Halvår"],["ar","År"],["valfri","Valfri period"]];
   let h=`<div class="bar">${presets.map(([k,l])=>`<button class="chip" data-p="${k}" aria-pressed="${state.preset===k}">${l}</button>`).join("")}</div>`;
   if(state.preset==="valfri")h+=`<div class="bar"><label>Från <input type="date" id="from" value="${state.from||R.s}"></label><label>Till <input type="date" id="to" value="${state.to||R.e}"></label></div>`;
@@ -636,6 +637,7 @@ async function renderEnergi(){
   h+=`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name}</div>`;
 
   h+=faseHtml()+await medelEffektHtml();
+  if(!S){h+=`<div class="warn">Kunde inte läsa historiken från Homey: ${esc(serr)}</div>`;$("#p-energi").innerHTML=h;const c0=$("#cmp");if(c0)c0.value=state.cmp;return;}
   if(!T){h+=`<div class="card">Ange energikälla för ${PROPS.find(p=>p.k===state.prop).name} under Admin.</div>`;$("#p-energi").innerHTML=h;$("#cmp").value=state.cmp;return;}
   const cur={kwh:sumRange(T,"kwh",R.s,R.e),kr:sumRange(T,"kr",R.s,R.e)};
   const prv=R.ps?{kwh:sumRange(T,"kwh",R.ps,R.pe),kr:sumRange(T,"kr",R.ps,R.pe)}:null;
