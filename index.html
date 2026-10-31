@@ -1100,8 +1100,10 @@ async function loadHourly(){
       const base=0.9+0.5*Math.cos((hr-7)/24*2*Math.PI)+(hr>=17&&hr<=21?0.9:0)+R()*0.6;
       h[d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(hr)]=Math.max(0.3,base+(R()<0.04?3:0));}
   }else{
-    const id=cfg.ids.live235,sums={},cnt={};
-    const es=await logEntries(id,"measure_power","last31Days");
+    const sums={},cnt={};
+    /* Tibber-enhetens measure_watt_avg har riktig historik; Elmätarens measure_power loggas inte (tomma värden). */
+    let es=[];try{es=await logEntries(cfg.ids.tibber,"measure_watt_avg","last31Days");}catch(e){}
+    if(!es.some(e=>e.v!=null))es=await logEntries(cfg.ids.live235,"measure_power","last31Days");
     for(const e of es){if(e.v==null)continue;const d=new Date(e.t),k=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());
       sums[k]=(sums[k]||0)+e.v;cnt[k]=(cnt[k]||0)+1;}
     for(const k in sums)h[k]=sums[k]/cnt[k]/1000;
