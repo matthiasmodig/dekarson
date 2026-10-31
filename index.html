@@ -141,18 +141,14 @@ dialog::backdrop{background:#0009}
 <aside class="side">
   <div class="brand">Energicentral</div>
   <nav id="nav">
-    <span class="grp">Hem</span>
     <button data-tab="oversikt" aria-selected="true">Översikt</button>
-    <span class="grp">Styrning</span>
     <button data-tab="styr" aria-selected="false">Enheter</button>
     <button data-tab="flows" aria-selected="false">Flows</button>
-    <span class="grp">Energi</span>
+    <button data-tab="sonos" aria-selected="false">Sonos</button>
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="timpris" aria-selected="false">Timpris</button>
     <button data-tab="detalj" aria-selected="false">Detaljer</button>
-    <span class="grp">Klimat</span>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
-    <span class="grp">Drift</span>
     <button data-tab="status" aria-selected="false">Status</button>
     <button data-tab="admin" aria-selected="false">Admin</button>
   </nav>
@@ -184,6 +180,7 @@ dialog::backdrop{background:#0009}
   <section id="p-klimat" class="hide"></section>
   <section id="p-styr" class="hide"></section>
   <section id="p-flows" class="hide"></section>
+  <section id="p-sonos" class="hide"></section>
   <section id="p-status" class="hide"></section>
   <section id="p-admin" class="hide"></section>
 </main>
@@ -360,6 +357,7 @@ function flowTriggerable(f,kind){
   if(kind==="std"&&f.trigger&&/programmatic_trigger/.test(String(f.trigger.id||"")))return true;
   return false;
 }
+const isSonos=f=>/sonos/i.test(flowName(f));
 function flowShown(f){const u=cfg.ui.flows[f.id];if(u&&u.show!=null)return u.show;return f.triggerable;}
 const flowName=f=>(cfg.ui.flows[f.id]&&cfg.ui.flows[f.id].alias)||f.name;
 async function loadFlows(force){
@@ -1718,9 +1716,17 @@ function flowCard(f){
   return `<div class="card flow" data-id="${f.id}"><div><div class="nm">${esc(flowName(f))}</div><div class="note" style="margin:0">${f.kind==="adv"?"Avancerat flow":"Flow"}${f.enabled?"":" · avstängt"}</div></div>
     <button class="btn ${fl?"":"pri"}" data-act="flow">${fl?"Startad ✓":"Starta"}</button></div>`;
 }
+function renderSonos(){
+  const q=(state.search||"").toLowerCase();
+  const all=state.flows.filter(f=>isSonos(f)&&flowShown(f)),list=all.filter(f=>!q||flowName(f).toLowerCase().includes(q)).sort((a,b)=>flowName(a).localeCompare(flowName(b),"sv"));
+  let h=`<div class="bar"><input type="search" id="q" placeholder="Sök Sonos-flow" value="${esc(state.search)}"></div>`;
+  h+=list.length?`<div class="grid wide">${list.map(flowCard).join("")}</div>`:`<div class="card">Inga Sonos-flows hittades. Flows vars namn innehåller "Sonos" visas här.</div>`;
+  $("#p-sonos").innerHTML=h;
+  const qi=$("#q");if(qi&&state.keepFocus){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);}
+}
 function renderFlows(){
   const q=(state.search||"").toLowerCase();
-  const list=state.flows.filter(f=>flowShown(f)&&(!q||flowName(f).toLowerCase().includes(q)));
+  const list=state.flows.filter(f=>flowShown(f)&&!isSonos(f)&&(!q||flowName(f).toLowerCase().includes(q)));
   let h=`<div class="bar"><input type="search" id="q" placeholder="Sök flow" value="${esc(state.search)}"></div>`;
   h+=list.length?`<div class="grid wide">${list.map(flowCard).join("")}</div>`:`<div class="card">Inga flows att visa. Välj vilka som ska synas under Admin.</div>`;
   $("#p-flows").innerHTML=h;
@@ -1923,7 +1929,7 @@ async function refresh(opts={}){
     if(!opts.quiet)setStatus("Hämtar…");
     if(isDemo())demoSetup();
     else{const [dv,zn]=await Promise.all([api("/api/manager/devices/device/"),api("/api/manager/zones/zone/")]);state.devices=dv||{};state.zones=zn||{};}
-    if(["flows","oversikt","detalj","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
+    if(["flows","sonos","oversikt","detalj","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
     drawProp();showErr(null);
     await draw();
     setStatus((isDemo()?"Demo · ":"")+"Uppdaterad "+new Date().toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
@@ -1941,6 +1947,7 @@ async function draw(){
   else if(state.tab==="klimat")await renderKlimat();
   else if(state.tab==="styr")renderStyr();
   else if(state.tab==="flows")renderFlows();
+  else if(state.tab==="sonos")renderSonos();
   else if(state.tab==="status")renderStatus();
   else renderAdmin();
   if(state.modal&&$("#dlg").open)await renderModal();
@@ -1948,7 +1955,7 @@ async function draw(){
 function showTab(t){
   state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
-  for(const k of ["oversikt","energi","timpris","detalj","klimat","styr","flows","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  for(const k of ["oversikt","energi","timpris","detalj","klimat","styr","flows","sonos","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
 }
 
