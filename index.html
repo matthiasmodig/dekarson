@@ -1376,15 +1376,16 @@ async function viewTesla(R,u){
 }
 async function viewTraktor(R,u){
   const l=state.devices[cfg.ids.trLoad],m=state.devices[cfg.ids.trHeat],un=unitName(u);
-  const mOn=!!capVal(m,"onoff");
-  let h=`<div class="grid">${tile("Laddning effekt",fmt(capVal(l,"measure_power"),0),"W",capVal(l,"onoff")?"Uttaget är på":"Uttaget är av","hero")}
-    ${tile("Motorvärmare",mOn?"På":"Av","","Styrs under Styrning eller här")}${tile("Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
+  const mOn=!!capVal(m,"onoff"),lOn=!!capVal(l,"onoff");
+  const oo=(d,nm,label,val,unit,sub,cls)=>d?`<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${capVal(d,"onoff")?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${capVal(d,"onoff")?"on":""}"></span> ${label}</div><div class="v">${val}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`:tile(label,val,unit,sub,cls);
+  let h=`<div class="grid">${oo(l,"Traktor laddning","Laddning",lOn?"PÅ":"Av","","Effekt "+fmt(capVal(l,"measure_power"),0)+" W · klicka för att styra och se historik","hero")}
+    ${oo(m,"Traktor MV","Motorvärmare",mOn?"PÅ":"Av","","Klicka för att styra och se historik")}${tile("Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
   h+=`<div class="bar" style="margin-top:12px">${l?`<button class="btn" data-act="tgl" data-dev="${l.id}">Laddning ${capVal(l,"onoff")?"av":"på"}</button>`:""}${m?`<button class="btn" data-act="tgl" data-dev="${m.id}">Motorvärmare ${mOn?"av":"på"}</button>`:""}</div>`;
   h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   const T=(await loadSeries(minDate)).traktor,eu=effU(T,u);
   const c=chartBlock("Traktorladdning",T,R,eu);h+=c.html||c;
-  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor räknas timme för timme: kWh när enheten var igång gånger timpriset just då (senaste 31 dagarna), äldre dagar med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
+  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor räknas timme för timme: kWh när enheten var igång gånger timpriset just då (senaste 7 dagarna), äldre dagar med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
   return h;
 }
 async function viewUterum(R,u){
