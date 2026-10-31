@@ -420,10 +420,10 @@ async function loadSeries(minDate){
   return addEstKr(S);
 }
 /* kr saknas i Homey för vissa enheter: uppskatta med dygnets snittpris (kr/kWh) för hela huset. Rapportenhet i Homey ger exakt värde. */
-/* kr per dygn = summan av (kWh den timmen x timpriset den timmen), bara timmar då enheten var igång. Gäller senaste 31 dagarna (loggens upplösning). */
+/* kr per dygn = summan av (kWh den timmen x timpriset den timmen), bara timmar då enheten var igång. Gäller senaste 7 dagarna (längre bakåt är Homeys logg grövre än en timme). */
 async function hourlyKr(id){
   if(!id)return {};
-  const ph=await loadPriceHist(),es=await logEntries(id,"measure_power","last31Days"),sm={},ct={};
+  const ph=await loadPriceHist(),es=await logEntries(id,"measure_power","last7Days"),sm={},ct={};
   for(const e of es){if(e.v==null)continue;const k=hourKey(new Date(e.t));sm[k]=(sm[k]||0)+e.v;ct[k]=(ct[k]||0)+1;}
   const out={},bad={};
   for(const k in sm){const kw=sm[k]/ct[k]/1000,d=k.slice(0,10);
@@ -431,6 +431,7 @@ async function hourlyKr(id){
     if(ph[k]==null){bad[d]=1;continue;}
     out[d]=(out[d]||0)+kw*ph[k];}
   for(const d in bad)delete out[d];
+  const ks=Object.keys(sm).sort();if(ks.length&&ks[0].slice(11)!=="00")delete out[ks[0].slice(0,10)]; /* första dygnet är bara delvis täckt av loggen */
   return out;
 }
 function addEstKr(S){
@@ -777,8 +778,10 @@ async function medelData(){
   const w=capVal(lm,"measure_power");D.power=w!=null?w/1000:null;
   const kh=capVal(tb,"meter_kwh_this_hour"),co=tb&&tb.capabilitiesObj&&tb.capabilitiesObj.meter_kwh_this_hour,lu=co&&(co.lastUpdated||co.lastChanged);
   const fresh=!lu||new Date(lu).getTime()>=hs-1000;
-  D.hour=kh!=null&&secs>=60&&fresh?{v:kh/(secs/3600),kwh:kh,min:secs/60}:null;
-  D.hourWhy=kh==null?"Mätvärdet saknas":!fresh?"Mätvärdet hör till föregående timme":secs<60?"Timmen har just börjat":"";
+  const hv=kh!=null?kh/(secs/3600):null,maxKw=3*(cfg.fuse||20)*0.23*1.15;
+  const ok=kh!=null&&secs>=60&&fresh&&hv<=maxKw;
+  D.hour=ok?{v:hv,kwh:kh,min:secs/60}:null;
+  D.hourWhy=kh==null?"Mätvärdet saknas":!fresh?"Mätvärdet hör till föregående timme":secs<60?"Timmen har just börjat":hv>maxKw?"Orimligt värde ("+fmt(hv,1)+" kW), troligen gammalt ackumulerat värde":"";
   const hm=await homeyMedel();
   const klh=capVal(tb,"meter_kwh_last_hour");
   if(hm){D.prev=hm.snitt!=null?{v:hm.snitt/1000}:null;D.day=hm.day;D.month=hm.month;D.varT=hm.t;}
@@ -812,7 +815,7 @@ async function loadPriceHist(){
     for(let i=47;i>=0;i--){const d=new Date(now.getTime()-i*36e5),hr=d.getHours();
       h[d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(hr)]=0.5+0.4*Math.cos((hr-8)/24*2*Math.PI)+(hr>=17&&hr<=20?0.5:0)+R()*0.2;}
   }else{
-    const useE=!!cfg.ids.elpris,es=await logEntries(useE?cfg.ids.elpris:cfg.ids.price,useE?"meter_price_h0":"measure_price_total","last31Days"),sm={},ct={};
+    const useE=!!cfg.ids.elpris,es=await logEntries(useE?cfg.ids.elpris:cfg.ids.price,useE?"meter_price_h0":"measure_price_total","last7Days"),sm={},ct={};
     for(const e of es){if(e.v==null)continue;const d=new Date(e.t),k=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());sm[k]=(sm[k]||0)+e.v;ct[k]=(ct[k]||0)+1;}
     for(const k in sm)h[k]=sm[k]/ct[k]+(useE?0:Number(cfg.markup||0));
   }
@@ -1282,8 +1285,9 @@ async function loadHourly(){
   }else{
     const sums={},cnt={};
     /* Tibber-enhetens measure_watt_avg har riktig historik; Elmätarens measure_power loggas inte (tomma värden). */
-    let es=[];try{es=await logEntries(cfg.ids.tibber,"measure_watt_avg","last31Days");}catch(e){}
-    if(!es.some(e=>e.v!=null))es=await logEntries(cfg.ids.live235,"measure_power","last31Days");
+    /* OBS: Homeys Insights ger bara TIMVÄRDEN för last7Days. last14Days/last31Days är grövre (3 h / 6 h per punkt) och får inte tolkas som timmedel. */
+    let es=[];try{es=await logEntries(cfg.ids.tibber,"measure_watt_avg","last7Days");}catch(e){}
+    if(!es.some(e=>e.v!=null))es=await logEntries(cfg.ids.live235,"measure_power","last7Days");
     for(const e of es){if(e.v==null)continue;const d=new Date(e.t),k=d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours());
       sums[k]=(sums[k]||0)+e.v;cnt[k]=(cnt[k]||0)+1;}
     for(const k in sums)h[k]=sums[k]/cnt[k]/1000;
