@@ -607,9 +607,7 @@ async function renderOversikt(){
     let hh={},keys=[];try{hh=await loadHourly();keys=Object.keys(hh).sort().slice(-24);}catch(err){}
     const v24=keys.map(k=>hh[k]);
     if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>k.slice(11)+":00"),"kW")}<div class="note">Klicka för mer.</div></div>`;
-    const t=state.devices[cfg.ids.tesla];
-    if(t){const soc=capVal(t,"measure_soc_level")??capVal(t,"measure_battery"),on=capVal(t,"charging_on");
-      h+=`<h3>Tesla</h3><div class="grid">${tile("Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte")}${tile("Räckvidd",fmt(capVal(t,"measure_soc_range_estimated"),0),"km","Uppskattad")}${tile("Laddgräns",fmt(capVal(t,"measure_charge_limit_soc"),0),"%","")}${tile("Senaste laddning",fmt(capVal(t,"measure_charge_energy_added"),1),"kWh","Tillförd energi")}${tile("Temperatur ute / inne",fmt(capVal(t,"measure_climate_temperature_out"),1)+" / "+fmt(capVal(t,"measure_climate_temperature_in"),1),"°C","")}</div>`;}
+    if(state.devices[cfg.ids.tesla])h+=`<h3>Tesla</h3>`+teslaTiles(state.unit);
   }else{
     h+=`<div class="grid">`+tile("Effekt just nu",e.w!=null?fmt(e.w,0):"–","W","Dekarsön 236","hero")+tile("Denna månad",fmt(e.month,0),unitName(state.unit),"")+tile("I år",fmt(e.year,0),unitName(state.unit),"")+`</div>`;
   }
@@ -1127,11 +1125,11 @@ async function viewVP(R,u){
   const c=chartBlock("Värmepump",T,R,u);if(c.html)h+=c.html;else h+=c;
   return h;
 }
-async function viewTesla(R,u){
+function teslaTiles(u){
   const t=state.devices[cfg.ids.tesla],e=state.devices[cfg.ids.teslaE],un=unitName(u);
   const soc=capVal(t,"measure_soc_level")??capVal(t,"measure_battery"),on=capVal(t,"charging_on");
   const em=u==="kr"?"devicecapabilities_number.number3":"devicecapabilities_number.number2",ey=u==="kr"?"devicecapabilities_number.number6":"devicecapabilities_number.number5";
-  let h=`<div class="grid">${tile("Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte","hero")}
+  return `<div class="grid">${tile("Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte","hero")}
     ${tile("Räckvidd",fmt(capVal(t,"measure_soc_range_estimated"),0),"km","Uppskattad")}
     ${tile("Laddgräns",fmt(capVal(t,"measure_charge_limit_soc"),0),"%","Inställd gräns")}
     ${tile("Tillförd energi senaste laddning",fmt(capVal(t,"measure_charge_energy_added"),1),"kWh","")}
@@ -1139,6 +1137,9 @@ async function viewTesla(R,u){
     ${tile("Vägmätare",fmt(capVal(t,"meter_car_odo"),0),"km","")}
     ${tile("Laddning denna månad",fmt(capVal(e,em),0),un,"Enligt energiöversikten för Tesla")}
     ${tile("Laddning i år",fmt(capVal(e,ey),0),un,"")}</div>`;
+}
+async function viewTesla(R,u){
+  let h=teslaTiles(u);
   h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;let T=null;
   if(isDemo()){const S=demoSeries(minDate);T=S.tesla;}
