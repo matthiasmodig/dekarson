@@ -418,6 +418,14 @@ async function loadSeries(minDate){
   if(cfg.ids.golvRep)S.golv=await rep2(cfg.ids.golvRep);
   else if(cfg.ids.floor)S.golv={kwh:await safe(()=>fetchMerged(cfg.ids.floor,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
   if(cfg.ids.entre)S.entre={kwh:await safe(()=>fetchMerged(cfg.ids.entre,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
+  for(const [k,id] of EXTRA_SERIES()){if(!id||!state.devices[id])continue;
+    S[k]={kwh:await safe(()=>fetchMerged(id,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
+    S[k].hkr=await safe(()=>hourlyKrBest(id));}
+  {const ds=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(i=>i&&state.devices[i]);
+   if(ds.length){const kwh={},hk={};
+     for(const id of ds){const x=await safe(()=>fetchMerged(id,"meter_power",minDate,e=>dailyFromCumulative(e,false)));for(const d in x)kwh[d]=(kwh[d]||0)+x[d];
+       const y=await safe(()=>hourlyKrBest(id));for(const d in y)hk[d]=(hk[d]||0)+y[d];}
+     S.vvb={kwh,kr:{},hkr:hk};}}
   if(S.traktor&&!Object.keys(S.traktor.kr||{}).length)S.traktor.hkr=await safe(()=>hourlyKrBest(cfg.ids.trLoad));
   if(S.golv&&!Object.keys(S.golv.kr||{}).length)S.golv.hkr=await safe(()=>hourlyKrBest(cfg.ids.floor));
   if(S.entre&&!Object.keys(S.entre.kr||{}).length)S.entre.hkr=await safe(()=>hourlyKrBest(cfg.ids.entre));
@@ -468,9 +476,10 @@ async function hourlyKr(id){
   const ks=Object.keys(sm).sort();if(ks.length&&ks[0].slice(11)!=="00")delete out[ks[0].slice(0,10)]; /* första dygnet är bara delvis täckt av loggen */
   return out;
 }
+const EXTRA_SERIES=()=>[["vent",cfg.ids.ventilation],["kok",cfg.ids["koksfläkt"]],["spot",cfg.ids.spotKok],["avl",cfg.ids.avlopp]];
 function addEstKr(S){
   const T=S.tibber;if(!T)return S;
-  for(const k of ["traktor","golv","entre"]){
+  for(const k of ["traktor","golv","entre","vent","kok","spot","avl","vvb"]){
     const X=S[k];if(!X||Object.keys(X.kr||{}).length)continue;
     const kr={};for(const d of Object.keys(X.kwh)){const a=T.kwh[d],b=T.kr[d];if(X.hkr&&X.hkr[d]!=null)kr[d]=X.hkr[d];else if(a>0&&b!=null)kr[d]=X.kwh[d]*b/a;}
     X.kr=kr;X.est=true;}
@@ -1298,7 +1307,7 @@ async function renderKlimat(){
 /* =====================================================================
    ENERGIKORT
    ===================================================================== */
-const KORT235=[["uppv","Uppvärmning"],["hush","Hushållsström"]];
+const KORT235=[["vp","Värmepump"],["vvb","Varmvattenberedare"],["vent","Ventilation"],["kok","Köksfläkt"],["spot","Spot köksbänk"],["avl","Avloppsbrunn"],["uppv","Uppvärmning"],["hush","Hushållsström"],["ovr","Övrigt"]];
 const KORTCHARTS=["sources","hours"];
 const KORT236=[["d236","Dekarsön 236"]];
 const korts=()=>state.prop==="235"?KORT235:KORT236;
@@ -1308,7 +1317,7 @@ const effU=(T,u)=>(T&&T.kr&&Object.keys(T.kr).length)?u:"kwh";
 const wdIdx=d=>(new Date(d+"T00:00:00Z").getUTCDay()+6)%7;
 function liveOf(k){
   const D=cfg.ids,g=(id,c)=>capVal(state.devices[id],c);
-  const map={tibber:g(D.live235,"measure_power"),uppv:g(D.uppv,"measure_power"),vp:g(D.nibe,"measure_power"),traktor:g(D.trLoad,"measure_power"),golv:g(D.floor,"measure_power"),entre:g(D.entre,"measure_power"),d236:g(D.d236,"measure_power.number1")};
+  const map={tibber:g(D.live235,"measure_power"),uppv:g(D.uppv,"measure_power"),vp:g(D.nibe,"measure_power"),traktor:g(D.trLoad,"measure_power"),golv:g(D.floor,"measure_power"),entre:g(D.entre,"measure_power"),vent:g(D.ventilation,"measure_power"),kok:g(D["koksfläkt"],"measure_power"),spot:g(D.spotKok,"measure_power"),avl:g(D.avlopp,"measure_power"),d236:g(D.d236,"measure_power.number1")};
   const w=map[k];
   if(k==="tesla"){const on=g(D.tesla,"charging_on");return on==null?"":(on?"Laddar nu":"Laddar inte")+(g(D.tesla,"measure_soc_level")!=null?" · "+fmt(g(D.tesla,"measure_soc_level"),0)+" %":"");}
   return w==null?"":"Nu "+fmt(w,0)+" W";
@@ -1581,10 +1590,9 @@ function viewVVB(){
   let g=tile("Effekt just nu",fmt(tot,0),"W",ds.length+" mätare/uttag","hero")
    +(capVal(nb,"capability_3")!=null?sensTile(cfg.ids.nibe,"capability_3",esc(ttl("capability_3","Varmvatten topp (BT7)")),fmt(capVal(nb,"capability_3"),1),"°C","NIBE"):"")
    +(capVal(nb,"capability_4")!=null?sensTile(cfg.ids.nibe,"capability_4",esc(ttl("capability_4","Varmvatten laddning (BT6)")),fmt(capVal(nb,"capability_4"),1),"°C","NIBE"):"")
-   +tile("Energi totalt",fmt(kwh,1),"kWh","Summa av mätarna");
+   +tile("Energi totalt",fmt(kwh,1),"kWh",ds.map(d=>esc(devName(d))+" "+fmt(capVal(d,"meter_power"),1)).join(" · "));
   let h=grp("Varmvattenberedare",g,4);
   if(!ds.length)return h+`<div class="card">Inga varmvattenberedare hittades. Ange enhets-ID i Admin.</div>`;
-  h+=grp("Mätare och uttag",ds.map(d=>capVal(d,"onoff")!=null?onoffTile(d,devName(d),devName(d),fmt(capVal(d,"meter_power"),1)+" kWh totalt"):tile(devName(d),fmt(capVal(d,"measure_power"),0),"W",fmt(capVal(d,"meter_power"),1)+" kWh totalt"+(capVal(d,"measure_current")!=null?" · "+fmt(capVal(d,"measure_current"),1)+" A":""))).join(""),Math.min(4,ds.length));
   return h;
 }
 async function viewVP(R,u){
@@ -1625,7 +1633,6 @@ async function viewTraktor(R,u){
   const oo=(d,nm,label,val,unit,sub,cls)=>d?`<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${capVal(d,"onoff")?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${capVal(d,"onoff")?"on":""}"></span> ${label}</div><div class="v">${val}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`:tile(label,val,unit,sub,cls);
   let h=`<div class="grid">${oo(l,"Traktor laddning","Laddning",lOn?"PÅ":"Av","","Effekt "+fmt(capVal(l,"measure_power"),0)+" W · klicka för att styra och se historik","hero")}
     ${oo(m,"Traktor MV","Motorvärmare",mOn?"PÅ":"Av","","Klicka för att styra och se historik")}${tile("Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
-  h+=`<div class="bar" style="margin-top:12px">${l?`<button class="btn" data-act="tgl" data-dev="${l.id}">Laddning ${capVal(l,"onoff")?"av":"på"}</button>`:""}${m?`<button class="btn" data-act="tgl" data-dev="${m.id}">Motorvärmare ${mOn?"av":"på"}</button>`:""}</div>`;
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   const T=(await loadSeries(minDate)).traktor,eu=effU(T,u);
   const c=chartBlock("Traktorladdning",T,R,eu);h+=c.html||c;
@@ -1664,7 +1671,7 @@ async function renderDetalj(){
   const views={timmar:()=>viewTimmar(),vp:()=>viewVP(R,u),vvb:async()=>viewVVB(),uterum:()=>viewUterum(R,u),traktor:()=>viewTraktor(R,u),tesla:()=>viewTesla(R,u)};
   for(const [k,l] of secs){
     let body="";try{body=await views[k]();}catch(e){body=`<div class="card err">Kunde inte läsa data: ${esc(e.message)}</div>`;}
-    h+=`<details class="det" id="det-${k}" ${state.detClosed[`det-${k}`]?"":"open"}><summary><h2 style="display:inline;font-size:20px">${l}</h2></summary>${body}</details>`;
+    h+=`<details class="det" id="det-${k}" ${(state.detClosed[`det-${k}`]!=null?state.detClosed[`det-${k}`]:!["timmar","vp"].includes(k))?"":"open"}><summary><h2 style="display:inline;font-size:20px">${l}</h2></summary>${body}</details>`;
   }
   $("#p-detalj").innerHTML=h;
   const c=$("#cmp");if(c)c.value=state.cmp;
@@ -1861,12 +1868,12 @@ function renderAdmin(){
    ===================================================================== */
 function rnd(seed){let s=seed;return()=>{s=(s*1664525+1013904223)%4294967296;return s/4294967296;};}
 function demoSeries(minDate){
-  const t=todayStr(),R=rnd(7),S={tibber:{kwh:{},kr:{}},hush:{kwh:{},kr:{}},uppv:{kwh:{},kr:{}},vp:{kwh:{},kr:{}},ovr:{kwh:{},kr:{}},d236:{kwh:{},kr:{}},tesla:{kwh:{},kr:{}},traktor:{kwh:{},kr:{}},golv:{kwh:{},kr:{}},entre:{kwh:{},kr:{}}};
+  const t=todayStr(),R=rnd(7),S={tibber:{kwh:{},kr:{}},hush:{kwh:{},kr:{}},uppv:{kwh:{},kr:{}},vp:{kwh:{},kr:{}},ovr:{kwh:{},kr:{}},d236:{kwh:{},kr:{}},tesla:{kwh:{},kr:{}},traktor:{kwh:{},kr:{}},golv:{kwh:{},kr:{}},entre:{kwh:{},kr:{}},vent:{kwh:{},kr:{}},kok:{kwh:{},kr:{}},spot:{kwh:{},kr:{}},avl:{kwh:{},kr:{}},vvb:{kwh:{},kr:{}}};
   for(let d=addDays(minDate,-2);d<=t;d=addDays(d,1)){
     const doy=(Date.parse(d)-Date.parse(d.slice(0,4)+"-01-01"))/864e5,w=(Math.cos((doy-15)/365*2*Math.PI)+1)/2;
     const heat=8+w*52*(0.8+R()*0.4),house=20+R()*18,other=3+R()*14,tot=heat+house+other,price=0.75+w*0.55+R()*0.35;
     const put=(k,kw)=>{S[k].kwh[d]=kw;S[k].kr[d]=kw*price*(0.95+R()*0.1);};
-    put("tibber",tot);put("hush",house);put("uppv",heat);put("vp",heat*0.92);put("ovr",other);put("d236",2+w*9*(0.7+R()*0.6));put("tesla",R()<0.4?0:8+R()*22);S.traktor.kwh[d]=R()<0.3?0:1+R()*4;S.golv.kwh[d]=w*(R()<0.2?0:6+R()*10);S.entre.kwh[d]=w*(R()<0.3?0:2+R()*6);
+    put("tibber",tot);put("hush",house);put("uppv",heat);put("vp",heat*0.92);put("ovr",other);put("d236",2+w*9*(0.7+R()*0.6));put("tesla",R()<0.4?0:8+R()*22);S.traktor.kwh[d]=R()<0.3?0:1+R()*4;S.golv.kwh[d]=w*(R()<0.2?0:6+R()*10);S.entre.kwh[d]=w*(R()<0.3?0:2+R()*6);S.vent.kwh[d]=1.5+R()*.4;S.kok.kwh[d]=R()<.5?0:.2+R()*.5;S.spot.kwh[d]=.3+R()*.2;S.avl.kwh[d]=R()<.6?0:.1+R()*.3;S.vvb.kwh[d]=3+R()*3;
   }
   return S;
 }
@@ -2025,6 +2032,7 @@ document.addEventListener("change",async e=>{
 });
 
 (function(){const m=/[#&]session=([a-f0-9]{64})/.exec(location.hash);if(m){cfg.session=m[1];cfg.demo=false;cfg.mode="cloud";persist();history.replaceState(null,"",location.pathname+location.search);}})();
+document.addEventListener("toggle",e=>{const d=e.target;if(d&&d.classList&&d.classList.contains("det")&&d.id)state.detClosed[d.id]=!d.open;},true);
 document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&(e.target.dataset.card||e.target.dataset.chart||e.target.dataset.daily||e.target.dataset.sens||e.target.dataset.onoff||e.target.dataset.goto||(e.target.dataset.act==="toggle"&&e.target.getAttribute("role")==="switch"))){e.preventDefault();e.target.click();}});
 document.addEventListener("mousemove",sensHover);document.addEventListener("touchmove",e=>{if(e.touches[0])sensHover({target:e.target,clientX:e.touches[0].clientX});},{passive:true});
 $("#dlg").addEventListener("close",()=>{state.modal=null;});
