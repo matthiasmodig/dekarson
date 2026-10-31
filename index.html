@@ -62,6 +62,9 @@ h2{font-size:17px;margin:0 0 10px;font-weight:700}
 h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
 .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.rowN{display:grid;gap:12px;grid-template-columns:repeat(var(--c,4),minmax(0,1fr))}
+.grp{margin:0 0 22px}.grp>h3{margin:0 0 10px}
+@media(max-width:900px){.rowN{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .grid.wide{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 .note{color:var(--mut);font-size:13px;margin-top:8px}
 .warn{background:#fff4dd;color:#6f4400;border:1px solid #efd08a;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:14px}
@@ -205,7 +208,7 @@ const DEFAULTS={
     d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
     price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",timSnitt:"f8346588-0055-474e-94eb-d4fc2026ee6a",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
     tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
-    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
+    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",inneKok:"97c95291-0a6a-45eb-a7d5-39695c4fa655",vent:["8904d830-126c-4c0d-9a6c-6bc67c1f77ad","65e566c8-3144-4c72-af14-ca2c5a471cfd"],vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
   },
   ui:{devices:{},flows:{},status:{lights:true,sockets:true,locks:true,open:true,alarms:true,motion:true,battery:true,temps:true}}
 };
@@ -505,6 +508,35 @@ function delta(cur,prev,suffix){
   const p=(cur-prev)/Math.abs(prev)*100;
   return `<span class="${p>0?"up":"down"}">${p>0?"▲":"▼"} ${fmt(Math.abs(p),1)} %</span>${suffix?" "+suffix:""}`;
 }
+function grp(title,inner,cols,note){return `<section class="grp"><h3>${title}</h3><div class="rowN" style="--c:${cols||4}">${inner}</div>${note?`<div class="note">${note}</div>`:""}</section>`;}
+function tileA(attrs,label,value,unit,sub,cls){return tile(label,value,unit,sub,cls).replace('<div class="card tile','<div '+attrs+' tabindex="0" role="button" style="cursor:pointer" class="card tile');}
+function onoffTile(d,nm,label,sub,cls){if(!d)return "";const on=!!capVal(d,"onoff"),pw=capVal(d,"measure_power");
+  return `<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${esc(label)}</div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W":""}${sub?(pw!=null?" · ":"")+sub:""}</div></div>`;}
+function golvGroup(f,sensors){
+  if(!f)return "";const v=i=>capVal(f,"measure_temperature."+i);let h=onoffTile(f,"Golvvärme / Entreplatta","Golvvärme","");
+  if(sensors){h+=v(1)!=null?sensTile(f.id,"measure_temperature.1","Framledning golvvärme",fmt(v(1),1),"°C","Givare 1"):"";
+    h+=v(2)!=null?sensTile(f.id,"measure_temperature.2","Returledning golvvärme",fmt(v(2),1),"°C","Givare 2"):"";
+    h+=v(1)!=null&&v(2)!=null?tile("ΔT golvvärme",fmt(v(1)-v(2),1),"°C","Fram − retur"):"";}
+  h+=capVal(f,"meter_power")!=null?tile("Energi totalt",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat"):"";
+  return grp("Golvvärme",h,sensors?5:4);
+}
+function uterumGroup(sl,f){
+  const v=i=>capVal(f,"measure_temperature."+i);let h="";
+  if(sl)h+=sensTile(sl.id,"measure_temperature","Betongplatta",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(sl.id,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Entreplatta");
+  if(f){h+=v(3)!=null?sensTile(f.id,"measure_temperature.3","Framledning uterum",fmt(v(3),1),"°C","Givare 3"):"";
+    h+=v(4)!=null?sensTile(f.id,"measure_temperature.4","Returledning uterum",fmt(v(4),1),"°C","Givare 4"):"";
+    h+=v(3)!=null&&v(4)!=null?tile("ΔT uterum",fmt(v(3)-v(4),1),"°C","Fram − retur"):"";}
+  return h?grp("Uterum och entreplatta",h,4):"";
+}
+function ventGroup(){
+  const ds=(cfg.ids.vent||[]).map(i=>state.devices[i]).filter(Boolean);if(!ds.length)return "";
+  return grp("Ventilation",ds.map(d=>onoffTile(d,devName(d),devName(d),capVal(d,"measure_temperature")!=null?fmt(capVal(d,"measure_temperature"),1)+" °C":"")).join(""),Math.min(4,Math.max(2,ds.length)));
+}
+function nibeGroup(){
+  const nb=state.devices[cfg.ids.nibe];if(!nb)return "";
+  const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^(measure_temperature|capability_\d+)/.test(k)&&nb.capabilitiesObj[k].value!=null).sort((a,b)=>a.localeCompare(b,"sv",{numeric:true}));
+  return grp("Värmepump · NIBE",temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")+tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu"),4);
+}
 function tile(label,value,unit,sub,cls){return `<div class="card tile ${cls||""}"><div class="l">${label}</div><div class="v">${value}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`;}
 
 /* =====================================================================
@@ -562,8 +594,7 @@ function statusBar(){
 function heatCards(){
   if(state.prop!=="235")return "";
   const hd=heatDevs();if(!hd.length)return "";
-  return `<h3>Värme &amp; laddning</h3><div class="grid">${hd.map(([d,n])=>{const on=!!capVal(d,"onoff"),pw=capVal(d,"measure_power"),e=capVal(d,"meter_power");
-    return `<div class="card tile" data-onoff="${esc(d.id)}" data-nm="${esc(n)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${esc(n)}</div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W · ":""}${e!=null?fmt(e,1)+" kWh totalt":"Ingen energimätare"}</div></div>`;}).join("")}</div>`;
+  return grp("Värme & laddning",hd.map(([d,n])=>onoffTile(d,n,n,capVal(d,"meter_power")!=null?fmt(capVal(d,"meter_power"),1)+" kWh totalt":"Ingen energimätare")).join(""),Math.min(4,hd.length));
 }
 const PWRON=5;
 async function onoffSegs(id,f,t,cap){
@@ -640,24 +671,26 @@ async function renderOversikt(){
   if(state.prop==="235"){
     const tb=state.devices[cfg.ids.tibber],now=new Date(),frac=Math.max(now.getMinutes()+now.getSeconds()/60,1)/60;
     const thisH=capVal(tb,"meter_kwh_this_hour"),kd=capVal(tb,"meter_kwh_this_day"),kdp=capVal(tb,"meter_kwh_last_day"),rd=capVal(tb,"meter_money_this_day"),rdp=capVal(tb,"meter_money_last_day");
-    h+=`<div class="grid">`;
-    h+=tile("Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Aktuell förbrukning","hero");
-    h+=tile("Energi idag",fmt(kd,1),"kWh",delta(kd,kdp,"mot igår ("+fmt(kdp,0)+" kWh)"));
-    h+=tile("Kr idag",fmt(rd,0),"kr",delta(rd,rdp,"mot igår ("+fmt(rdp,0)+" kr)"));
     let md=null;try{md=await medelData();}catch(err){}
-    h+=tile("Pågående timmes medeleffekt",md&&md.hour?fmt(md.hour.v,2):"–","kW",md&&md.hour?"Ofullständig timme · "+fmt(md.hour.kwh,2)+" kWh på "+fmt(md.hour.min,0)+" min":"Inväntar mätvärde"+(md&&md.hourWhy?" · "+md.hourWhy:""));
     const ph0=capVal(state.devices[cfg.ids.elpris],"meter_price_h0"),pnow=ph0!=null?ph0:(e.price!=null?e.price:null);
-    h+=tile("Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
-    const ud=state.devices[cfg.ids.ute],feel=capVal(state.devices[cfg.ids.smhi],"air_temperature_feels_like_cp");
-    h+=sensTile(cfg.ids.nibe,"capability_0","Utetemperatur",fmt(capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out"),1),"°C",(feel!=null?"Känns som "+fmt(feel,1)+" °C (SMHI) · ":"")+"NIBE BT1");
-    const sl=state.devices[cfg.ids.slab];
-    h+=sensTile(cfg.ids.slab,"measure_temperature","Temp betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
-    h+=`</div>`;
+    let g1="";
+    g1+=tileA('data-chart="hours"',"Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Aktuell förbrukning","hero");
+    g1+=tileA('data-chart="hours"',"Pågående timmes medeleffekt",md&&md.hour?fmt(md.hour.v,2):"–","kW",md&&md.hour?"Ofullständig timme · "+fmt(md.hour.kwh,2)+" kWh på "+fmt(md.hour.min,0)+" min":"Inväntar mätvärde"+(md&&md.hourWhy?" · "+md.hourWhy:""));
+    g1+=tileA('data-daily="kwh"',"Energi idag",fmt(kd,1),"kWh",delta(kd,kdp,"mot igår ("+fmt(kdp,0)+" kWh)"));
+    g1+=tileA('data-daily="kr"',"Kr idag",fmt(rd,0),"kr",delta(rd,rdp,"mot igår ("+fmt(rdp,0)+" kr)"));
+    g1+=tile("Elpris nu",pnow!=null?fmt(pnow,2):"–","kr/kWh",ph0!=null?"Nästa 8 h i snitt: "+fmt(capVal(state.devices[cfg.ids.elpris],"meter_price_next_8h_avg"),2):"Tibber + påslag");
+    h+=grp("El just nu",g1,5);
+    const ud=state.devices[cfg.ids.ute],feel=capVal(state.devices[cfg.ids.smhi],"air_temperature_feels_like_cp"),sl=state.devices[cfg.ids.slab],kk=state.devices[cfg.ids.inneKok];
+    let g2="";
+    if(kk)g2+=sensTile(kk.id,"measure_temperature","Inomhus (kök)",fmt(capVal(kk,"measure_temperature"),1),"°C",capVal(kk,"measure_humidity")!=null?sensLink(kk.id,"measure_humidity","Luftfuktighet "+fmt(capVal(kk,"measure_humidity"),0)+" %"):"Kök representerar inomhus");
+    g2+=sensTile(cfg.ids.nibe,"capability_0","Utetemperatur",fmt(capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out"),1),"°C",(feel!=null?"Känns som "+fmt(feel,1)+" °C (SMHI) · ":"")+"NIBE BT1");
+    g2+=sensTile(cfg.ids.slab,"measure_temperature","Betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
+    h+=grp("Temperatur",g2,3);
     try{h+=await priceBlock(0,true);}catch(err){}
     let hh={},keys=[];try{hh=await loadHourly();keys=doneKeys(hh).slice(-24);}catch(err){}
     const v24=keys.map(k=>hh[k]);
     if(keys.length)h+=`<div class="card chartcard" data-chart="hours" tabindex="0" role="button" style="margin-top:12px"><h2>Timmedeleffekt, senaste 24 timmarna (kW)</h2>${lineChart(v24,keys.map(k=>hourLbl(k)),"kW")}<div class="note">Klicka för mer.</div></div>`;
-    if(state.devices[cfg.ids.tesla])h+=`<h3>Tesla</h3>`+teslaTiles(state.unit);
+    if(state.devices[cfg.ids.tesla])h+=`<section class="grp" style="margin-top:14px"><h3>Tesla</h3>`+teslaTiles(state.unit)+`</section>`;
   }else{
     h+=`<div class="grid">`+tile("Effekt just nu",e.w!=null?fmt(e.w,0):"–","W","Dekarsön 236","hero")+tile("Denna månad",fmt(e.month,0),unitName(state.unit),"")+tile("I år",fmt(e.year,0),unitName(state.unit),"")+`</div>`;
   }
@@ -683,7 +716,7 @@ async function renderEnergi(){
   h+=`<div class="bar"><label>Jämför mot <select id="cmp"><option value="prev">Föregående period (lika lång)</option><option value="yoy">Samma period året innan</option><option value="none">Ingen jämförelse</option></select></label></div>`;
   h+=`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name}</div>`;
 
-  h+=faseHtml()+await medelEffektHtml();
+  h+=`<section class="grp"><h3>Hela huset · Tibber</h3>`+await medelEffektHtml()+faseHtml()+`</section>`;
   if(!S){h+=`<div class="warn">Kunde inte läsa historiken från Homey: ${esc(serr)}</div>`;$("#p-energi").innerHTML=h;const c0=$("#cmp");if(c0)c0.value=state.cmp;return;}
   if(!T){h+=`<div class="card">Ange energikälla för ${PROPS.find(p=>p.k===state.prop).name} under Admin.</div>`;$("#p-energi").innerHTML=h;$("#cmp").value=state.cmp;return;}
   const cur={kwh:sumRange(T,"kwh",R.s,R.e),kr:sumRange(T,"kr",R.s,R.e)};
@@ -799,12 +832,12 @@ async function medelEffektHtml(){
   const inc=(m,done,lbl)=>{if(!m)return "Inväntar mätvärde";const n=Math.round(m.n);
     return "Medel av "+n+" timmedeleffekter"+(n<done?" · <b style=\"color:var(--bad)\">ofullständigt: "+n+" av "+done+" "+lbl+"</b>":n>done+1?" · <b style=\"color:var(--bad)\">kontrollera: fler timmar än förväntat ("+done+")</b>":"")+(D.calc?" · beräknat ur logg":"");};
   const hh=D.now.toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-  return `<div class="grid" style="margin-bottom:6px">`
-   +tile("Aktuell effekt",f(D.power),"kW",D.power!=null?"Momentan effekt, inte timmedeleffekt":wait(""),"hero")
-   +tile("Pågående timmes medeleffekt",D.hour?f(D.hour.v):"–","kW",D.hour?"<b>Ofullständig timme</b> · "+fmt(D.hour.kwh,2)+" kWh på "+fmt(D.hour.min,0)+" min":wait(D.hourWhy))
-   +tile("Föregående timmes medeleffekt",D.prev?f(D.prev.v):"–","kW",D.prev?(D.prev.alt?"Från Tibber-mätarens timenergi":"Homey TimSnitt")+(D.prevWarn?" · <b style=\"color:var(--bad)\">"+D.prevWarn+"</b>":""):wait(""))
-   +tile("Dygnsmedeleffekt",D.day?f(D.day.v):"–","kW",inc(D.day,D.doneDay,"timmar hittills idag"))
-   +tile("Månadsmedeleffekt",D.month?f(D.month.v):"–","kW",inc(D.month,D.doneMonth,"timmar hittills denna månad"))
+  return `<div class="rowN" style="--c:5;margin-bottom:6px">`
+   +tileA('data-chart="hours"',"Aktuell effekt",f(D.power),"kW",D.power!=null?"Momentan effekt, inte timmedeleffekt":wait(""),"hero")
+   +tileA('data-chart="hours"',"Pågående timmes medeleffekt",D.hour?f(D.hour.v):"–","kW",D.hour?"<b>Ofullständig timme</b> · "+fmt(D.hour.kwh,2)+" kWh på "+fmt(D.hour.min,0)+" min":wait(D.hourWhy))
+   +tileA('data-chart="hours"',"Föregående timmes medeleffekt",D.prev?f(D.prev.v):"–","kW",D.prev?(D.prev.alt?"Från Tibber-mätarens timenergi":"Homey TimSnitt")+(D.prevWarn?" · <b style=\"color:var(--bad)\">"+D.prevWarn+"</b>":""):wait(""))
+   +tileA('data-chart="hours"',"Dygnsmedeleffekt",D.day?f(D.day.v):"–","kW",inc(D.day,D.doneDay,"timmar hittills idag"))
+   +tileA('data-chart="hours"',"Månadsmedeleffekt",D.month?f(D.month.v):"–","kW",inc(D.month,D.doneMonth,"timmar hittills denna månad"))
    +`</div><div class="note" style="margin-bottom:12px">Uppdaterad ${hh}${D.varT?" · variabler hämtade "+new Date(D.varT).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}):""} · Dekarsön 235. Dygns- och månadsmedel bygger på enskilda timmedeleffekter från Homey.</div>`;
 }
 /* ---------- Ekonomi ---------- */
@@ -1027,24 +1060,24 @@ function floorSensTiles(f,only){
   return h+(only!=="uterum"?dt(1,2,"ΔT golvvärme"):"")+(only!=="golv"?dt(3,4,"ΔT uterum"):"");
 }
 async function renderKlimat(){
-  const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla);
+  const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.slab&&!(cfg.ids.vent||[]).includes(d.id));
   const zones=[...new Set(all.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv"));
   const list=all.filter(d=>!state.climZone||zoneName(d)===state.climZone).sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")||a.name.localeCompare(b.name,"sv"));
-  let h=`<div class="bar"><label>Rum <select id="climzone"><option value="">Alla rum</option>${zones.map(z=>`<option ${z===state.climZone?"selected":""}>${esc(z)}</option>`).join("")}</select></label></div>`;
+  let h="";
+  if(state.prop==="235"){
+    h+=nibeGroup()+ventGroup()+golvGroup(state.devices[cfg.ids.floor],true)+uterumGroup(state.devices[cfg.ids.slab],state.devices[cfg.ids.floor]);
+  }
+  h+=`<div class="bar"><b>Rum för rum</b><label>Visa <select id="climzone"><option value="">Alla rum</option>${zones.map(z=>`<option ${z===state.climZone?"selected":""}>${esc(z)}</option>`).join("")}</select></label></div>`;
   if(!list.length)h+=`<div class="card">Inga temperaturgivare hittades för ${PROPS.find(p=>p.k===state.prop).name}.</div>`;
   else{
-    h+=`<div class="grid">${list.map(d=>{const hu=capVal(d,"measure_humidity"),bat=capVal(d,"measure_battery");
-      return `<div class="card kcard" data-sens="${esc(d.id)}|measure_temperature" tabindex="0" role="button" title="Visa diagram över tid"><div class="top2"><span class="nm">${esc(devName(d))}</span><span class="live">${esc(zoneName(d))}</span></div><div class="big">${fmt(capVal(d,"measure_temperature"),1)} <small>°C</small></div><div class="meta">${hu!=null?`<span data-sens="${esc(d.id)}|measure_humidity" title="Visa fuktdiagram" style="text-decoration:underline dotted">Fukt ${fmt(hu,0)} %</span>`:""}${bat!=null?`<span>Batteri ${fmt(bat,0)} %</span>`:""}</div></div>`;}).join("")}</div><div class="note">Klicka på en temperatur eller luftfuktighet för diagram över tid.</div>`;
+    const byZone={};for(const d of list)(byZone[zoneName(d)]=byZone[zoneName(d)]||[]).push(d);
+    for(const z of Object.keys(byZone)){
+      h+=`<section class="grp"><h3>${esc(z)}</h3><div class="grid">${byZone[z].map(d=>{const hu=capVal(d,"measure_humidity"),bat=capVal(d,"measure_battery");
+        return `<div class="card kcard" data-sens="${esc(d.id)}|measure_temperature" tabindex="0" role="button" title="Visa diagram över tid"><div class="top2"><span class="nm">${esc(devName(d))}</span></div><div class="big">${fmt(capVal(d,"measure_temperature"),1)} <small>°C</small></div><div class="meta">${hu!=null?`<span data-sens="${esc(d.id)}|measure_humidity" title="Visa fuktdiagram" style="text-decoration:underline dotted">Luftfuktighet ${fmt(hu,0)} %</span>`:""}${bat!=null?`<span>Batteri ${fmt(bat,0)} %</span>`:""}</div></div>`;}).join("")}</div></section>`;
+    }
+    h+=`<div class="note">Klicka på en temperatur eller luftfuktighet för diagram över tid.</div>`;
   }
-  let nh="",uh="";
-  if(state.prop==="235"){
-    const nb=state.devices[cfg.ids.nibe];
-    if(nb){const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^(measure_temperature|capability_\d+)/.test(k)&&nb.capabilitiesObj[k].value!=null).sort((a,b)=>a.localeCompare(b,"sv",{numeric:true}));
-      nh+=`<h3>Värmepump · NIBE</h3><div class="grid">${temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k)).join("")}${tile("Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu")}</div>`;}
-    const f=state.devices[cfg.ids.floor],sl=state.devices[cfg.ids.slab];
-    if(f||sl)uh+=`<h3>Uterum och entreplatta</h3><div class="grid">${sl?sensTile(sl.id,"measure_temperature","Betongplatta",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(sl.id,"measure_humidity","Fukt "+fmt(capVal(sl,"measure_humidity"),0)+" %"):""):""}${tile("Golvvärme",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}${floorSensTiles(f)}</div>`;
-  }
-  $("#p-klimat").innerHTML=nh+h+uh;
+  $("#p-klimat").innerHTML=h;
 }
 
 /* =====================================================================
@@ -1167,7 +1200,7 @@ async function renderKort(){
   const t=todayStr(),R=calcRange();
   const c=await kortCtx(addDays(t,-400));
   let h=presetBar(R)+`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name} · klicka på ett kort eller diagram för mer information</div>`;
-  h+=`<h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div>${(await medelEffektHtml().catch(()=>""))?`<h3>Effekt och timmedeleffekt</h3>`+await medelEffektHtml().catch(()=>""):""}<h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
+  h+=`<h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div>${await medelEffektHtml().then(x=>x?`<section class="grp" style="margin-top:18px"><h3>Hela huset · Tibber</h3>`+x+`</section>`:"").catch(()=>"")}<h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
   for(const d of KORTCHARTS.map(k=>CHARTS.find(x=>x.k===k))){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
     h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
   h+=`</div>`;
@@ -1330,14 +1363,13 @@ function viewVVB(){
   const ids=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(Boolean),ds=ids.map(i=>state.devices[i]).filter(Boolean),nb=state.devices[cfg.ids.nibe];
   const ttl=(k,f)=>{const t=nb&&((nb.capabilitiesObj||{})[k]||{}).title;return t&&t!==k?t:f;};
   const tot=ds.reduce((a,d)=>a+(capVal(d,"measure_power")||0),0),kwh=ds.reduce((a,d)=>a+(capVal(d,"meter_power")||0),0);
-  let h=`<div class="grid">${tile("Effekt just nu",fmt(tot,0),"W",ds.length+" mätare"+(ds.length===1?"":"/uttag"),"hero")}`
+  let g=tile("Effekt just nu",fmt(tot,0),"W",ds.length+" mätare/uttag","hero")
    +(capVal(nb,"capability_3")!=null?sensTile(cfg.ids.nibe,"capability_3",esc(ttl("capability_3","Varmvatten topp (BT7)")),fmt(capVal(nb,"capability_3"),1),"°C","NIBE"):"")
    +(capVal(nb,"capability_4")!=null?sensTile(cfg.ids.nibe,"capability_4",esc(ttl("capability_4","Varmvatten laddning (BT6)")),fmt(capVal(nb,"capability_4"),1),"°C","NIBE"):"")
-   +tile("Energi totalt",fmt(kwh,1),"kWh","Summa av mätarna")+`</div>`;
+   +tile("Energi totalt",fmt(kwh,1),"kWh","Summa av mätarna");
+  let h=grp("Varmvattenberedare",g,4);
   if(!ds.length)return h+`<div class="card">Inga varmvattenberedare hittades. Ange enhets-ID i Admin.</div>`;
-  h+=`<h3>Mätare och uttag</h3><div class="grid">${ds.map(d=>tile(esc(devName(d)),fmt(capVal(d,"measure_power"),0),"W",(capVal(d,"onoff")==null?"":(capVal(d,"onoff")?"På":"Av")+" · ")+fmt(capVal(d,"meter_power"),1)+" kWh totalt"+(capVal(d,"measure_current")!=null?" · "+fmt(capVal(d,"measure_current"),1)+" A":""))).join("")}</div>`;
-  const sw=ds.filter(d=>hasOnoff(d));
-  if(sw.length)h+=`<div class="bar" style="margin-top:12px">${sw.map(d=>`<button class="btn" data-act="tgl" data-dev="${d.id}">${esc(devName(d))} ${capVal(d,"onoff")?"av":"på"}</button>`).join("")}</div>`;
+  h+=grp("Mätare och uttag",ds.map(d=>capVal(d,"onoff")!=null?onoffTile(d,devName(d),devName(d),fmt(capVal(d,"meter_power"),1)+" kWh totalt"):tile(devName(d),fmt(capVal(d,"measure_power"),0),"W",fmt(capVal(d,"meter_power"),1)+" kWh totalt"+(capVal(d,"measure_current")!=null?" · "+fmt(capVal(d,"measure_current"),1)+" A":""))).join(""),Math.min(4,ds.length));
   return h;
 }
 async function viewVP(R,u){
@@ -1390,15 +1422,13 @@ async function viewTraktor(R,u){
 }
 async function viewUterum(R,u){
   const f=state.devices[cfg.ids.floor],s=state.devices[cfg.ids.slab];
-  let h=`<div class="grid">${tile("Betongplatta, temperatur",fmt(capVal(s,"measure_temperature"),1),"°C","Luftfuktighet "+fmt(capVal(s,"measure_humidity"),0)+" %","hero")}
-    ${tile("Golvvärme effekt",fmt(capVal(f,"measure_power"),0),"W",capVal(f,"onoff")?"På":"Av")}
-    ${tile("Golvvärme total",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat")}${floorSensTiles(f,"uterum")}</div>`;
-  if(f)h+=`<div class="bar" style="margin-top:12px"><button class="btn" data-act="tgl" data-dev="${f.id}">Golvvärme ${capVal(f,"onoff")?"av":"på"}</button></div>`;
+  let h=uterumGroup(s,f)+golvGroup(f,false);
+  if(f)h+=`<div class="bar" style="margin:-8px 0 12px"><button class="btn" data-act="tgl" data-dev="${f.id}">Golvvärme ${capVal(f,"onoff")?"av":"på"}</button></div>`;
   h+=`<h3>Period</h3>`+presetBar(R);
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   const T=(await loadSeries(minDate)).golv,eu=effU(T,u);
   const c=chartBlock("Golvvärme Uterum",T,R,eu);h+=c.html||c;
-  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor räknas timme för timme: kWh när enheten var igång gånger timpriset just då (senaste 31 dagarna), äldre dagar med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
+  if(T&&T.est&&eu==="kr")h+=`<div class="note">≈ Kronor räknas timme för timme: kWh när enheten var igång gånger timpriset just då (senaste 7 dagarna), äldre dagar med dygnets snittpris. Exakt kostnad kräver en rapportenhet i Homey (Admin).</div>`;
   return h;
 }
 async function renderDetalj(){
@@ -1605,7 +1635,7 @@ function demoSetup(){
     mk("d5","Köksfläkt","socket","z2",{onoff:false,measure_power:0}),mk("d6","Taklampa Sovrum","light","z3",{onoff:false,dim:1}),
     mk("d7","Julstjärna Uterum","light","z4",{onoff:true}),mk("d8","Avloppspump","socket","z4",{onoff:true,measure_power:0}),
     mk("d9","Takbelysning Garage","socket","zg",{onoff:false,measure_power:0}),mk("d10","Ytterdörr Hall","lock","z1",{locked:true}),
-    mk("d11","Dörrsensor Garage","sensor","zg",{alarm_contact:true,alarm_battery:false}),mk("d12","Temperatursensor Kök","sensor","z2",{measure_temperature:22.2,measure_battery:100}),
+    mk("d11","Dörrsensor Garage","sensor","zg",{alarm_contact:true,alarm_battery:false}),mk(cfg.ids.inneKok,"Temperatursensor Kök","sensor","z2",{measure_temperature:22.2,measure_humidity:41,measure_battery:100}),
     mk("d13","Temperatursensor Sovrum","sensor","z3",{measure_temperature:19.8,measure_battery:15}),mk("d14","Rörelsesensor Kök","sensor","z2",{alarm_motion:false,measure_battery:90}),
     mk("d15","Frysvakt Dekarsön 236","socket","z236",{onoff:true,measure_power:68}),mk("d16","Element Dekarsön 236","socket","z236",{onoff:false,measure_power:0}),
     mk("d17","Lampa Dekarsön 236","light","z236",{onoff:false,dim:1}),mk("d18","Temperatursensor Dekarsön 236","sensor","z236",{measure_temperature:21.4,measure_battery:100}),
