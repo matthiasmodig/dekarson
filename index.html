@@ -2071,7 +2071,7 @@ function husPortG(r,mode,H){
   return g;}
 function husEdge(r){return r.y+r.h>=740?"b":"t";}
 /* särskilda placeringar (andel av rummets bredd/höjd): Takspot mitten Vardagsrum nära hallen, i höjd med passagen */
-function husCeilPos(r,d){return r.id==="vardagsrum"&&/mitten/i.test(devName(d))?[0.5,0.72]:null;}
+function husCeilPos(r,d){return r.id==="vardagsrum"&&/mitten/i.test(devName(d))?[0.5,0.82]:null;}
 function husWinMarks(r,mode){
   const wn=husWin(r);if(!wn.length||r.none)return "";const e=husEdge(r),n=wn.length,len=mode?90:Math.min(60,(r.w-20)/n-8),th=mode?16:14;
   const x0=mode?30:r.x,wd=mode?840:r.w,y=mode?(e==="t"?30:null):(e==="t"?r.y:r.y+r.h);
@@ -2083,7 +2083,7 @@ function husRoomSvg(r){
   const nm=d=>devName(d).replace(new RegExp("\\s*"+r.n.replace(/[.*+?^${}()|[\]\\]/g,"")+"$","i"),"").trim()||devName(d);
   const cut=(t,n)=>t.length>n?t.slice(0,n-1)+"…":t;
   const dr=r.id==="hall"?state.devices[cfg.ids.ytterdorr]:null,dl=dr?!!capVal(dr,"locked"):null;
-  const top0=e==="t"&&wn.length?64:34,band=cs.length?72:0,top=top0+band,tw=200,th=84,gap=13,H=Math.max(230,top+Math.max(1,Math.ceil(others.length/4))*(th+gap)+(e==="b"&&wn.length?60:36)+(dr?60:0)+(r.id==="garage"?60:0));
+  const top0=e==="t"&&wn.length?64:34,band=cs.length?72:0,top=top0+band,tw=200,th=84,gap=13,H=Math.max(cp.length?320:230,top+Math.max(1,Math.ceil(others.length/4))*(th+gap)+(e==="b"&&wn.length?60:36)+(dr?60:0)+(r.id==="garage"?60:0));
   let g=`<rect x="12" y="12" width="${W-24}" height="${H-24}" rx="6" fill="${(i.tp?"hsl("+Math.round(215-Math.min(1,Math.max(0,(i.tp.t-14)/12))*195)+" 75% 55% / .18)":"var(--soft)")}" stroke="var(--ink)" stroke-width="6"/>`;
   g+=husWinMarks(r,H)+husPortG(r,H,H);
   if(dr)g+=`<g data-act="lock" data-dev="${esc(dr.id)}" data-to="${!dl}" tabindex="0" role="button" aria-label="Ytterdörr ${dl?"låst":"olåst"}" style="cursor:pointer"><rect x="${W/2-90}" y="${H-34}" width="180" height="22" rx="4" fill="${dl?"var(--good)":"var(--bad)"}" opacity=".9"/><text x="${W/2}" y="${H-44}" text-anchor="middle" style="font-size:18px;font-weight:700;fill:var(--ink)">Ytterdörr ${dl?"låst · tryck för att låsa upp":"OLÅST · tryck för att låsa"}</text></g>`;
