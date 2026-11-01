@@ -139,6 +139,7 @@ input[type=range]{width:100%;height:34px;accent-color:var(--on)}
 dialog{border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink);max-width:420px;width:92%}
 dialog::backdrop{background:#0009}
 .adm-l{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut);margin:0 0 10px}.adm-l input[type=text],.adm-l input[type=password]{width:100%}
+.grp.slim{margin:0 0 10px}.grp.slim h3{margin:0 0 4px}.grp.slim .tile{padding:6px 12px;min-height:0}.grp.slim .tile .v{font-size:22px;line-height:1.1}.grp.slim .tile .l{font-size:12px}.grp.slim .tile .s{font-size:11px;margin-top:0}
 </style>
 </head>
 <body>
@@ -929,7 +930,7 @@ async function tibberHtml(){
 async function renderOversikt(){
   const e=liveEnergy();
   try{await loadCal();}catch(e){}
-  let h=statusBar()+heatCards();
+  const sb=statusBar();let h=sb+heatCards();
   if(state.prop==="235"){
     const tb=state.devices[cfg.ids.tibber],now=new Date(),frac=Math.max(now.getMinutes()+now.getSeconds()/60,1)/60;
     const thisH=capVal(tb,"meter_kwh_this_hour"),kd=capVal(tb,"meter_kwh_this_day"),kdp=capVal(tb,"meter_kwh_last_day"),rd=capVal(tb,"meter_money_this_day"),rdp=capVal(tb,"meter_money_last_day");
@@ -946,7 +947,7 @@ async function renderOversikt(){
     if(kk)g2+=sensTile(kk.id,"measure_temperature","Inomhus (kök)",fmt(capVal(kk,"measure_temperature"),1),"°C",capVal(kk,"measure_humidity")!=null?sensLink(kk.id,"measure_humidity","Luftfuktighet "+fmt(capVal(kk,"measure_humidity"),0)+" %"):"Kök representerar inomhus");
     g2+=sensTile(cfg.ids.nibe,"capability_0","Utetemperatur",fmt(capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out"),1),"°C",(feel!=null?"Känns som "+fmt(feel,1)+" °C (SMHI) · ":"")+"NIBE BT1");
     g2+=sensTile(cfg.ids.slab,"measure_temperature","Betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
-    h+=grp("Temperatur",g2,3)+elGrp;
+    h=h.replace(sb,sb+grp("Temperatur",g2,3).replace('<section class="grp">','<section class="grp slim">'))+elGrp;
     {const tc=await tibberHtml();h+=tc.html;if(!tc.ok){try{h+=await priceBlock(0,true);}catch(err){}}}
     try{h+=planHtml();}catch(err){}
     if(state.devices[cfg.ids.tesla])h+=`<section class="grp" style="margin-top:14px"><h3>Tesla</h3>`+teslaTiles(state.unit)+`</section>`;
