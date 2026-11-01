@@ -1647,11 +1647,12 @@ function wxExtra(d){
     ln("measure_temperature.surface","Yttemperatur",sf!=null&&t!=null&&Math.abs(sf-t)>=0.05?fmt(sf,1)+" °C":null)+`</div>`;}
 async function renderKlimat(){
   await loadVars();
-  const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.slab&&d.id!==cfg.ids.ventilation&&d.id!==cfg.ids.fastighet&&d.id!==cfg.ids.entre);
+  const zn=d=>d.id===cfg.ids.slab?"Uterum":zoneName(d);
+  const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.ventilation&&d.id!==cfg.ids.fastighet&&d.id!==cfg.ids.entre);
   const zones=[...new Set(all.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv"));
-  const hideK=d=>{const z=zoneName(d),n=devName(d);return (/tvättstuga/i.test(z)&&!/^temperatursensor/i.test(n))||(/kök/i.test(z)&&/^diskmaskin/i.test(n));};
+  const hideK=d=>{const z=zn(d),n=devName(d);return (/tvättstuga/i.test(z)&&!/^temperatursensor/i.test(n))||(/kök/i.test(z)&&/^diskmaskin/i.test(n));};
   const tsFirst=d=>/^temperatursensor/i.test(devName(d))?0:1;
-  const list=all.filter(d=>!hideK(d)&&(!state.climZone||zoneName(d)===state.climZone)).sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")||tsFirst(a)-tsFirst(b)||a.name.localeCompare(b.name,"sv"));
+  const list=all.filter(d=>!hideK(d)&&(!state.climZone||zn(d)===state.climZone)).sort((a,b)=>zn(a).localeCompare(zn(b),"sv")||tsFirst(a)-tsFirst(b)||a.name.localeCompare(b.name,"sv"));
   let h="";
   if(state.prop==="235"){
     h+=nibeGroup()+ventGroup()+golvGroup(state.devices[cfg.ids.floor],true)+uterumGroup(state.devices[cfg.ids.slab],state.devices[cfg.ids.floor],false,true);
@@ -1659,10 +1660,10 @@ async function renderKlimat(){
   h+=`<div class="bar"><b>Rum för rum</b><label>Visa <select id="climzone"><option value="">Alla rum</option>${zones.map(z=>`<option ${z===state.climZone?"selected":""}>${esc(z)}</option>`).join("")}</select></label></div>`;
   if(!list.length)h+=`<div class="card">Inga temperaturgivare hittades för ${PROPS.find(p=>p.k===state.prop).name}.</div>`;
   else{
-    const byZone={};for(const d of list)(byZone[zoneName(d)]=byZone[zoneName(d)]||[]).push(d);
+    const byZone={};for(const d of list)(byZone[zn(d)]=byZone[zn(d)]||[]).push(d);
     for(const z of Object.keys(byZone)){
       h+=`<section class="grp"><h3>${esc(z)}</h3><div class="grid">${byZone[z].map(d=>{const hu=capVal(d,"measure_humidity"),bat=capVal(d,"measure_battery");
-        return `<div class="card kcard" data-sens="${esc(d.id)}|measure_temperature" tabindex="0" role="button" title="Visa diagram över tid"><div class="top2"><span class="nm">${esc(devName(d))}</span></div><div class="big">${fmt(capVal(d,"measure_temperature"),1)} <small>°C</small></div><div class="meta">${hu!=null?`<span data-sens="${esc(d.id)}|measure_humidity" title="Visa fuktdiagram" style="text-decoration:underline dotted">Luftfuktighet ${fmt(hu,0)} %</span>`:""}${bat!=null?`<span>Batteri ${fmt(bat,0)} %</span>`:""}</div>${wxExtra(d)}</div>`;}).join("")}</div></section>`;
+        return `<div class="card kcard" data-sens="${esc(d.id)}|measure_temperature" tabindex="0" role="button" title="Visa diagram över tid"><div class="top2"><span class="nm">${esc(d.id===cfg.ids.slab?"Betongplatta":devName(d))}</span></div><div class="big">${fmt(capVal(d,"measure_temperature"),1)} <small>°C</small></div><div class="meta">${hu!=null?`<span data-sens="${esc(d.id)}|measure_humidity" title="Visa fuktdiagram" style="text-decoration:underline dotted">Luftfuktighet ${fmt(hu,0)} %</span>`:""}${bat!=null?`<span>Batteri ${fmt(bat,0)} %</span>`:""}</div>${wxExtra(d)}</div>`;}).join("")}</div></section>`;
     }
     h+=`<div class="note">Klicka på en temperatur eller luftfuktighet för diagram över tid.</div>`;
   }
