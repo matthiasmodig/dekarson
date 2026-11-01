@@ -592,7 +592,8 @@ function nibeGroup(){
   const temps=Object.keys(nb.capabilitiesObj||{}).filter(k=>/^(measure_temperature|capability_\d+)/.test(k)&&nb.capabilitiesObj[k].value!=null).sort((a,b)=>a.localeCompare(b,"sv",{numeric:true}));
   const ts=temps.map(k=>sensTile(nb.id,k,esc((nb.capabilitiesObj[k].title)||k),fmt(nb.capabilitiesObj[k].value,1),"°C",k));
   const eff=sensTile(nb.id,"measure_power","Effekt",fmt(capVal(nb,"measure_power"),0),"W","NIBE just nu");
-  return grp("Värmepump · NIBE",[ts[0]||"",eff,...ts.slice(1),nibeDelta()].join(""),4);
+  const cards=[ts[0]||"",eff,...ts.slice(1),nibeDelta()].filter(Boolean);
+  return grp("Värmepump · NIBE",cards.join(""),Math.max(2,Math.ceil(cards.length/2)));
 }
 /* ---------- Ikoner (inbyggda SVG, ärver textfärgen) ---------- */
 const ICONS={
