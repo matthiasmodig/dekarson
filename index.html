@@ -383,7 +383,8 @@ async function setCap(id,cap,value){
   d.capabilitiesObj[cap].value=value;
 }
 async function runFlow(id){
-  const f=state.flows.find(x=>x.id===id);if(!f)return;
+  let f=state.flows.find(x=>x.id===id);
+  if(!f){const sn=(typeof SNABB!=="undefined"?SNABB:[]).find(x=>x[0]===id);if(!sn)return;f={id,kind:id==="e7584390-9046-44c6-a64a-1c0104628505"||id==="e160d06e-183d-473e-833f-43a9833356f2"?"adv":"std"};}
   if(!isDemo())await api("/api/manager/flow/"+(f.kind==="adv"?"advancedflow":"flow")+"/"+id+"/trigger",{method:"POST",body:"{}"});
 }
 
@@ -2151,6 +2152,11 @@ function roomModalHtml(id,inline){
   if(sens.length)h+=`<h3>Andra sensorer</h3><div class="grid">${sens.map(d=>sensTile(d.id,"measure_temperature",esc(devName(d)),fmt(capVal(d,"measure_temperature"),1),"°C","")).join("")}</div>`;
   return h;}
 
+/* Fyra snabbflöden i Homey (id först, namn som reserv) */
+const SNABB=[["e7584390-9046-44c6-a64a-1c0104628505",/^st(ä|a)d p(å|a)$/i,"Tänd alla takspot","STÄD PÅ"],["e160d06e-183d-473e-833f-43a9833356f2",/^st(ä|a)d av$/i,"Släck alla takspot","STÄD AV"],["342b2055-0e3b-424d-9216-d1de4d98b352",/fönsterspot.*takfot p(å|a)/i,"Tänd alla fönsterspot + takfot",""],["79c06d2e-b297-4ef2-bd74-fcba22f20e1b",/fönsterspot.*takfot av/i,"Släck alla fönsterspot + takfot",""]];
+function snabbFlows(){
+  return `<div class="bar" style="flex-wrap:wrap;gap:8px">${SNABB.map(([id,re,l,sub])=>{const f=state.flows.find(x=>x.id===id)||state.flows.find(x=>re.test(x.name)),fid=f?f.id:id,on=l.startsWith("Tänd");
+    return `<button class="btn ${on?"":""}" data-act="flow" data-id="${esc(fid)}" title="Startar flödet ${esc(f?f.name:"")}">${state.flash[fid]?"Skickat ✓":esc(l)}${sub&&!state.flash[fid]?` <span class="note" style="margin:0 0 0 4px">(${sub})</span>`:""}</button>`;}).join("")}</div>`;}
 function vpElHtml(){
   if(state.prop!=="235"){const d=state.devices[cfg.ids.vp236];if(!d)return "";
     return `<div class="zonehead"><b>Värmepump och el</b></div><div class="grid">`+(hasOnoff(d)?devCard(d):tile("Luftvärmepump 236",fmt(capVal(d,"measure_power"),0),"W","Ingen på/av-styrning"))+`</div>`;}
@@ -2193,10 +2199,7 @@ async function renderStyr(){
   const q="",rooms=[...new Set(devs.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv")),zsel=rooms.includes(state.styrZone)?state.styrZone:"";
   const list=zsel?devs.filter(d=>zoneName(d)===zsel):devs;
   const by={};for(const d of list)(by[zoneName(d)]=by[zoneName(d)]||[]).push(d);
-  let h=styrSwitch()+`<div class="bar"><label>Rum <select id="styrzone"><option value="">Alla rum</option>${rooms.map(z=>`<option ${z===zsel?"selected":""}>${esc(z)}</option>`).join("")}</select></label><span class="grow"></span>
-    <button class="btn" data-act="alloff">Släck alla lampor</button></div>`;
-  const gd=zsel?[]:[1];
-  if(gd.length)h+=vpElHtml();
+  let h=styrSwitch()+`<div class="bar"><label>Rum <select id="styrzone"><option value="">Alla rum</option>${rooms.map(z=>`<option ${z===zsel?"selected":""}>${esc(z)}</option>`).join("")}</select></label><span class="grow"></span></div>${snabbFlows()}`;
   for(const z of Object.keys(by).sort((a,b)=>a.localeCompare(b,"sv"))){
     const lights=by[z].filter(isLamp),anyOn=lights.some(d=>d.capabilitiesObj.onoff.value);
     h+=`<div class="zonehead"><b>${esc(z)}</b>${lights.length?`<button class="btn sm" data-act="zone" data-zone="${esc(z)}" data-to="${!anyOn}">Lampor ${anyOn?"av":"på"}</button>`:""}</div><div class="grid">${by[z].sort((a,b)=>devName(a).localeCompare(devName(b),"sv")).map(devCard).join("")}</div>`;
