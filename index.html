@@ -754,7 +754,7 @@ function heatCards(){
   const dv=id=>state.devices[id];
   const sub=d=>{const dim=capVal(d,"dim"),kw=capVal(d,"meter_power");return (dim!=null&&capVal(d,"onoff")?Math.round(dim*100)+" % · ":"")+(kw!=null?fmt(kw,1)+" kWh totalt":"Ingen energimätare");};
   const t=(id,n)=>{const d=dv(id);return d&&hasOnoff(d)?onoffTile(d,n,n,sub(d),"",true):"";};
-  const tr_=(id,n,k)=>{const d=dv(id);return d&&hasOnoff(d)?onoffTile(d,n,n,trSub(k,true),"",true):"";};
+  const tr_=(id,n,k)=>{const d0=dv(id);if(!d0||!hasOnoff(d0))return "";const x=trSplit(),w=k==="l"?x.l:x.m,d={...d0,capabilitiesObj:{...d0.capabilitiesObj,measure_power:{...(d0.capabilitiesObj.measure_power||{}),value:w}}};return onoffTile(d,n,n,trSub(k,true),"",true);};
   const r1=t(state.devices[cfg.ids.entre]?cfg.ids.entre:cfg.ids.floor,"Entréplatta");
   const tz=dv(cfg.ids.tesla),teslaT=tz?(()=>{const ch=capVal(tz,"charging_on")===true,kw=capVal(tz,"measure_charge_power"),soc=capVal(tz,"measure_soc_level"),mn=capVal(tz,"measure_time_to_full_charge")??capVal(tz,"measure_charge_minutes_to_full");
     return tileA('data-goto="status"',"Tesla",ch?"Laddar":"Laddar inte","",(ch&&kw!=null?fmt(kw,1)+" kW · ":"")+(soc!=null?fmt(soc,0)+" % batteri":"")+(ch&&mn?" · "+fmt(mn,0)+" min kvar":""));})():"";
