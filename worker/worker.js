@@ -38,6 +38,15 @@ export default {
         const ok = await sessionOk(req, env);
         return json({ ok }, ok ? 200 : 401, cors);
       }
+      if (url.pathname === "/cal" && req.method === "POST") {
+        if (!(await sessionOk(req, env))) return json({ error: "Inte inloggad" }, 401, cors);
+        let target;
+        try { target = new URL((await req.json()).url); } catch (e) { return json({ error: "Ogiltig adress" }, 400, cors); }
+        if (target.protocol !== "https:" || target.hostname !== "calendar.google.com" || !/\.ics$/.test(target.pathname))
+          return json({ error: "Bara iCal-adresser från calendar.google.com tillåts" }, 403, cors);
+        const r = await fetch(target.toString(), { cf: { cacheTtl: 300, cacheEverything: true } });
+        return new Response(await r.text(), { status: r.status, headers: { "Content-Type": "text/calendar; charset=utf-8", ...cors } });
+      }
       if (url.pathname.startsWith("/api/")) {
         if (!(await sessionOk(req, env))) return json({ error: "Inte inloggad" }, 401, cors);
         const allowed = ALLOWED.some(([m, re]) => m === req.method && re.test(url.pathname));

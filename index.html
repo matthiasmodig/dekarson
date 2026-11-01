@@ -766,6 +766,63 @@ function teslaCmds(){
     ${grp("Laddström",curs.map(([f,n])=>btn(f,n+" A",cur==+n)))}
     <div class="note">Knapparna startar Flows i Homey. Tesla-appen i Homey har kommandon för laddning, men inga för förvärmning eller kupétemperatur.</div></div>`;
 }
+
+/* ---------- Kalender (Google Kalender via hemlig iCal-adress) ---------- */
+function tzOff(ts,tz){const p={};new Intl.DateTimeFormat("en-US",{timeZone:tz,hourCycle:"h23",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",second:"numeric"}).formatToParts(new Date(ts)).forEach(x=>p[x.type]=+x.value);return Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute,p.second)-Math.floor(ts/1000)*1000;}
+function tzUtc(y,mo,d,h,mi,tz){const g=Date.UTC(y,mo,d,h,mi);let t=g-tzOff(g,tz);t=g-tzOff(t,tz);return t;}
+function icsDt(val,par){const m=/^(\d{4})(\d\d)(\d\d)(?:T(\d\d)(\d\d)(\d\d)?(Z)?)?$/.exec(val);if(!m)return null;const [y,mo,d,h,mi]=[+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0)];
+  if(!m[4])return {t:new Date(y,mo,d).getTime(),allDay:true,y,mo,d,h:0,mi:0};
+  if(m[7])return {t:Date.UTC(y,mo,d,h,mi),y,mo,d,h,mi,tz:null,utc:true};
+  const tz=par.TZID||null;return {t:tz?tzUtc(y,mo,d,h,mi,tz):new Date(y,mo,d,h,mi).getTime(),y,mo,d,h,mi,tz};}
+function parseIcs(txt,from,to){
+  const lines=txt.replace(/\r?\n[ \t]/g,"").split(/\r?\n/),evs=[];let cur=null;
+  for(const ln of lines){if(ln==="BEGIN:VEVENT"){cur={ex:[]};continue;}if(ln==="END:VEVENT"){if(cur&&cur.start)evs.push(cur);cur=null;continue;}if(!cur)continue;
+    const i=ln.indexOf(":");if(i<0)continue;const [name,...ps]=ln.slice(0,i).split(";"),par={};ps.forEach(x=>{const k=x.split("=");par[k[0]]=k[1];});const v=ln.slice(i+1);
+    if(name==="DTSTART")cur.start=icsDt(v,par);else if(name==="DTEND")cur.end=icsDt(v,par);else if(name==="SUMMARY")cur.title=v.replace(/\\,/g,",").replace(/\\n/g," ").replace(/\;/g,";");else if(name==="LOCATION")cur.loc=v.replace(/\\,/g,",");else if(name==="UID")cur.uid=v;
+    else if(name==="RRULE"){cur.rr={};v.split(";").forEach(x=>{const k=x.split("=");cur.rr[k[0]]=k[1];});}
+    else if(name==="EXDATE")v.split(",").forEach(x=>{const e=icsDt(x,par);if(e)cur.ex.push(e.t);});
+    else if(name==="RECURRENCE-ID")cur.rid=icsDt(v,par);else if(name==="STATUS")cur.status=v;}
+  const out=[],ov={};evs.forEach(e=>{if(e.rid)ov[e.uid+"|"+e.rid.t]=e;});
+  const WD=["SU","MO","TU","WE","TH","FR","SA"];
+  const push=(e,st,en)=>{if(e.status==="CANCELLED")return;if(en>from&&st<to)out.push({start:st,end:en,allDay:!!e.start.allDay,title:e.title||"(utan titel)",loc:e.loc||""});};
+  for(const e of evs){if(e.rid){push(e,e.start.t,e.end?e.end.t:e.start.t);continue;}
+    const st=e.start,dur=(e.end?e.end.t:st.t)-st.t;
+    if(!e.rr){push(e,st.t,st.t+dur);continue;}
+    const r=e.rr,iv=+(r.INTERVAL||1),until=r.UNTIL?icsDt(r.UNTIL.length===8?r.UNTIL:r.UNTIL,{}):null,maxC=r.COUNT?+r.COUNT:Infinity,by=(r.BYDAY||"").split(",").filter(Boolean),bmd=(r.BYMONTHDAY||"").split(",").filter(Boolean).map(Number);
+    const d0=new Date(st.y,st.mo,st.d),stW=Math.floor((d0.getTime()-((d0.getDay()+6)%7)*864e5)/864e5/7);let n=0;
+    for(let d=new Date(d0);d.getTime()<to+864e5&&n<maxC;d.setDate(d.getDate()+1)){
+      const dd=Math.round((d.getTime()-d0.getTime())/864e5);let ok=false;
+      if(r.FREQ==="DAILY")ok=dd%iv===0;
+      else if(r.FREQ==="WEEKLY"){const wk=Math.floor((d.getTime()-((d.getDay()+6)%7)*864e5)/864e5/7);ok=(wk-stW)%iv===0&&(by.length?by.some(b=>b.slice(-2)===WD[d.getDay()]):d.getDay()===d0.getDay());}
+      else if(r.FREQ==="MONTHLY"){const mm=(d.getFullYear()-st.y)*12+d.getMonth()-st.mo;if(mm%iv===0){if(bmd.length)ok=bmd.includes(d.getDate());else if(by.length)ok=by.some(b=>{const nth=parseInt(b),wd=b.slice(-2);if(wd!==WD[d.getDay()])return false;if(isNaN(nth))return true;if(nth>0)return Math.ceil(d.getDate()/7)===nth;const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();return Math.ceil((last-d.getDate()+1)/7)===-nth;});else ok=d.getDate()===st.d;}}
+      else if(r.FREQ==="YEARLY")ok=(d.getFullYear()-st.y)%iv===0&&d.getMonth()===st.mo&&d.getDate()===st.d;
+      if(!ok)continue;
+      const t=st.allDay?new Date(d).getTime():(st.tz?tzUtc(d.getFullYear(),d.getMonth(),d.getDate(),st.h,st.mi,st.tz):new Date(d.getFullYear(),d.getMonth(),d.getDate(),st.h,st.mi).getTime());
+      if(until&&t>until.t)break;n++;if(e.ex.includes(t))continue;const o=ov[e.uid+"|"+t];if(o)continue;push(e,t,t+dur);}}
+  return out.sort((a,b)=>a.start-b.start);}
+async function loadCal(){
+  const now=Date.now();if(state.cal&&now-state.cal.at<300000&&state.cal.u===(cfg.calUrl||"")+cfg.demo)return state.cal;
+  const from=new Date();from.setHours(0,0,0,0);const f=from.getTime(),to=f+7*864e5;let ev=[],err=null;
+  if(isDemo()){const D=(dd,h,m,t)=>{const s=new Date(from);s.setDate(s.getDate()+dd);s.setHours(h,m,0,0);return {start:s.getTime(),end:s.getTime()+36e5,allDay:false,title:t,loc:""};};ev=[D(0,17,30,"Hämta paket"),D(1,8,0,"Rörmokare Dekarsön"),D(2,19,0,"Middag hos Klara"),D(4,10,0,"Besiktning bil"),{...D(5,0,0,"Familjehelg"),allDay:true}];}
+  else if(!cfg.calUrl)err="none";
+  else if(!isCloud())err="Kalendern kräver molnläget (adressen hämtas via din Cloudflare-worker).";
+  else{try{const r=await fetch(base()+"/cal",{method:"POST",headers:{"Authorization":"Bearer "+cfg.session,"Content-Type":"application/json"},body:JSON.stringify({url:cfg.calUrl.trim()})});
+    if(!r.ok)throw new Error(r.status===404||r.status===405?"Workern behöver uppdateras (worker/worker.js) för att läsa kalendern.":"Kalendern kunde inte läsas ("+r.status+")");
+    ev=parseIcs(await r.text(),f,to);}catch(e){err=e.message;}}
+  return state.cal={at:now,u:(cfg.calUrl||"")+cfg.demo,ev,err};}
+async function calHtml(){
+  let c;try{c=await loadCal();}catch(e){return "";}
+  if(c.err==="none")return "";
+  const dayLbl=t=>{const d=new Date(t),td=new Date();td.setHours(0,0,0,0);const df=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-td)/864e5);return df===0?"Idag":df===1?"Imorgon":d.toLocaleDateString("sv-SE",{weekday:"long",day:"numeric",month:"short"});};
+  let h=`<section class="grp" style="margin-top:14px"><h3>${ic("Kalender","clock")}Kalender</h3>`;
+  if(c.err)return h+`<div class="note">${esc(c.err)}</div></section>`;
+  const now=Date.now(),list=c.ev.filter(e=>e.end>now);
+  if(!list.length)return h+`<div class="note">Inga händelser de närmaste 7 dagarna.</div></section>`;
+  let last="";h+=`<div class="card">`;
+  for(const e of list){const dl=dayLbl(Math.max(e.start,new Date().setHours(0,0,0,0)));if(dl!==last){h+=`<div class="note" style="margin:10px 0 2px;font-weight:700;text-transform:capitalize">${esc(dl)}</div>`;last=dl;}
+    const tm=e.allDay?"Heldag":new Date(e.start).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
+    h+=`<div class="stat"><span><b style="display:inline-block;min-width:58px">${tm}</b> ${esc(e.title)}${e.loc?` <span class="pill">${esc(e.loc)}</span>`:""}</span></div>`;}
+  return h+`</div></section>`;}
 async function renderOversikt(){
   const e=liveEnergy();
   let h=statusBar()+heatCards();
@@ -792,6 +849,7 @@ async function renderOversikt(){
     h+=`<section class="grp" style="margin-top:14px"><h3>Effekt · Dekarsön 236</h3>`+await medelEffektHtml()+`</section>`;
     h+=`<div class="grid">`+tile("Effekt just nu",e.w!=null?fmt(e.w,0):"–","W","Dekarsön 236","hero")+tile("Denna månad",fmt(e.month,0),unitName(state.unit),"")+tile("I år",fmt(e.year,0),unitName(state.unit),"")+`</div>`;
   }
+  h+=await calHtml();
   const favs=propDevices().filter(d=>isFav(d)&&hasOnoff(d));
   const ff=state.flows.filter(f=>cfg.ui.flows[f.id]&&cfg.ui.flows[f.id].fav);
   if(favs.length||ff.length){
@@ -1880,6 +1938,7 @@ function renderAdmin(){
     <label class="adm-l">Timeffekt-ark, CSV-länk (Google Sheets: Arkiv → Dela → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv" value="${esc(cfg.sheetCsv||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=…&single=true&output=csv"></label>${idf("tibber","Tibber, hela huset (enhets-ID)")}${idf("hush","Hushållsel")}${idf("uppv","Uppvärmning")}${idf("vp","Värmepump")}${idf("ovr","Övrigt (valfritt)")}${idf("d236","Dekarsön 236, virtuell energiöversikt")}${idf("live235","Effektmätare 235 (Tibber Pulse)")}${idf("price","Elpris-enhet (Tibber)")}${idf("tesla","Tesla (bil)")}${idf("teslaE","Energiöversikt Tesla")}${idf("nibe","NIBE värmepump")}${idf("trLoad","Traktor, laddning (uttag)")}${idf("trHeat","Traktor, motorvärmare")}${idf("floor","Golvvärme Uterum")}${idf("entre","Entrévärme utomhus (entréplatta)")}${idf("slab","Betongplatta Uterum (sensor)")}${idf("vp236","Luftvärmepump 236")}${idf("trRep","Traktor, rapportenhet med kr (valfritt)")}${idf("golvRep","Golvvärme, rapportenhet med kr (valfritt)")}
     <label class="adm-l">Dekarsön 236 · timeffekt-ark, CSV-länk (kalkylarket "Timmedeleffekt Dekarsön 236" → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv236" value="${esc(cfg.sheetCsv236||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=1300079826&output=csv"></label>
     <label class="adm-l">Traktor motorvärmare, känd effekt i W (valfritt, ger en tydligt märkt schablonberäkning)<input type="text" data-cfg="trHeatW" value="${esc(cfg.trHeatW||"")}" placeholder="t.ex. 600"></label>
+    <label class="adm-l">Google Kalender, hemlig iCal-adress (Google Kalender → Inställningar → din kalender → Hemlig adress i iCal-format). Visas på Översikt, kräver molnläget och uppdaterad worker.<input type="text" data-cfg="calUrl" value="${esc(cfg.calUrl||"")}" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"></label>
     <label class="adm-l">Påslag (kr/kWh)<input type="text" data-cfg="markup" value="${esc(cfg.markup)}"></label></div>
   <div class="card"><h2>Fastigheter</h2><div class="note" style="margin:0 0 8px">Rum som hör till Dekarsön 236. Allt annat räknas som 235.</div>
     ${zones.map(z=>`<label class="stat" style="cursor:pointer"><span>${esc(z.name)}</span><input type="checkbox" data-z236="${z.id}" ${cfg.zones236.includes(z.id)?"checked":""}></label>`).join("")||`<div class="note">Rum hämtas när du är ansluten.</div>`}</div>
