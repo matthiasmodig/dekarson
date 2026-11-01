@@ -1166,9 +1166,58 @@ async function kortSections(R){
 }
 function detBox(id,title,body,openDef,sum){const o=state.detClosed["det-"+id]!=null?!state.detClosed["det-"+id]:!!openDef;
   return `<details class="det" id="det-${id}" ${o?"open":""} style="margin:12px 0"><summary><h2 style="display:inline;font-size:18px">${title}</h2>${sum?` <span class="note" style="margin:0 0 0 10px">${sum}</span>`:""}</summary>${body}</details>`;}
-function energiSw(){return viewSw("energiview",state.energiView==="detalj"?"detalj":"energi",[["energi","Energi"],["detalj","Detaljer"]]);}
+function energiSw(){return viewSw("energiview",["detalj","jamfor"].includes(state.energiView)?state.energiView:"energi",[["energi","Energi"],["detalj","Detaljer"],["jamfor","Jämför"]]);}
+/* ---------- Jämför: välj själv vilka enheter/serier som ska ligga i samma diagram ---------- */
+const CMP_M={energi:{l:"Energi per dygn"},effekt:{l:"Effekt (W)",rx:/^measure_power$/,unit:"W",dec:0},temp:{l:"Temperatur (°C)",rx:/^measure_temperature(\.\d+)?$/,unit:"°C",dec:1},fukt:{l:"Luftfuktighet (%)",rx:/^measure_humidity(\.\d+)?$/,unit:"%",dec:0}};
+const CMP_COL=["var(--cur)","var(--on)","var(--good)","var(--bad)","#a56bd6","#2bb3c0","#e0833a","#7a8a99"];
+const CMP_E=[["tibber","Hus"],["uppv","Uppvärmning"],["hush","Hushållsström"],["vp","Värmepump"],["ovr","Övrigt"],["trl","Traktor laddning"],["trm","Traktor MV"],["entre","Entréplatta"],["vent","Ventilation"],["golv","Golvvärme uterum"],["tesla","Tesla"],["d236","Dekarsön 236"]];
+function cmpLoad(){if(state.cmpSel)return state.cmpSel;let o=null;try{o=JSON.parse(localStorage.getItem("homeyCmp")||"null");}catch(e){}
+  state.cmpSel=o&&typeof o==="object"?o:{};if(!state.cmpM)state.cmpM=state.cmpSel._m||"energi";return state.cmpSel;}
+function cmpSave(){try{state.cmpSel._m=state.cmpM;localStorage.setItem("homeyCmp",JSON.stringify(state.cmpSel));}catch(e){}}
+function cmpOptions(m){const M=CMP_M[m],out=[];
+  for(const d of propDevices()){for(const cap of Object.keys(d.capabilitiesObj||{})){if(!M.rx.test(cap)||capVal(d,cap)==null)continue;
+    const fi=d.id===cfg.ids.floor&&/\.(\d)$/.test(cap)?FLOORSENS[+cap.slice(-1)-1]:null;
+    out.push({k:d.id+"|"+cap,z:zoneName(d),n:fi||devName(d)+(/\.\d+$/.test(cap)?" ("+cap.split(".").pop()+")":"")});}}
+  return out.sort((a,b)=>a.z.localeCompare(b.z,"sv")||a.n.localeCompare(b.n,"sv"));}
+async function renderCompare(){
+  const sel=cmpLoad(),m=CMP_M[state.cmpM]?state.cmpM:"energi";state.cmpM=m;const M=CMP_M[m],cur=sel[m]||[];
+  let h=energiSw()+`<div class="bar"><b>Jämför</b>${Object.entries(CMP_M).map(([k,v])=>`<button class="chip" data-cmpm="${k}" aria-pressed="${m===k}">${v.l}</button>`).join("")}</div>`;
+  const R=calcRange();
+  let opts,ser=[],labels=[],stat="";
+  if(m==="energi"){
+    h+=presetBar(R).replace(/<div class="bar"><label>Jämför mot[\s\S]*?<\/label><\/div>/,"");
+    const c=await kortCtx(addDays(todayStr(),-400)),S=c.S;
+    opts=CMP_E.filter(([k])=>S[k]).map(([k,n])=>({k,n,z:"Energikällor"}));
+    const b=R.len<=45?1:(R.len<=200?7:30);
+    labels=bucketize(dayArray(null,"x",R.s,R.len),b).map((_,i)=>labelDate(addDays(R.s,i*b)));
+    for(const k of cur){const o=opts.find(x=>x.k===k);if(!o)continue;const T=S[k],eu=effU(T,state.unit);
+      const vals=bucketize(dayArray(T,eu,R.s,R.len),b);ser.push({name:o.n,color:CMP_COL[ser.length%CMP_COL.length],vals,unit:unitName(eu)});}
+    stat=ser.map(x=>{const v=x.vals.filter(y=>y!=null),sm=v.reduce((a,c)=>a+c,0);return [x.name,fmt(sm,0)+" "+x.unit,v.length?fmt(sm/v.length,1)+" "+x.unit:"–"];});
+    stat={head:["Källa","Summa","Snitt per "+(b===1?"dygn":b===7?"vecka":"30 dagar")],body:stat};
+  }else{
+    opts=cmpOptions(m);
+    h+=`<div class="bar">${SENSPER.map(([p,l])=>`<button class="chip" data-cmpper="${p}" aria-pressed="${state.sensPer===p}">${l}</button>`).join("")}${state.sensPer==="custom"?`<label>Från <input type="date" id="cmpfrom" value="${state.sensFrom||addDays(todayStr(),-7)}" max="${todayStr()}"></label><label>Till <input type="date" id="cmpto" value="${state.sensTo||todayStr()}" max="${todayStr()}"></label>`:""}</div>`;
+    const [f,t]=sensRange(),data=[];
+    for(const k of cur){const o=opts.find(x=>x.k===k);if(!o)continue;const [id,cap]=k.split("|");
+      try{data.push({o,pts:await sensHist(id,cap,f,t)});}catch(e){data.push({o,pts:[],err:e.message});}}
+    const keys=[...new Set(data.flatMap(x=>x.pts.map(p=>Math.round(p[0]))))].sort((a,b)=>a-b),span=t-f;
+    const lab=ms=>{const d=new Date(ms);return span<=2*864e5?pad(d.getHours())+":"+pad(d.getMinutes()):span<=8*864e5?d.getDate()+"/"+(d.getMonth()+1)+" "+pad(d.getHours()):d.getDate()+"/"+(d.getMonth()+1);};
+    labels=keys.map(lab);
+    data.forEach((x,i)=>{const mp=new Map(x.pts.map(p=>[Math.round(p[0]),p[1]]));ser.push({name:x.o.n,color:CMP_COL[i%CMP_COL.length],vals:keys.map(k=>mp.has(k)?mp.get(k):null),unit:M.unit});});
+    stat={head:["Enhet","Nu","Lägst","Högst","Medel"],body:data.map((x,i)=>{const v=x.pts.map(p=>p[1]),[id,cap]=x.o.k.split("|");return [x.o.n,fmt(capVal(state.devices[id],cap),M.dec)+" "+M.unit,v.length?fmt(Math.min(...v),M.dec):"–",v.length?fmt(Math.max(...v),M.dec):"–",v.length?fmt(v.reduce((a,c)=>a+c,0)/v.length,M.dec):"–"];})};
+  }
+  h+=`<div class="card" style="margin:10px 0"><h2 style="margin:0 0 8px;font-size:16px">${cur.length}/8 valda · tryck för att lägga till eller ta bort</h2>`;
+  const byZ={};for(const o of opts)(byZ[o.z]=byZ[o.z]||[]).push(o);
+  h+=Object.entries(byZ).map(([z,l])=>`<div style="margin:6px 0"><span class="note" style="margin:0 8px 0 0">${esc(z)}</span><span class="bar" style="display:inline-flex;margin:0;flex-wrap:wrap;gap:6px">${l.map(o=>`<button class="chip" data-cmpsel="${esc(o.k)}" aria-pressed="${cur.includes(o.k)}">${esc(o.n)}</button>`).join("")}</span></div>`).join("")||`<div class="note">Inga enheter med den här mätningen hittades.</div>`;
+  h+=cur.length?`<div class="bar" style="margin:8px 0 0"><button class="btn sm" data-cmpclear="1">Rensa val</button></div>`:"";
+  h+=`</div>`;
+  h+=ser.length?`<div class="card">${labels.length<2?hbars(ser.map(x=>({name:x.name,v:x.vals.find(v=>v!=null)??0})),ser[0].unit)+`<div class="note">Bara ett dygn i perioden, så staplarna visar dygnets värde. Välj Vecka eller längre för en kurva.</div>`:multiLine(ser,labels)}</div>${stat&&stat.body.length?`<div class="card" style="margin-top:12px">${tableHtml(stat)}</div>`:""}`:`<div class="note">Välj minst en enhet ovan för att rita diagrammet.</div>`;
+  if(m==="energi")h+=`<div class="note">Enheten (kr eller kWh) följer valet Kronor/kWh högst upp. Traktor laddning och Traktor MV är beräknade värden.</div>`;
+  $("#p-energi").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;
+}
 async function renderEnergi(){
   if(state.energiView==="detalj"){await renderDetalj();return;}
+  if(state.energiView==="jamfor"){await renderCompare();return;}
   const R=calcRange(),minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   let S=null,serr=null;try{S=await loadSeries(minDate);}catch(e){serr=e.message;}
   const u=state.unit,un=unitName(u);
@@ -2578,6 +2627,10 @@ document.addEventListener("click",async e=>{
   if(e.target.id==="panelX"){setPanel(false);return;}
   const dpr=e.target.closest("[data-dagper]");if(dpr){state.dagPer=dpr.dataset.dagper;renderModal();return;}
   const dmo=e.target.closest("[data-dagmon]");if(dmo){if(dmo.dataset.dagmon){state.dagMon=dmo.dataset.dagmon;renderModal();}return;}
+  {const cm=e.target.closest("[data-cmpm]");if(cm){state.cmpM=cm.dataset.cmpm;cmpSave();draw();return;}
+   const cs=e.target.closest("[data-cmpsel]");if(cs){const sel=cmpLoad(),m=state.cmpM,a=sel[m]=sel[m]||[],k=cs.dataset.cmpsel,i=a.indexOf(k);if(i>=0)a.splice(i,1);else if(a.length<8)a.push(k);cmpSave();draw();return;}
+   const cc=e.target.closest("[data-cmpclear]");if(cc){cmpLoad()[state.cmpM]=[];cmpSave();draw();return;}
+   const cp=e.target.closest("[data-cmpper]");if(cp){state.sensPer=cp.dataset.cmpper;draw();return;}}
   const sp=e.target.closest("[data-sensper]");if(sp){state.sensPer=sp.dataset.sensper;renderModal();return;}
   const oo=e.target.closest("[data-onoff]"),oa=e.target.closest("[data-act]");if(oo&&!(oa&&oa!==oo&&oo.contains(oa))){openModal("onoff",oo.dataset.onoff);return;}
   const se=e.target.closest("[data-sens]");if(se){openModal("sens",se.dataset.sens);return;}
@@ -2639,6 +2692,7 @@ document.addEventListener("change",async e=>{
   const t=e.target;
   try{
     if(t.dataset.act==="dim"){const did=t.closest("[data-id]").dataset.id,dd=state.devices[did];await setCap(did,"dim",Number(t.value)/100);if(dd&&capVal(dd,"onoff")===false&&Number(t.value)>0)await setCap(did,"onoff",true);draw();return;}
+    if(t.id==="cmpfrom"||t.id==="cmpto"){state[t.id==="cmpfrom"?"sensFrom":"sensTo"]=t.value;draw();return;}
     if(t.id==="sensfrom"||t.id==="sensto"){state[t.id==="sensfrom"?"sensFrom":"sensTo"]=t.value;await renderModal();return;}
     if(t.dataset&&t.dataset.plan){cfg.plan=cfg.plan||{};cfg.plan[t.dataset.plan]=t.value;if(t.dataset.plan==="to"||t.dataset.plan==="from"){const sl=planSlots();if(cfg.plan.from&&cfg.plan.to&&cfg.plan.from>cfg.plan.to){if(t.dataset.plan==="from")cfg.plan.to=sl[sl.length-1].k;else cfg.plan.from=sl[0].k;}}persist();draw();return;}
     if(t.id==="styrzone"){state.styrZone=t.value;draw();return;}
