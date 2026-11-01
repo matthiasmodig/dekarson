@@ -148,7 +148,6 @@ dialog::backdrop{background:#0009}
   <nav id="nav">
     <button data-tab="oversikt" aria-selected="true">Översikt</button>
     <button data-tab="styr" aria-selected="false">Enheter</button>
-    <button data-tab="flows" aria-selected="false">Flows</button>
     <button data-tab="sonos" aria-selected="false">Sonos</button>
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="timpris" aria-selected="false">Timpris</button>
@@ -184,7 +183,6 @@ dialog::backdrop{background:#0009}
   <section id="p-timpris" class="hide"></section>
   <section id="p-klimat" class="hide"></section>
   <section id="p-styr" class="hide"></section>
-  <section id="p-flows" class="hide"></section>
   <section id="p-sonos" class="hide"></section>
   <section id="p-status" class="hide"></section>
   <section id="p-admin" class="hide"></section>
@@ -1710,14 +1708,17 @@ function devCard(d){
   if(c.dim&&c.dim.value!=null)h+=`<input type="range" oninput="var b=this.closest('.dev').querySelector('.dimv');if(b)b.textContent=this.value+' %'" min="1" max="100" value="${Math.round(c.dim.value*100)}" data-act="dim" aria-label="Ljusstyrka">`;
   return h+`</div>`;
 }
+function styrSwitch(){const v=state.styrView==="flows"?"flows":"styr";
+  return `<div class="seg" role="tablist" style="display:flex;gap:6px;margin-bottom:12px"><button class="btn ${v==="styr"?"pri":""}" data-act="styrview" data-v="styr" role="tab" aria-selected="${v==="styr"}">Styrningar</button><button class="btn ${v==="flows"?"pri":""}" data-act="styrview" data-v="flows" role="tab" aria-selected="${v==="flows"}">Flows</button></div>`;}
 function renderStyr(){
+  if(state.styrView==="flows"){renderFlows();return;}
   const hv=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(Boolean),ids235=[cfg.ids.nibe,...hv,cfg.ids.live235,cfg.ids.tibber],idsGrp=new Set(state.prop==="235"?ids235:[cfg.ids.vp236]);
   const devs=propDevices().filter(d=>hasOnoff(d)&&isShown(d)&&!idsGrp.has(d.id));
   const hidden=propDevices().filter(d=>hasOnoff(d)&&!idsGrp.has(d.id)&&cfg.ui.devices[d.id]&&cfg.ui.devices[d.id].show===false);
   const q="",rooms=[...new Set(devs.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv")),zsel=rooms.includes(state.styrZone)?state.styrZone:"";
   const list=zsel?devs.filter(d=>zoneName(d)===zsel):devs;
   const by={};for(const d of list)(by[zoneName(d)]=by[zoneName(d)]||[]).push(d);
-  let h=`<div class="bar"><label>Rum <select id="styrzone"><option value="">Alla rum</option>${rooms.map(z=>`<option ${z===zsel?"selected":""}>${esc(z)}</option>`).join("")}</select></label><span class="grow"></span>
+  let h=styrSwitch()+`<div class="bar"><label>Rum <select id="styrzone"><option value="">Alla rum</option>${rooms.map(z=>`<option ${z===zsel?"selected":""}>${esc(z)}</option>`).join("")}</select></label><span class="grow"></span>
     <button class="btn" data-act="alloff">Släck alla lampor</button></div>`;
   const gd=(state.prop==="235"?[[cfg.ids.nibe,"NIBE värmepump","vp"],...hv.map((id,i)=>[id,"Varmvattenberedare "+(i+1),null]),[cfg.ids.tibber,"Tibber, hela huset","tibber"]]:[[cfg.ids.vp236,"Luftvärmepump 236",null]]).filter(x=>!zsel&&state.devices[x[0]]);
   if(gd.length){h+=`<div class="zonehead"><b>Värmepump och el</b></div><div class="grid">`+gd.map(([id,nm,card])=>{const d=state.devices[id];
@@ -1752,7 +1753,7 @@ function renderSonos(){
 function renderFlows(){
   const q=(state.search||"").toLowerCase();
   const list=state.flows.filter(f=>flowShown(f)&&!isSonos(f)&&(!q||flowName(f).toLowerCase().includes(q)));
-  let h=`<div class="bar"><input type="search" id="q" placeholder="Sök flow" value="${esc(state.search)}"></div>`;
+  let h=styrSwitch()+`<div class="bar"><input type="search" id="q" placeholder="Sök flow" value="${esc(state.search)}"></div>`;
   const pick=names=>names.map(n=>list.find(f=>f.name.toLowerCase()===n.toLowerCase())).filter(Boolean);
   const r1=pick(["Home Control – Städ Tänd","Home Control – Städ Släck"]),r2a=pick(["Öppna ytterdörr","Lås ytterdörr"]),r2b=pick(["Öppna/Stäng Port"]),r1b=pick(["Tänd garage"]),r3=pick(["Kontroll hem","Kontroll Timmerflotte 24h","Shelly kontroll"]),r4=pick(["Status hem","Starta upp efter strömavbrott","Meddela Betongplattans Temp"]),r5=pick(["Energi just nu","Luftfuktighet vinden","Driftläge värme"]);
   const used=new Set([...r1,...r1b,...r2a,...r2b,...r3,...r4,...r5].map(f=>f.id)),rest=list.filter(f=>!used.has(f.id));
@@ -1763,7 +1764,7 @@ function renderFlows(){
   if(r4.length)h+=fx(r4);
   if(r5.length)h+=fx(r5);
   h+=rest.length?`<div class="flrow">${rest.map(flowCard).join("")}</div>`:(list.length?"":`<div class="card">Inga flows att visa. Välj vilka som ska synas under Admin.</div>`);
-  $("#p-flows").innerHTML=h;
+  $("#p-styr").innerHTML=h;
   const qi=$("#q");if(qi&&state.keepFocus){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);}
 }
 
@@ -1963,7 +1964,7 @@ async function refresh(opts={}){
     if(!opts.quiet)setStatus("Hämtar…");
     if(isDemo())demoSetup();
     else{const [dv,zn]=await Promise.all([api("/api/manager/devices/device/"),api("/api/manager/zones/zone/")]);state.devices=dv||{};state.zones=zn||{};}
-    if(["flows","sonos","oversikt","detalj","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
+    if(["flows","styr","sonos","oversikt","detalj","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
     drawProp();showErr(null);
     await draw();
     setStatus((isDemo()?"Demo · ":"")+"Uppdaterad "+new Date().toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
@@ -1980,7 +1981,6 @@ async function draw(){
   else if(state.tab==="timpris")await renderTimpris();
   else if(state.tab==="klimat")await renderKlimat();
   else if(state.tab==="styr")renderStyr();
-  else if(state.tab==="flows")renderFlows();
   else if(state.tab==="sonos")renderSonos();
   else if(state.tab==="status")renderStatus();
   else renderAdmin();
@@ -1991,7 +1991,7 @@ function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.q
 function showTab(t){
   state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
-  for(const k of ["oversikt","energi","timpris","detalj","klimat","styr","flows","sonos","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  for(const k of ["oversikt","energi","timpris","detalj","klimat","styr","sonos","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
 }
 
@@ -2027,6 +2027,7 @@ document.addEventListener("click",async e=>{
     else if(act==="hide"){(cfg.ui.devices[id]=cfg.ui.devices[id]||{}).show=false;persist();draw();}
     else if(act==="unhide"){(cfg.ui.devices[b.dataset.dev]=cfg.ui.devices[b.dataset.dev]||{}).show=true;persist();draw();}
     else if(act==="toggle"){const d=state.devices[id];await setCap(id,"onoff",!d.capabilitiesObj.onoff.value);draw();}
+    else if(act==="styrview"){state.styrView=b.dataset.v;state.search="";draw();}
     else if(act==="flow"){await runFlow(id);state.flash[id]=true;draw();setTimeout(()=>{delete state.flash[id];draw();},1800);}
     else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
       for(const d of propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d)&&zoneName(d)===z))await setCap(d.id,"onoff",to);draw();}
