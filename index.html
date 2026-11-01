@@ -315,6 +315,19 @@ function dailyFromCumulative(entries,resetsYearly){
   for(const day of Object.keys(c)){const p=c[addDays(day,-1)];if(p==null)continue;let v=c[day]-p;if(v<0&&resetsYearly)v=c[day];if(v>=0)m[day]=v;}
   return m;
 }
+/* Dygnsdifferenser + pågående dygn: dygn D = skillnaden mellan mätarens värde 12:00 UTC dag D-1 och D. Dygn som ännu inte avslutats (idag) fylls med livevärdet minus senaste dygnsavläsning, så korten inte är blanka under dygnet.
+   origin0: räknaren startade på 0 (Homey Logic-variabel) så första avläsningen är hela förbrukningen sedan start. */
+function dailyFromCumulativeLive(live,origin0){
+  return entries=>{
+    const m=dailyFromCumulative(entries,false),c={};
+    for(const e of entries){if(e.v==null)continue;const d=new Date(e.t);if(d.getUTCHours()!==12)continue;c[d.toISOString().slice(0,10)]=e.v;}
+    const ks=Object.keys(c).sort();if(!ks.length)return m;
+    if(origin0&&m[ks[0]]==null&&c[ks[0]]>=0)m[ks[0]]=c[ks[0]];
+    const last=ks[ks.length-1],nx=addDays(last,1);
+    if(live!=null&&nx<=todayStr()&&m[nx]==null&&live>=c[last])m[nx]=live-c[last];
+    else if(live!=null&&ks.length===1&&last===todayStr()&&origin0)m[last]=c[last];
+    return m;};
+}
 /* Räknare som bara skriver när de ändras (Tesla): fyll luckor framåt så dygnsdifferens går att räkna */
 function dailyFromCounter(entries){
   const c={};let lo=null,hi=null;
@@ -427,15 +440,15 @@ async function loadSeries(minDate){
     const a=capVal(dev,"meter_kwh_last_day"),b=capVal(dev,"meter_money_last_day"),c=capVal(dev,"meter_kwh_this_day"),e=capVal(dev,"meter_money_this_day");
     if(a!=null)kwh[y]=a;if(b!=null)kr[y]=b;if(c!=null)kwh[t]=c;if(e!=null)kr[t]=e;return {kwh,kr};};
   if(cfg.ids.trRep)S.traktor=await rep2(cfg.ids.trRep);
-  else if(cfg.ids.trLoad)S.traktor={kwh:await safe(()=>fetchMerged(cfg.ids.trLoad,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
+  else if(cfg.ids.trLoad)S.traktor={kwh:await safe(()=>fetchMerged(cfg.ids.trLoad,"meter_power",minDate,dailyFromCumulativeLive(capVal(state.devices[cfg.ids.trLoad],"meter_power")))),kr:{}};
   if(cfg.ids.golvRep)S.golv=await rep2(cfg.ids.golvRep);
   else if(cfg.ids.floor)S.golv={kwh:await safe(()=>fetchMerged(cfg.ids.floor,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
-  if(cfg.ids.entre)S.entre={kwh:await safe(()=>fetchMerged(cfg.ids.entre,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
+  if(cfg.ids.entre)S.entre={kwh:await safe(()=>fetchMerged(cfg.ids.entre,"meter_power",minDate,dailyFromCumulativeLive(capVal(state.devices[cfg.ids.entre],"meter_power")))),kr:{}};
   for(const [k,id] of [["trl",cfg.ids.trLoadE],["trm",cfg.ids.trMvE]]){if(!id)continue;const ref="logic:"+id;
-    S[k]={kwh:await safe(()=>fetchMerged(ref,"var",minDate,e=>dailyFromCumulative(e,false))),kr:{},calc:true};
+    S[k]={kwh:await safe(()=>fetchMerged(ref,"var",minDate,dailyFromCumulativeLive(homeyVar(id),true))),kr:{},calc:true};
     S[k].hkr=await safe(()=>hourlyKrBest(ref));}
   for(const [k,id] of EXTRA_SERIES()){if(!id||!state.devices[id])continue;
-    S[k]={kwh:await safe(()=>fetchMerged(id,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
+    S[k]={kwh:await safe(()=>fetchMerged(id,"meter_power",minDate,dailyFromCumulativeLive(capVal(state.devices[id],"meter_power")))),kr:{}};
     S[k].hkr=await safe(()=>hourlyKrBest(id));}
   {const ds=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(i=>i&&state.devices[i]);
    if(ds.length){const kwh={},hk={};
