@@ -1057,6 +1057,38 @@ async function consumersHtml(S){
   h+=`</table></div><div class="note">Förbrukning per period är differenser mellan registrerade mätarställningar, inte mätarställningen i sig. Kronor med ≈ är timvis uppskattade (kWh × timpris för respektive timme, senaste 7 dygnen) eller dygnsuppskattade för äldre dygn. Tesla läses direkt från Homeys energiöversikt (inte omräknat). Klicka på en rad för historik. Datum enligt Europe/Stockholm.</div></div></section>`;
   return h;
 }
+/* ---------- Dagbok (Google-ark, en rad per dygn, skrivs av Homey-flödet 00:03). Kolumner B–K = 235, L–M = 236; fastigheterna blandas aldrig ---------- */
+function dagDate(t){t=(t||"").trim();let m=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return m[1]+"-"+pad(+m[2])+"-"+pad(+m[3]);
+  m=t.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{4})/);return m?m[3]+"-"+pad(+m[2])+"-"+pad(+m[1]):null;}/* ren textuell tolkning, ingen UTC-konvertering */
+async function loadDagbok(){
+  if(state.dagbok&&Date.now()-state.dagbok.t<5*60*1000)return state.dagbok.v;
+  let v;
+  if(isDemo()){v={};const R=rnd(5);for(let i=1;i<=40;i++){const d=addDays(todayStr(),-i),b=30+R()*25,hu=b*0.5,up=b*0.4,vp=up*0.85,pr=1.1+R()*0.5;
+    v[d]={tibber:{kwh:b,kr:b*pr},hushall:{kwh:hu,kr:hu*pr},uppv:{kwh:up,kr:up*pr},ovrigt:{kwh:b-hu-up,kr:(b-hu-up)*pr},vp:{kwh:vp,kr:vp*pr},d236:{kwh:8+R()*8,kr:(8+R()*8)*pr}};}}
+  else{const url=(cfg.sheetDagbok||"").trim();if(!url)return null;
+    const r=await fetch(url,{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);
+    const rows=parseCsv(await r.text()),hd=(rows[0]||[]).map(x=>(x||"").trim().toLowerCase());
+    const ix=n=>hd.indexOf(n),num=x=>{x=(x||"").trim().replace(",",".");return /^-?\d+(\.\d+)?$/.test(x)?Number(x):null;};
+    if(ix("datum")<0)throw new Error("Kolumnen datum hittades inte i Dagbok-arket");
+    v={};
+    for(const r of rows.slice(1)){const d=dagDate(r[ix("datum")]);if(!d)continue;const g=(a,b)=>ix(a)>=0?{kwh:num(r[ix(a)]),kr:ix(b)>=0?num(r[ix(b)]):null}:null;
+      v[d]={tibber:g("tibber_kwh","tibber_kr"),hushall:g("hushall_kwh","hushall_kr"),uppv:g("uppvarmning_kwh","uppvarmning_kr"),ovrigt:g("ovrigt_kwh","ovrigt_kr"),vp:g("vp_kwh","vp_kr"),d236:g("d236_kwh","d236_kr")};}}
+  state.dagbok={t:Date.now(),v};return v;
+}
+async function dagbokHtml(){
+  const is235=state.prop==="235",cols=is235?[["tibber","Totalt"],["hushall","Hushåll"],["uppv","Uppvärmning"],["vp","VP"],["ovrigt","Övrigt"]]:[["d236","Förbrukning"]];
+  let D;try{D=await loadDagbok();}catch(e){return `<div class="note">Dagbok kunde inte läsas: ${esc(e.message)}</div>`;}
+  const title=`<h3>Dagbok · ${PROPS.find(p=>p.k===state.prop).name}</h3>`;
+  if(!D)return `<section class="grp" style="margin-top:18px">${title}<div class="card note">Ange CSV-länken till fliken Dagbok under Admin → Energikällor så visas dygnshistoriken här.</div></section>`;
+  const days=Object.keys(D).filter(d=>cols.some(c=>D[d][c[0]]&&D[d][c[0]].kwh!=null)).sort().reverse().slice(0,31);
+  if(!days.length)return `<section class="grp" style="margin-top:18px">${title}<div class="card note">Inga rader för den här fastigheten i Dagbok-arket ännu.</div></section>`;
+  const cell=x=>x&&x.kwh!=null?`${fmt(x.kwh,1)} kWh${x.kr!=null?`<br><b>${fmt(x.kr,0)} kr</b>`:""}`:"–";
+  const sum=c=>days.reduce((a,d)=>{const x=D[d][c];return {k:a.k+(x&&x.kwh||0),r:a.r+(x&&x.kr||0)};},{k:0,r:0});
+  return `<section class="grp" style="margin-top:18px">${title}<div class="card"><div style="overflow:auto;max-height:460px"><table><tr><th>Datum</th>${cols.map(c=>`<th>${c[1]}</th>`).join("")}</tr>
+  ${days.map(d=>`<tr><td>${d}</td>${cols.map(c=>`<td>${cell(D[d][c[0]])}</td>`).join("")}</tr>`).join("")}
+  <tr><td><b>Summa ${days.length} dygn</b></td>${cols.map(c=>{const t=sum(c[0]);return `<td><b>${fmt(t.k,0)} kWh<br>${fmt(t.r,0)} kr</b></td>`;}).join("")}</tr></table></div>
+  <div class="note">Källa: Homeys dagbok (Google Sheet), ett dygn per rad, skrivs 00:03. Datum tolkas som text, utan tidszonsomräkning.</div></div></section>`;
+}
 async function kortSections(R){
   const c=await kortCtx(addDays(todayStr(),-400));
   let h=`<section class="grp" style="margin-top:18px"><h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div></section>${await consumersHtml(c.S).catch(e=>`<div class="note">Förbrukare kunde inte läsas: ${esc(e.message)}</div>`)}<section class="grp"><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
@@ -1095,6 +1127,7 @@ async function renderEnergi(){
   if(is235){const tb=state.devices[cfg.ids.tibber];
     const pk=capVal(tb,"meter_money_this_day"),pw=capVal(tb,"meter_kwh_this_day"),lk=capVal(tb,"meter_money_last_day"),lw=capVal(tb,"meter_kwh_last_day");
     h+=grp("Idag och igår",dualTile('data-daily="kr"',"Idag",{v:pk,un:"kr",sub:delta(pk,lk,"mot igår")},{v:pw,un:"kWh",sub:delta(pw,lw,"mot igår")},"hero")+dualTile('data-daily="kr"',"Igår",{v:lk,un:"kr",sub:""},{v:lw,un:"kWh",sub:""}),2);}
+  h+=await dagbokHtml();
   if(is235){try{h+=await kortSections(R);}catch(e){h+=`<div class="note">Energikort kunde inte läsas: ${esc(e.message)}</div>`;}}
 
   const curA=dayArray(T,u,R.s,R.len),prvA=R.ps?dayArray(T,u,R.ps,R.len):null;
@@ -2229,6 +2262,7 @@ function renderAdmin(){
   <div class="card"><h2>Energikällor</h2>
     <label class="adm-l">Timeffekt-ark, CSV-länk (Google Sheets: Arkiv → Dela → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv" value="${esc(cfg.sheetCsv||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=…&single=true&output=csv"></label>${idf("tibber","Tibber, hela huset (enhets-ID)")}${idf("hush","Hushållsel")}${idf("uppv","Uppvärmning")}${idf("vp","Värmepump")}${idf("ovr","Övrigt (valfritt)")}${idf("d236","Dekarsön 236, virtuell energiöversikt")}${idf("live235","Effektmätare 235 (Tibber Pulse)")}${idf("price","Elpris-enhet (Tibber)")}${idf("tesla","Tesla (bil)")}${idf("teslaE","Energiöversikt Tesla")}${idf("nibe","NIBE värmepump")}${idf("trLoad","Traktor, laddning (uttag)")}${idf("trHeat","Traktor, motorvärmare")}${idf("floor","Golvvärme Uterum")}${idf("entre","Entrévärme utomhus (entréplatta)")}${idf("slab","Betongplatta Uterum (sensor)")}${idf("vp236","Luftvärmepump 236")}${idf("trRep","Traktor, rapportenhet med kr (valfritt)")}${idf("golvRep","Golvvärme, rapportenhet med kr (valfritt)")}
     <label class="adm-l">Dekarsön 236 · timeffekt-ark, CSV-länk (kalkylarket "Timmedeleffekt Dekarsön 236" → Publicera på webben → fliken Effekt per timme → CSV)<input type="text" data-cfg="sheetCsv236" value="${esc(cfg.sheetCsv236||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=1300079826&output=csv"></label>
+    <label class="adm-l">Dagbok · CSV-länk (kalkylarket "Energi dagsbok" → fliken Dagbok → Publicera på webben → CSV). Ger dygnshistorik för både 235 och 236.<input type="text" data-cfg="sheetDagbok" value="${esc(cfg.sheetDagbok||"")}" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?gid=1158341036&single=true&output=csv"></label>
     <label class="adm-l">Traktor motorvärmare, känd effekt i W (valfritt, ger en tydligt märkt schablonberäkning)<input type="text" data-cfg="trHeatW" value="${esc(cfg.trHeatW||"")}" placeholder="t.ex. 600"></label>
     <label class="adm-l">Google Kalender, hemlig iCal-adress (Google Kalender → Inställningar → din kalender → Hemlig adress i iCal-format). Visas på Översikt, kräver molnläget och uppdaterad worker.<input type="text" data-cfg="calUrl" value="${esc(cfg.calUrl||"")}" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"></label>
     <label class="adm-l">Påslag (kr/kWh)<input type="text" data-cfg="markup" value="${esc(cfg.markup)}"></label></div>
@@ -2432,7 +2466,7 @@ document.addEventListener("change",async e=>{
     if(t.dataset.cfg){
       const path=t.dataset.cfg.split("."),val=t.type==="checkbox"?t.checked:t.value.trim();
       if(path[0]==="ids")cfg.ids[path[1]]=val;else if(path[0]==="markup")cfg.markup=parseFloat(String(val).replace(",","."))||0;else cfg[path[0]]=val;
-      if(path[0]==="sheetCsv")state.hourly=null;if(path[0]==="sheetCsv236")state.hourly236=null;
+      if(path[0]==="sheetDagbok")state.dagbok=null;if(path[0]==="sheetCsv")state.hourly=null;if(path[0]==="sheetCsv236")state.hourly236=null;
       persist();state.cache={};if(["ip","key","demo","workerUrl","mode"].includes(path[0])){state.devices={};refresh({force:true,flows:true});}else draw();return;}
     if(t.dataset.z236){const s=new Set(cfg.zones236);t.checked?s.add(t.dataset.z236):s.delete(t.dataset.z236);cfg.zones236=[...s];persist();draw();return;}
     if(t.dataset.st){cfg.ui.status[t.dataset.st]=t.checked;persist();return;}
