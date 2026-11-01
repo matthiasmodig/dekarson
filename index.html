@@ -679,10 +679,23 @@ function tempBar(){
   const it=(id,cap,name,v)=>v==null?"":`<span data-sens="${esc(id)}|${esc(cap)}" tabindex="0" role="button" title="Visa diagram över tid" style="cursor:pointer;white-space:nowrap">${name} <b>${fmt(v,1)}°</b></span>`;
   const parts=[it(kk&&kk.id,"measure_temperature","Inne",kk&&capVal(kk,"measure_temperature")),it(cfg.ids.nibe,"capability_0","Ute",ute),it(sl&&sl.id,"measure_temperature","Betongplatta",sl&&capVal(sl,"measure_temperature"))].filter(Boolean);
   return parts.length?`<div class="bar" style="margin:8px 0 0;gap:18px;font-size:14px"><span style="color:var(--mut)">Temperatur</span>${parts.join("")}</div>`:"";}
+function calModalHtml(){
+  const c=state.cal,now=Date.now();
+  let h=`<h2 style="margin:0 0 10px">${ic("Kalender","clock")}Kalender</h2>`;
+  if(!c||c.err==="none")return h+`<div class="note">Ingen kalenderadress är inlagd (Admin).</div>`;
+  if(c.err)return h+`<div class="warn">${esc(c.err)}</div>`;
+  const list=c.ev.filter(e=>e.end>now),td=new Date();td.setHours(0,0,0,0);
+  const dl=t=>{const d=new Date(Math.max(t,td.getTime())),df=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-td)/864e5);return df===0?"Idag":df===1?"Imorgon":d.toLocaleDateString("sv-SE",{weekday:"long",day:"numeric",month:"long"});};
+  const tm=e=>e.allDay?"Heldag":new Date(e.start).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"})+"–"+new Date(e.end).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
+  if(!list.length)h+=`<div class="note">Inga kommande händelser de närmaste 30 dagarna.</div>`;
+  let last="";h+=`<div class="card">`;
+  for(const e of list){const d=dl(e.start);if(d!==last){h+=`<div class="note" style="margin:10px 0 2px;font-weight:700;text-transform:capitalize">${esc(d)}</div>`;last=d;}
+    h+=`<div class="stat"><span><b style="display:inline-block;min-width:96px">${tm(e)}</b> ${esc(e.title)}${e.loc?` <span class="pill">${esc(e.loc)}</span>`:""}</span></div>`;}
+  return h+`</div><div style="margin-top:10px"><a class="btn" href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener">Öppna Google Kalender</a></div><div class="note">Visar de närmaste 30 dagarna.</div>`;}
 function calBrick(){
   const c=state.cal;if(!c||c.err==="none")return "";
-  const open=`href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener"`,now=Date.now();
-  const inner=(body)=>`<section class="grp"><div class="rowN" style="--c:3"><a class="card tile" ${open} title="Öppna Google Kalender" aria-label="Öppna Google Kalender" style="display:block;color:inherit;text-decoration:none"><div class="l">${ic("Kalender","clock")}Kalender</div>${body}</div></div></section>`.replace('</div></div></section>','</a></div></section>');
+  const now=Date.now();
+  const inner=(body)=>`<section class="grp"><div class="rowN" style="--c:3"><div class="card tile" data-calmodal="1" tabindex="0" role="button" title="Visa kalendern" aria-label="Visa kommande händelser" style="cursor:pointer"><div class="l">${ic("Kalender","clock")}Kalender</div>${body}</div></div></section>`.replace('</div></div></section>','</div></div></section>');
   if(c.err)return inner(`<div class="s">${esc(c.err)}</div>`);
   const list=c.ev.filter(e=>e.end>now).slice(0,5);
   const td=new Date();td.setHours(0,0,0,0);
@@ -1641,6 +1654,7 @@ function modalHead(title){
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
   if(m.t==="status"){body.innerHTML=statusModalHtml(m.k);return;}
+  if(m.t==="cal"){body.innerHTML=calModalHtml();return;}
   if(m.t==="onoff"){body.innerHTML=await onoffModalHtml(m.k);return;}
   if(m.t==="sens"){body.innerHTML=await sensModalHtml(m.k);return;}
   const c=await kortCtx(addDays(todayStr(),-760)),R=c.R,u=c.u;
@@ -2191,6 +2205,7 @@ document.addEventListener("click",async e=>{
   if(e.target.id==="dlg"){$("#dlg").close();state.modal=null;return;}
   const mu=e.target.closest("[data-munit]");if(mu){state.unit=mu.dataset.munit;drawProp();draw();return;}
   const dl=e.target.closest("[data-daily]");if(dl){openModal("daily",dl.dataset.daily);return;}
+  const cmo=e.target.closest("[data-calmodal]");if(cmo){openModal("cal","");return;}
   const sb=e.target.closest("[data-status]");if(sb){openModal("status",sb.dataset.status);return;}
   const kc=e.target.closest("[data-card]");if(kc){openModal("card",kc.dataset.card);return;}
   const tmo=e.target.closest("[data-tpmode]");if(tmo){state.tpMode=tmo.dataset.tpmode;draw();return;}
