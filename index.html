@@ -1663,7 +1663,7 @@ function liveOf(k){
   const D=cfg.ids,g=(id,c)=>capVal(state.devices[id],c);
   const map={tibber:g(D.live235,"measure_power"),uppv:g(D.uppv,"measure_power"),vp:g(D.nibe,"measure_power"),traktor:g(D.trLoad,"measure_power"),golv:g(D.floor,"measure_power"),entre:g(D.entre,"measure_power"),vent:g(D.ventilation,"measure_power"),kok:g(D["koksfläkt"],"measure_power"),spot:g(D.spotKok,"measure_power"),avl:g(D.avlopp,"measure_power"),d236:g(D.d236,"measure_power.number1")};
   if(k==="trl"||k==="trm"){let v=homeyVar(k==="trl"?D.trLoadW:D.trMvW);
-    if(v==null&&isDemo()){const p=Math.max(0,g(D.trLoad,"measure_power")||0),mv=p>100?Math.min(800,p):0;v=k==="trl"?p-mv:mv;}
+    if(v==null&&isDemo()){const p=Math.max(0,g(D.trLoad,"measure_power")||0),mv=p>750?750:0;v=k==="trl"?p-mv:mv;}
     return v==null?"":"Nu "+fmt(v,0)+" W · beräknad";}
   const w=map[k];
   if(k==="tesla"){const on=g(D.tesla,"charging_on");return on==null?"":(on?"Laddar nu":"Laddar inte")+(g(D.tesla,"measure_soc_level")!=null?" · "+fmt(g(D.tesla,"measure_soc_level"),0)+" %":"");}
@@ -1819,7 +1819,7 @@ async function renderModal(){
       if(eu!==u)h+=`<div class="note">Kronor finns inte i Homey för den här källan, så kWh visas.</div>`;
       if(T.calc&&eu==="kr")h+=`<div class="note">≈ Kronor = beräknad kWh × timpriset (inkl. moms och påslag, Home Controls gemensamma elprismodell) för respektive timme; äldre dygn med dygnets snittpris.</div>`;else if(T.est&&eu==="kr")h+=`<div class="note">≈ Kronor är uppskattade: kWh gånger hela husets snittpris för respektive dygn. Skapa en rapportenhet i Homey för exakt kostnad (se Admin).</div>`;
       if(T.calc){const ks=Object.keys(T.kwh||{}).sort();
-        h+=`<div class="note"><b>Beräknad fördelning.</b> Den fysiska mätaren på Traktor laddning mäter laddning och motorvärmare tillsammans. Homey-flödet fördelar mätt effekt: upp till 100 W räknas som laddning, över 100 W flyttas upp till 800 W till motorvärmaren. Summan av laddning och MV är alltid den uppmätta effekten. Historik finns bara från och med att datainsamlingen började${ks.length?" ("+ks[0]+")":""}; inga värden före det är uppskattade.</div>`;
+        h+=`<div class="note"><b>Beräknad fördelning.</b> Den fysiska mätaren på Traktor laddning mäter laddning och motorvärmare tillsammans. Homey-flödet fördelar mätt effekt: upp till 750 W räknas som laddning, över 750 W flyttas 750 W till motorvärmaren och resten är laddning. Summan av laddning och MV är alltid den uppmätta effekten. Historik finns bara från och med att datainsamlingen började${ks.length?" ("+ks[0]+")":""}; inga värden före det är uppskattade.</div>`;
         try{const id="logic:"+(m.k==="trl"?cfg.ids.trLoadW:cfg.ids.trMvW),es=isDemo()?[]:await logEntries(id,"var","last7Days"),sm={},ct={};
           for(const e of es){if(e.v==null)continue;const k=hourKey(new Date(e.t));sm[k]=(sm[k]||0)+e.v;ct[k]=(ct[k]||0)+1;}
           const ks2=Object.keys(sm).sort().slice(-168);
