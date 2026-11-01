@@ -2037,8 +2037,8 @@ const HUS_ROOMS=[
  {id:"wc",n:"WC",x:1185,y:292,w:135,h:178,z:/^wc$/i},
  {id:"passage",n:"Passage",x:1185,y:470,w:135,h:62,none:true},
  {id:"allrum",n:"Allrum",x:1325,y:292,w:205,h:238,z:/^allrum$/i},
- {id:"sov2",n:"Klaras rum",x:1185,y:535,w:165,h:205,z:/klara/i},
- {id:"sov3",n:"Måns rum",x:1355,y:535,w:175,h:205,z:/måns/i},
+ {id:"sov2",n:"Måns rum",x:1185,y:535,w:165,h:205,z:/måns/i},
+ {id:"sov3",n:"Klaras rum",x:1355,y:535,w:175,h:205,z:/klara/i},
  {id:"uterum",n:"Uterum",x:767,y:17,w:546,h:273,z:/^uterum$/i,dash:true}
 ];
 function husDevs(r){if(r.none)return [];return propDevices().filter(d=>{const z=zoneName(d),n=devName(d);if(r.name)return r.name.test(n);return r.z&&r.z.test(z)&&!(r.notName&&r.notName.test(n));});}
@@ -2046,11 +2046,12 @@ function husTemp(r,ds){
   let sens=ds.find(d=>/^temperatursensor/i.test(devName(d))&&capVal(d,"measure_temperature")!=null);
   if(!sens&&r.id==="uterum")sens=state.devices[cfg.ids.slab]&&capVal(state.devices[cfg.ids.slab],"measure_temperature")!=null?state.devices[cfg.ids.slab]:null;
   return sens?{d:sens,t:capVal(sens,"measure_temperature")}:null;}
+function husHum(ds,tp){const d=(tp&&capVal(tp.d,"measure_humidity")!=null)?tp.d:ds.find(x=>capVal(x,"measure_humidity")!=null);return d?capVal(d,"measure_humidity"):null;}
 function husInfo(r){
-  const ds=husDevs(r),tp=husTemp(r,ds),lamps=ds.filter(d=>isLamp(d)&&hasOnoff(d)),on=lamps.filter(d=>capVal(d,"onoff")).length;
+  const ds=husDevs(r),tp=husTemp(r,ds),hum=husHum(ds,tp),lamps=ds.filter(d=>isLamp(d)&&hasOnoff(d)),on=lamps.filter(d=>capVal(d,"onoff")).length;
   const w=ds.filter(d=>!isLamp(d)||capVal(d,"onoff")).reduce((a,d)=>a+(capVal(d,"measure_power")||0),0)+ds.filter(d=>isLamp(d)&&capVal(d,"onoff")&&false).length;
   const wAll=ds.reduce((a,d)=>a+((capVal(d,"onoff")!==false?capVal(d,"measure_power"):0)||0),0);
-  return {ds,tp,lamps,on,w:wAll};}
+  return {ds,tp,hum,lamps,on,w:wAll};}
 function renderHus(){
   const mode=["temp","lamp","power"].includes(state.husMode)?state.husMode:"temp";
   const col=(r,i)=>{
@@ -2062,7 +2063,7 @@ function renderHus(){
   let g="";
   for(const r of HUS_ROOMS){const i=husInfo(r),c=col(r,i),cx=r.x+r.w/2,cy=r.y+r.h/2,fs=r.w<170?19:r.w<250?22:26;
     g+=`<g ${r.none?"":`class="hrm" data-room="${r.id}" tabindex="0" role="button" aria-label="${esc(r.n)}, ${esc(val(r,i))}"`} style="${r.none?"":"cursor:pointer"}"><rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${c.f}" fill-opacity="${c.o}" stroke="var(--ink)" stroke-width="${r.dash?3:5}" ${r.dash?'stroke-dasharray="14 8"':""} rx="2"/>
-      <text x="${cx}" y="${cy-(r.none?0:8)}" text-anchor="middle" style="font-size:${fs}px;font-weight:700;fill:var(--ink)">${esc(r.n)}</text>${r.none?"":`<text x="${cx}" y="${cy+fs-2}" text-anchor="middle" style="font-size:${fs-3}px;fill:var(--ink)">${esc(val(r,i))}</text>`}</g>`;}
+      <text x="${cx}" y="${cy-(r.none?0:8)}" text-anchor="middle" style="font-size:${fs}px;font-weight:700;fill:var(--ink)">${esc(r.n)}</text>${r.none?"":`<text x="${cx}" y="${cy+fs-2}" text-anchor="middle" style="font-size:${fs-3}px;fill:var(--ink)">${esc(val(r,i))}</text>${(()=>{const p=[];if(mode!=="temp"&&i.tp)p.push(fmt(i.tp.t,1)+" °C");if(i.hum!=null)p.push(fmt(i.hum,0)+" % RF");if(mode!=="power"&&i.ds.length)p.push(i.w>=1000?fmt(i.w/1000,2)+" kW":fmt(i.w,0)+" W");return p.length?`<text x="${cx}" y="${cy+fs+fs-6}" text-anchor="middle" style="font-size:${Math.max(15,fs-5)}px;fill:var(--ink);opacity:.8">${esc(p.join(" · "))}</text>`:"";})()}`}</g>`;}
   // ytterdörr och väderstreck
   const door=state.devices[cfg.ids.ytterdorr],lk=door&&capVal(door,"locked");
   g+=`<rect x="1000" y="817" width="180" height="14" fill="${lk===false?"var(--bad)":"var(--good)"}" opacity=".85"/><text x="1090" y="848" text-anchor="middle" style="font-size:16px;fill:var(--ink)">Ytterdörr ${lk==null?"":(lk?"låst":"OLÅST")}</text>`;
@@ -2072,7 +2073,7 @@ function renderHus(){
   const chips=[["temp","Temperatur"],["lamp","Lampor"],["power","Effekt"]].map(([k,l])=>`<button class="chip" data-husmode="${k}" aria-pressed="${mode===k}">${l}</button>`).join("");
   let h=styrSwitch()+`<div class="bar">${chips}<span class="grow"></span>${ute!=null?`<span class="note" style="margin:0">Ute <b>${fmt(ute,1)} °C</b></span>`:""}</div>
     <div class="card"><svg viewBox="0 0 1560 860" width="100%" role="group" aria-label="Planritning Dekarsön 235">${g}</svg>
-    <div class="note">Tryck på ett rum för temperatur, lampor och enheter. Färgen visar ${mode==="temp"?"temperatur (blå kallt, röd varmt)":mode==="lamp"?"tända lampor (gul = något tänt)":"aktuell effekt i rummet"}. Planen är en förenklad ritning efter husritningen.</div></div>`;
+    <div class="note">Varje rum visar temperatur, luftfuktighet (RF) och aktuell effekt live. Tryck på ett rum för lampor och enheter. Färgen visar ${mode==="temp"?"temperatur (blå kallt, röd varmt)":mode==="lamp"?"tända lampor (gul = något tänt)":"aktuell effekt i rummet"}. Planen är en förenklad ritning efter husritningen.</div></div>`;
   $("#p-styr").innerHTML=h;}
 function roomModalHtml(id){
   const r=HUS_ROOMS.find(x=>x.id===id);if(!r)return "";const i=husInfo(r);
