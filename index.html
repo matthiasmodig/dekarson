@@ -2053,6 +2053,29 @@ function husInfo(r){
   const w=ds.filter(d=>!isLamp(d)||capVal(d,"onoff")).reduce((a,d)=>a+(capVal(d,"measure_power")||0),0)+ds.filter(d=>isLamp(d)&&capVal(d,"onoff")&&false).length;
   const wAll=ds.reduce((a,d)=>a+((capVal(d,"onoff")!==false?capVal(d,"measure_power"):0)||0),0);
   return {ds,tp,hum,lamps,on,w:wAll};}
+/* Fönsterlampor/spots längs rummets ytterkant. Varje markering är en liten knapp som tänder/släcker just den enheten. */
+function husEdge(r){return r.y+r.h>=740?"b":"t";}
+function husWinMarks(r,mode){
+  const wn=husWin(r);if(!wn.length||r.none)return "";const e=husEdge(r),n=wn.length,len=mode?90:Math.min(60,(r.w-20)/n-8),th=mode?16:14;
+  const x0=mode?30:r.x,wd=mode?840:r.w,y=mode?(e==="t"?30:null):(e==="t"?r.y:r.y+r.h);
+  let g="";wn.forEach((d,k)=>{const on=!!capVal(d,"onoff"),cx=x0+wd*(k+1)/(n+1),yy=mode?(e==="t"?30:mode-30):y;
+    g+=`<g data-act="tgl" data-dev="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(devName(d))}: ${on?"tänd":"släckt"}" style="cursor:pointer"><title>${esc(devName(d))} · ${on?"tänd":"släckt"}</title><rect x="${cx-len/2}" y="${yy-th/2}" width="${len}" height="${th}" rx="${th/2}" fill="${on?"hsl(45 95% 55%)":"var(--card,#fff)"}" stroke="var(--ink)" stroke-width="2.5"/></g>`;});
+  return g;}
+function husRoomSvg(r){
+  const i=husInfo(r),W=900,e=husEdge(r),wn=husWin(r),others=i.ds.filter(d=>!wn.includes(d)&&(hasOnoff(d)&&isShown(d)||capVal(d,"measure_temperature")!=null||capVal(d,"measure_humidity")!=null));
+  const nm=d=>devName(d).replace(new RegExp("\\s*"+r.n.replace(/[.*+?^${}()|[\]\\]/g,"")+"$","i"),"").trim()||devName(d);
+  const cut=(t,n)=>t.length>n?t.slice(0,n-1)+"…":t;
+  const top=e==="t"&&wn.length?64:34,tw=200,th=84,gap=13,H=Math.max(230,top+Math.max(1,Math.ceil(others.length/4))*(th+gap)+(e==="b"&&wn.length?60:36));
+  let g=`<rect x="12" y="12" width="${W-24}" height="${H-24}" rx="6" fill="${(i.tp?"hsl("+Math.round(215-Math.min(1,Math.max(0,(i.tp.t-14)/12))*195)+" 75% 55% / .18)":"var(--soft)")}" stroke="var(--ink)" stroke-width="6"/>`;
+  g+=husWinMarks(r,H);
+  const lampsOn=i.on;
+  others.forEach((d,k)=>{const col=k%4,row=Math.floor(k/4),x=30+col*(tw+gap),y=top+row*(th+gap),t=capVal(d,"measure_temperature"),h=capVal(d,"measure_humidity"),oo=hasOnoff(d)&&isShown(d),on=oo&&!!capVal(d,"onoff"),w=capVal(d,"measure_power");
+    const sub=oo?(on?"På":"Av")+(w!=null&&w>0?" · "+fmt(w,0)+" W":""):[t!=null?fmt(t,1)+" °C":"",h!=null?fmt(h,0)+" %":""].filter(Boolean).join(" · ");
+    const attr=oo?`data-act="tgl" data-dev="${esc(d.id)}"`:`data-sens="${esc(d.id)}|${t!=null?"measure_temperature":"measure_humidity"}"`;
+    g+=`<g ${attr} tabindex="0" role="button" style="cursor:pointer"><rect x="${x}" y="${y}" width="${tw}" height="${th}" rx="12" fill="${on?"hsl(45 95% 60%)":"var(--card,#fff)"}" stroke="var(--ink)" stroke-width="2.5"/><text x="${x+12}" y="${y+32}" style="font-size:19px;font-weight:700;fill:${on?"#222":"var(--ink)"}">${esc(cut(nm(d),16))}</text><text x="${x+12}" y="${y+62}" style="font-size:18px;fill:${on?"#222":"var(--mut)"}">${esc(sub)}</text></g>`;});
+  if(!others.length&&!wn.length)g+=`<text x="${W/2}" y="${H/2}" text-anchor="middle" style="font-size:22px;fill:var(--mut)">Inga enheter i rummet</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:900px;display:block;margin:6px auto 10px" role="group" aria-label="${esc(r.n)}">${g}</svg>`;}
+function husEdgeNote(r){return husWin(r).length?`Fönsterlampor och spots ligger i rummets ${husEdge(r)==="t"?"övre":"nedre"} kant. Tryck på en markering eller ruta för att tända eller släcka.`:"Tryck på en ruta för att tända/släcka eller se sensorn.";}
 function renderHus(){
   if(state.husRoom&&HUS_ROOMS.some(x=>x.id===state.husRoom)){$("#p-styr").innerHTML=styrSwitch()+`<div class="card">`+roomModalHtml(state.husRoom,true)+`</div>`;return;}
   const mode=["temp","lamp","power"].includes(state.husMode)?state.husMode:"temp";
@@ -2066,8 +2089,7 @@ function renderHus(){
   for(const r of HUS_ROOMS){const i=husInfo(r),c=col(r,i),cx=r.x+r.w/2,cy=r.y+r.h/2,fs=r.w<170?19:r.w<250?22:26;
     g+=`<g ${r.none?"":`class="hrm" data-room="${r.id}" tabindex="0" role="button" aria-label="${esc(r.n)}, ${esc(val(r,i))}"`} style="${r.none?"":"cursor:pointer"}"><rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${c.f}" fill-opacity="${c.o}" stroke="var(--ink)" stroke-width="${r.dash?3:5}" ${r.dash?'stroke-dasharray="14 8"':""} rx="2"/>
       <text x="${cx}" y="${cy-(r.none?0:8)}" text-anchor="middle" style="font-size:${fs}px;font-weight:700;fill:var(--ink)">${esc(r.n)}</text>${r.none?"":`<text x="${cx}" y="${cy+fs-2}" text-anchor="middle" style="font-size:${fs-3}px;fill:var(--ink)">${esc(val(r,i))}</text>${(()=>{const p=[];if(mode!=="temp"&&i.tp)p.push(fmt(i.tp.t,1)+" °C");if(i.hum!=null)p.push(fmt(i.hum,0)+" % RF");if(mode!=="power"&&i.ds.length)p.push(i.w>=1000?fmt(i.w/1000,2)+" kW":fmt(i.w,0)+" W");return p.length?`<text x="${cx}" y="${cy+fs+fs-6}" text-anchor="middle" style="font-size:${Math.max(15,fs-5)}px;fill:var(--ink);opacity:.8">${esc(p.join(" · "))}</text>`:"";})()}`}</g>`;
-    const wn=r.none?[]:husWin(r);if(wn.length){const on=wn.filter(d=>capVal(d,"onoff")).length,to=on===0,pw=Math.min(r.w-24,150),px=cx-pw/2,py=r.y+r.h-44;
-      g+=`<g data-act="roomwin" data-room="${r.id}" data-to="${to}" tabindex="0" role="button" aria-label="Fönsterlampor ${esc(r.n)}: ${on} av ${wn.length} tända, tryck för att slå ${to?"på":"av"}" style="cursor:pointer"><rect x="${px}" y="${py}" width="${pw}" height="32" rx="16" fill="${on?"hsl(45 95% 55%)":"var(--card,#fff)"}" stroke="var(--ink)" stroke-width="2.5"/><text x="${cx}" y="${py+22}" text-anchor="middle" style="font-size:17px;font-weight:700;fill:${on?"#222":"var(--ink)"}">Fönster ${on?"på":"av"}</text></g>`;}}
+    g+=husWinMarks(r,0);}
   // helhus och bil
   {const e=liveEnergy(),w=e.w,big=w!=null?(w>=1000?fmt(w/1000,2):fmt(w,0)):"–",un=w!=null&&w>=1000?"kW":"W";
     g+=`<g data-nowmodal="1" tabindex="0" role="button" aria-label="Hela huset ${big} ${un}, visa förbrukare" style="cursor:pointer"><rect x="30" y="40" width="330" height="150" rx="12" fill="var(--soft)" stroke="var(--ink)" stroke-width="3"/><text x="195" y="82" text-anchor="middle" style="font-size:22px;fill:var(--ink)">Hela huset nu</text><text x="195" y="146" text-anchor="middle" style="font-size:56px;font-weight:700;fill:var(--ink)">${big} <tspan style="font-size:26px;font-weight:500">${un}</tspan></text><text x="195" y="176" text-anchor="middle" style="font-size:16px;fill:var(--mut)">Tryck för förbrukare</text></g>`;}
@@ -2087,7 +2109,7 @@ function renderHus(){
 function roomModalHtml(id,inline){
   const r=HUS_ROOMS.find(x=>x.id===id);if(!r)return "";const i=husInfo(r);
   const head=inline?`<div class="mhead"><button class="btn" data-roomback="1">← Planritning</button><h2 style="margin:0 0 0 8px">${esc(r.n)}</h2></div>`:`<div class="mhead"><h2>${esc(r.n)}</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`;
-  let h=head+`<div class="grid">`;
+  let h=head+(inline?husRoomSvg(r)+`<div class="note" style="margin:0 0 10px">${husEdgeNote(r)}</div>`:"")+`<div class="grid">`;
   const hu=i.tp&&capVal(i.tp.d,"measure_humidity");
   h+=i.tp?sensTile(i.tp.d.id,"measure_temperature","Temperatur",fmt(i.tp.t,1),"°C",hu!=null?"Luftfuktighet "+fmt(hu,0)+" %":"Visa diagram över tid","hero"):tile("Temperatur","–","","Ingen temperatursensor");
   h+=tile("Effekt i rummet",i.w>=1000?fmt(i.w/1000,2):fmt(i.w,0),i.w>=1000?"kW":"W",i.ds.length+" enheter");
@@ -2095,7 +2117,7 @@ function roomModalHtml(id,inline){
   {const wn=husWin(r),won=wn.filter(d=>capVal(d,"onoff")).length;if(wn.length)h+=`<div class="bar" style="margin-top:10px"><b>Fönster: ${won} av ${wn.length} tända</b><span class="note" style="margin:0">${esc(wn.map(devName).join(", "))}</span><span class="grow"></span><button class="btn pri" data-act="roomwin" data-room="${r.id}" data-to="${won===0}">Fönster ${won?"av":"på"}</button></div>`;}
   if(i.lamps.length)h+=`<div class="bar" style="margin-top:10px"><b>Lampor: ${i.on} av ${i.lamps.length} tända</b><button class="btn" data-act="roomlights" data-room="${r.id}" data-to="${i.on===0}">Lampor ${i.on?"av":"på"}</button></div>`;
   const ctl=i.ds.filter(d=>hasOnoff(d)&&isShown(d)).sort((a,b)=>devName(a).localeCompare(devName(b),"sv"));
-  h+=ctl.length?`<div class="grid" style="margin-top:6px">${ctl.map(devCard).join("")}</div>`:`<div class="note">Inga styrbara enheter i rummet.</div>`;
+  h+=ctl.length?(inline?`<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:600">Dimmer och fler inställningar</summary><div class="grid" style="margin-top:8px">${ctl.map(devCard).join("")}</div></details>`:`<div class="grid" style="margin-top:6px">${ctl.map(devCard).join("")}</div>`):`<div class="note">Inga styrbara enheter i rummet.</div>`;
   const sens=i.ds.filter(d=>capVal(d,"measure_temperature")!=null&&d!==(i.tp&&i.tp.d)&&!hasOnoff(d));
   if(sens.length)h+=`<h3>Andra sensorer</h3><div class="grid">${sens.map(d=>sensTile(d.id,"measure_temperature",esc(devName(d)),fmt(capVal(d,"measure_temperature"),1),"°C","")).join("")}</div>`;
   return h;}
