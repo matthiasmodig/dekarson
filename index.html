@@ -2223,7 +2223,7 @@ function husInfo(r){
 /* Liten klickbar "NN %"-text inuti en kart-knapp: öppnar enhetens kort (ljusstyrka) i stället för att tända/släcka */
 function husPct(d,x,y,fs){const p=capVal(d,"dim");if(p==null||!capVal(d,"onoff"))return "";
   return `<g data-onoff="${esc(d.id)}" data-nm="${esc(devName(d))}" tabindex="0" role="button" aria-label="Ljusstyrka ${Math.round(p*100)} %, öppna kortet" style="cursor:pointer"><rect x="${x-34}" y="${y-fs}" width="68" height="${fs+8}" rx="${(fs+8)/2}" fill="var(--soft)" stroke="var(--ink)" stroke-width="1.5"/><text x="${x}" y="${y+2}" text-anchor="middle" style="font-size:${fs-2}px;font-weight:700;fill:var(--ink);pointer-events:none">${Math.round(p*100)} %</text></g>`;}
-function husLtr(d){const n=devName(d);return /spot/i.test(n)?"S":/lamp/i.test(n)?"L":/fl(ä|a)kt/i.test(n)?"F":"";}
+function husLtr(d){const n=devName(d);return /spot/i.test(n)?"S":/lamp|belysning/i.test(n)?"L":/fl(ä|a)kt/i.test(n)?"F":"";}
 function husCeil(r){const rk=d=>{const n=devName(d);return /v(ä|a)nster/i.test(n)?0:/mitten/i.test(n)?1:/h(ö|o)ger/i.test(n)?2:1.5;};
   return husDevs(r).filter(d=>/\btak(spot|lampa)?/i.test(devName(d))&&!/f(ö|o)nster/i.test(devName(d))&&hasOnoff(d)).sort((a,b)=>rk(a)-rk(b)||devName(a).localeCompare(devName(b),"sv"));}
 /* Garageportar: styrs av relä (Garageport enkel/dubbel), läge från Portsensor enkel/dubbel (alarm_contact = öppen) */
@@ -2281,6 +2281,7 @@ function husPhases(){const fa=state.devices[cfg.ids.fastighet],co=fa&&fa.capabil
 /* liten klickbar temperaturtext på planen (sensor|capability) */
 function husTxt(x,y,anchor,label,dev,cap,fs){const v=capVal(dev,cap);if(v==null)return "";
   return `<g data-sens="${esc(dev.id)}|${cap}" tabindex="0" role="button" aria-label="${esc(label)} ${fmt(v,1)} °C" style="cursor:pointer"><title>${esc(label)}</title><text x="${x}" y="${y}" text-anchor="${anchor}" style="font-size:${fs||14}px;fill:var(--ink)">${esc(label.split("|")[0])} <tspan style="font-weight:700">${fmt(v,1)} °C</tspan></text></g>`;}
+const ABOVE_NAME=new Set(["badrum","sovrum","matplats","vardagsrum","wc","allrum","sov3","sov2","hall","garage"]);
 function renderHus(){
   if(state.husRoom&&HUS_ROOMS.some(x=>x.id===state.husRoom)){$("#p-styr").innerHTML=`<div class="card">`+roomModalHtml(state.husRoom,true)+`</div>`;return;}
   const mode=["temp","lamp","power"].includes(state.husMode)?state.husMode:"temp";
@@ -2297,7 +2298,9 @@ function renderHus(){
     g+=husWinMarks(r,0)+husPortG(r,0);
     {const all=r.none?[]:husCeil(r),cs=all.filter(d=>!husCeilPos(r,d)),dot=(d,x,y)=>{const on=!!capVal(d,"onoff");
       g+=`<g data-act="tgl" data-dev="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(devName(d))}: ${on?"tänd":"släckt"}" style="cursor:pointer"><title>${esc(devName(d))} · ${on?"tänd":"släckt"}</title><circle cx="${x}" cy="${y}" r="12" fill="${on?"hsl(45 95% 55%)":"var(--card,#fff)"}" stroke="var(--ink)" stroke-width="2.5"/><text x="${x}" y="${y+5}" text-anchor="middle" style="font-size:14px;font-weight:700;fill:${on?"#222":"var(--ink)"};pointer-events:none">${husLtr(d)}</text></g>`;};
-      cs.forEach((d,k)=>dot(d,r.x+r.w*(k+1)/(cs.length+1),r.y+30));all.filter(d=>husCeilPos(r,d)).forEach(d=>{const p=husCeilPos(r,d);dot(d,r.x+r.w*p[0],r.y+r.h*p[1]);});
+      if(ABOVE_NAME.has(r.id)){/* takspot/taklampa strax ovanför rumsnamnet */
+        const sp=Math.min(30,(r.w-30)/Math.max(1,all.length)),y0=cy-8-fs*0.72-17;all.forEach((d,k)=>dot(d,cx+(k-(all.length-1)/2)*sp,y0));}
+      else{cs.forEach((d,k)=>dot(d,r.x+r.w*(k+1)/(cs.length+1),r.y+30));all.filter(d=>husCeilPos(r,d)).forEach(d=>{const p=husCeilPos(r,d);dot(d,r.x+r.w*p[0],r.y+r.h*p[1]);});}
       if(r.id==="kok"){/* köksbänkens spottar till höger om W-raden, köksfläkten till vänster om rumsnamnet */
         const ds=husDevs(r),L=husLine(r,i,mode,fs),spots=ds.filter(d=>/spot/i.test(devName(d))&&!/tak|f(ö|o)nster/i.test(devName(d))&&hasOnoff(d)),fans=ds.filter(d=>/fl(ä|a)kt/i.test(devName(d))&&hasOnoff(d));
         /* W-texten: i Effekt-läget står den på värderaden, annars sist på tredje raden */
