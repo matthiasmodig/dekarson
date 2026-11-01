@@ -1521,6 +1521,16 @@ function floorSensTiles(f,only){
   const dt=(a,b,n)=>v(a)!=null&&v(b)!=null?tile(n,fmt(v(a)-v(b),1),"°C","Givare "+a+" − givare "+b):"";
   return h+(only!=="uterum"?dt(1,2,"ΔT golvvärme"):"")+(only!=="golv"?dt(3,4,"ΔT uterum"):"");
 }
+function wxExtra(d){
+  if(capVal(d,"measure_wind_strength")==null)return "";
+  const g=k=>capVal(d,k),ln=(cap,l,v)=>v==null?"":`<div data-sens="${esc(d.id)}|${cap}" tabindex="0" role="button" title="Visa diagram över tid" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span style="color:var(--mut)">${l}</span><b>${v}</b></div>`;
+  const dir=g("wind_angle_text"),ang=g("measure_wind_angle"),rain=g("measure_rain"),snow=g("measure_rain.snow"),tot=g("measure_rain.total"),sf=g("measure_temperature.surface"),t=g("measure_temperature");
+  return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line);display:grid;gap:3px;font-size:13.5px">`+
+    ln("measure_wind_strength","Vind",fmt(g("measure_wind_strength"),1)+" m/s"+(dir?" · "+esc(dir):ang!=null?" · "+fmt(ang,0)+"°":""))+
+    ln("measure_gust_strength","Byvind",g("measure_gust_strength")!=null?fmt(g("measure_gust_strength"),1)+" m/s":null)+
+    ln("measure_rain","Nederbörd",rain!=null?fmt(rain,1)+" mm"+(snow>0?" · snö "+fmt(snow,1)+" mm":""):null)+
+    ln("measure_rain.total","Nederbörd totalt",tot!=null?fmt(tot,1)+" mm":null)+
+    ln("measure_temperature.surface","Yttemperatur",sf!=null&&t!=null&&Math.abs(sf-t)>=0.05?fmt(sf,1)+" °C":null)+`</div>`;}
 async function renderKlimat(){
   await loadVars();
   const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.slab&&d.id!==cfg.ids.ventilation&&d.id!==cfg.ids.fastighet&&d.id!==cfg.ids.entre);
@@ -1538,7 +1548,7 @@ async function renderKlimat(){
     const byZone={};for(const d of list)(byZone[zoneName(d)]=byZone[zoneName(d)]||[]).push(d);
     for(const z of Object.keys(byZone)){
       h+=`<section class="grp"><h3>${esc(z)}</h3><div class="grid">${byZone[z].map(d=>{const hu=capVal(d,"measure_humidity"),bat=capVal(d,"measure_battery");
-        return `<div class="card kcard" data-sens="${esc(d.id)}|measure_temperature" tabindex="0" role="button" title="Visa diagram över tid"><div class="top2"><span class="nm">${esc(devName(d))}</span></div><div class="big">${fmt(capVal(d,"measure_temperature"),1)} <small>°C</small></div><div class="meta">${hu!=null?`<span data-sens="${esc(d.id)}|measure_humidity" title="Visa fuktdiagram" style="text-decoration:underline dotted">Luftfuktighet ${fmt(hu,0)} %</span>`:""}${bat!=null?`<span>Batteri ${fmt(bat,0)} %</span>`:""}</div></div>`;}).join("")}</div></section>`;
+        return `<div class="card kcard" data-sens="${esc(d.id)}|measure_temperature" tabindex="0" role="button" title="Visa diagram över tid"><div class="top2"><span class="nm">${esc(devName(d))}</span></div><div class="big">${fmt(capVal(d,"measure_temperature"),1)} <small>°C</small></div><div class="meta">${hu!=null?`<span data-sens="${esc(d.id)}|measure_humidity" title="Visa fuktdiagram" style="text-decoration:underline dotted">Luftfuktighet ${fmt(hu,0)} %</span>`:""}${bat!=null?`<span>Batteri ${fmt(bat,0)} %</span>`:""}</div>${wxExtra(d)}</div>`;}).join("")}</div></section>`;
     }
     h+=`<div class="note">Klicka på en temperatur eller luftfuktighet för diagram över tid.</div>`;
   }
