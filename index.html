@@ -904,9 +904,10 @@ async function tibberHtml(){
   const fa=d.fetchedAt?new Date(d.fetchedAt).toLocaleString("sv-SE",{timeZone:"Europe/Stockholm",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"–";
   const hv=capVal(state.devices[cfg.ids.price],"measure_price_total"),diff=cur&&hv!=null?hv-cur.t:null;
   const tl=(a,b,c,s,cls)=>tile(a,b,c,s,cls||"");
-  const tiles=`<div class="grid" style="margin:10px 0">`+
+  const tiles=`<div class="grid" style="margin:10px 0;grid-template-columns:repeat(3,minmax(0,1fr))">`+
     tl("Nu",ore(cur&&val(cur)),"öre/kWh","Importpris, preliminärt","hero")+
-    tl("Billigast framåt",ore(mn&&val(mn)),"öre/kWh",mn?lab(mn):"")+tl("Dyrast framåt",ore(mx&&val(mx)),"öre/kWh",mx?lab(mx):"")+
+    tl("Billigast framåt",ore(mn&&val(mn)),"öre/kWh",mn?lab(mn):"")+tl("Dyrast framåt",ore(mx&&val(mx)),"öre/kWh",mx?lab(mx):"")+`</div>
+    <div class="grid" style="margin:10px 0;grid-template-columns:repeat(2,minmax(0,1fr))">`+
     tl("Snitt idag",ore(aT),"öre/kWh","Viktat efter tid")+tl("Snitt imorgon",aM!=null?ore(aM):"–","öre/kWh",aM!=null?"Viktat efter tid":"Publiceras ca 13:00")+`</div>`;
   return {ok:true,html:`<div class="card" style="margin:12px 0"><h2 style="margin:0 0 6px">${ic("Elpris","coin")}Elpriscentral · Importpris Dekarsön 235 ${d.demo?`<span class="pill">demo</span>`:""}</h2>
     ${tiles}
