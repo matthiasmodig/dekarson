@@ -1187,21 +1187,22 @@ function cmpMeta(tok,S){ /* namn, enhet och decimaler för en vald post */
   return {n:fi||devName(d)+(/\.\d+$/.test(cap)?" ("+cap.split(".").pop()+")":""),unit:m.unit,dec:m.dec,id,cap};}
 /* Linjediagram med två Y-axlar. ser[i].ax = 0 (vänster) eller 1 (höger) */
 function dualLine(ser,labels,units){
-  const rid='bcr'+(++BCID),two=units.length>1,W=1000,H=300,L=56,B=28,T=22,R=two?56:8,n=labels.length;
+  const rid='bcr'+(++BCID),two=units.length>1,W=1000,H=300,B=28,T=22,nl=Math.ceil(units.length/2),nr=Math.floor(units.length/2),L=56+58*(nl-1),R=nr?56+58*(nr-1):8,n=labels.length,DASH=["","7 4","2 4","11 4 2 4"];
   if(n<2||!ser.some(x=>x.vals.some(v=>v!=null)))return `<div class="note">Ingen data för perioden.</div>`;
   const rng=ax=>{const a=ser.filter(x=>x.ax===ax).flatMap(x=>x.vals).filter(v=>v!=null);if(!a.length)return [0,1];
     const hi=Math.max(...a,0),lo=Math.min(...a,0);return [lo<0?-niceMax(-lo):0,hi>0?niceMax(hi):1];};
-  const rg=[rng(0),rng(1)],y=(v,ax)=>T+(H-T-B)*(1-(v-rg[ax][0])/(rg[ax][1]-rg[ax][0]||1)),bw=(W-L-R)/(n-1),x=i=>L+i*bw;let g="";
-  for(let i=0;i<=4;i++){const yy=T+(H-T-B)*(1-i/4),v0=rg[0][0]+(rg[0][1]-rg[0][0])*i/4;
-    g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v0,Math.abs(rg[0][1])<10?1:0)}</text>`;
-    if(two){const v1=rg[1][0]+(rg[1][1]-rg[1][0])*i/4;g+=`<text x="${W-R+6}" y="${yy+4}" text-anchor="start">${fmt(v1,Math.abs(rg[1][1])<10?1:0)}</text>`;}}
-  g+=`<text x="${L-6}" y="12" text-anchor="end" style="font-weight:700">${esc(units[0])}</text>`+(two?`<text x="${W-R+6}" y="12" text-anchor="start" style="font-weight:700">${esc(units[1])}</text>`:"");
+  const rg=units.map((_,k)=>rng(k)),y=(v,ax)=>T+(H-T-B)*(1-(v-rg[ax][0])/(rg[ax][1]-rg[ax][0]||1)),bw=(W-L-R)/(n-1),x=i=>L+i*bw;let g="";
+  const axX=k=>k%2===0?[L-6-Math.floor(k/2)*58,"end"]:[W-R+6+Math.floor(k/2)*58,"start"];
+  for(let i=0;i<=4;i++){const yy=T+(H-T-B)*(1-i/4);
+    g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/>`;
+    units.forEach((u,k)=>{const v=rg[k][0]+(rg[k][1]-rg[k][0])*i/4,[ax,an]=axX(k),c=ser.find(q=>q.ax===k);g+=`<text x="${ax}" y="${yy+4}" text-anchor="${an}" ${units.length>2&&c?`style="fill:${c.color}"`:""}>${fmt(v,Math.abs(rg[k][1])<10?1:0)}</text>`;});}
+  units.forEach((u,k)=>{const [ax,an]=axX(k);g+=`<text x="${ax}" y="12" text-anchor="${an}" style="font-weight:700">${esc(u)}</text>`;});
   for(const s of ser){const segs=[];let seg=[];s.vals.forEach((v,i)=>{if(v!=null)seg.push(x(i)+","+y(v,s.ax));else{if(seg.length)segs.push(seg);seg=[];}});if(seg.length)segs.push(seg);
-    for(const sg of segs)g+=sg.length>1?`<polyline points="${sg.join(" ")}" fill="none" stroke="${s.color}" stroke-width="2.4" ${s.ax?'stroke-dasharray="7 4"':""} pointer-events="none"/>`:`<circle cx="${sg[0].split(",")[0]}" cy="${sg[0].split(",")[1]}" r="3" fill="${s.color}"/>`;}
+    for(const sg of segs)g+=sg.length>1?`<polyline points="${sg.join(" ")}" fill="none" stroke="${s.color}" stroke-width="2.4" ${DASH[s.ax]?`stroke-dasharray="${DASH[s.ax]}"`:""} pointer-events="none"/>`:`<circle cx="${sg[0].split(",")[0]}" cy="${sg[0].split(",")[1]}" r="3" fill="${s.color}"/>`;}
   const step=Math.max(1,Math.ceil(n/10));for(let i=0;i<n;i+=step)g+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle">${labels[i]}</text>`;
   for(let i=0;i<n;i++){const txt=labels[i]+": "+ser.map(s=>s.name+" "+(s.vals[i]==null?"–":fmt(s.vals[i],s.dec)+" "+s.unit)).join(" · ");
     g+=`<rect x="${x(i)-bw/2}" y="${T}" width="${bw}" height="${H-B-T}" fill="transparent" data-t="${esc(txt)}" onmouseover="document.getElementById('${rid}').textContent=this.dataset.t" ontouchstart="document.getElementById('${rid}').textContent=this.dataset.t"/>`;}
-  return `<div class="legend">${ser.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}${two?` <span class="note" style="margin:0">(${s.ax?"höger, streckad":"vänster"})</span>`:""}</span>`).join("")}</div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg><div class="note" id="${rid}" style="min-height:19px;color:var(--ink)">Håll muspekaren över diagrammet för att se värdena.</div>`;
+  return `<div class="legend">${ser.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)}${two?` <span class="note" style="margin:0">(${["vänster","höger, streckad","vänster ytterst, prickad","höger ytterst, streck-prick"][s.ax]})</span>`:""}</span>`).join("")}</div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img">${g}</svg><div class="note" id="${rid}" style="min-height:19px;color:var(--ink)">Håll muspekaren över diagrammet för att se värdena.</div>`;
 }
 async function renderCompare(){
   const sel=cmpLoad(),m=CMP_M[state.cmpM]?state.cmpM:"energi";state.cmpM=m;
@@ -1216,8 +1217,8 @@ async function renderCompare(){
   const metas=sel.map(tok=>({tok,mt:cmpMeta(tok,S)})).filter(x=>x.mt);
   const units=[...new Set(metas.map(x=>x.mt.unit))];
   const opts=m==="energi"?CMP_E.filter(([k])=>S&&S[k]).map(([k,n])=>({k:"e:"+k,n,z:"Energikällor",unit:unitName(effU(S[k],state.unit))})):cmpOptions(m);
-  h+=`<div class="card" style="margin:10px 0"><h2 style="margin:0 0 4px;font-size:16px">${metas.length}/8 valda · ${units.length}/2 olika enheter${units.length?" ("+units.map(esc).join(" och ")+")":""}</h2>
-    <div class="note" style="margin:0 0 6px">Blanda gärna storheter, till exempel effekt och temperatur. Den första enheten får vänster Y-axel, den andra höger (streckad linje). Max två olika enheter och åtta serier.</div>${state.cmpWarn?`<div class="warn" style="margin:0 0 6px">${esc(state.cmpWarn)}</div>`:""}`;
+  h+=`<div class="card" style="margin:10px 0"><h2 style="margin:0 0 4px;font-size:16px">${metas.length}/8 valda · ${units.length}/4 olika enheter${units.length?" ("+units.map(esc).join(" och ")+")":""}</h2>
+    <div class="note" style="margin:0 0 6px">Blanda gärna storheter, till exempel effekt och temperatur. Varje enhet får en egen Y-axel: den första till vänster, den andra till höger (streckad linje), den tredje yttersta vänster (prickad) och den fjärde yttersta höger. Max fyra olika enheter och åtta serier.</div>${state.cmpWarn?`<div class="warn" style="margin:0 0 6px">${esc(state.cmpWarn)}</div>`:""}`;
   const byZ={};for(const o of opts)(byZ[o.z]=byZ[o.z]||[]).push(o);
   h+=Object.entries(byZ).map(([z,l])=>`<div style="margin:6px 0"><span class="note" style="margin:0 8px 0 0">${esc(z)}</span><span class="bar" style="display:inline-flex;margin:0;flex-wrap:wrap;gap:6px">${l.map(o=>`<button class="chip" data-cmpsel="${esc(o.k)}" aria-pressed="${sel.includes(o.k)}">${esc(o.n)}</button>`).join("")}</span></div>`).join("")||`<div class="note">Inga enheter med den här mätningen hittades.</div>`;
   if(metas.length){h+=`<div class="bar" style="margin:10px 0 0;flex-wrap:wrap;gap:6px"><span class="note" style="margin:0">Valda:</span>${metas.map(x=>`<button class="chip" data-cmpsel="${esc(x.tok)}" aria-pressed="true" title="Ta bort">${esc(x.mt.n)} · ${esc(x.mt.unit)} ✕</button>`).join("")}<button class="btn sm" data-cmpclear="1">Rensa alla</button></div>`;}
@@ -2663,7 +2664,7 @@ document.addEventListener("click",async e=>{
      if(i>=0)sel.splice(i,1);
      else{const mt=cmpMeta(k,state.lastS),us=new Set(sel.map(x=>{const q=cmpMeta(x,state.lastS);return q&&q.unit;}).filter(Boolean));
        if(sel.length>=8)state.cmpWarn="Max åtta serier. Ta bort någon först.";
-       else if(mt&&us.size>=2&&!us.has(mt.unit))state.cmpWarn="Max två olika enheter i samma diagram. Ta bort en serie med annan enhet först.";
+       else if(mt&&us.size>=4&&!us.has(mt.unit))state.cmpWarn="Max fyra olika enheter i samma diagram. Ta bort en serie med annan enhet först.";
        else sel.push(k);}
      cmpSave();draw();return;}
    const cc=e.target.closest("[data-cmpclear]");if(cc){state.cmpSel=[];state.cmpWarn="";cmpSave();draw();return;}
