@@ -151,7 +151,6 @@ dialog::backdrop{background:#0009}
     <button data-tab="sonos" aria-selected="false">Sonos</button>
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="timpris" aria-selected="false">Timpris</button>
-    <button data-tab="detalj" aria-selected="false">Detaljer</button>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
     <button data-tab="status" aria-selected="false">Status</button>
     <button data-tab="admin" aria-selected="false">Admin</button>
@@ -179,7 +178,6 @@ dialog::backdrop{background:#0009}
   <section id="p-oversikt"></section>
   <section id="p-kort" class="hide"></section>
   <section id="p-energi" class="hide"></section>
-  <section id="p-detalj" class="hide"></section>
   <section id="p-timpris" class="hide"></section>
   <section id="p-klimat" class="hide"></section>
   <section id="p-styr" class="hide"></section>
@@ -847,13 +845,15 @@ async function kortSections(R){
     h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
   return h+`</div></section>`;
 }
+function energiSw(){return viewSw("energiview",state.energiView==="detalj"?"detalj":"energi",[["energi","Energi"],["detalj","Detaljer"]]);}
 async function renderEnergi(){
+  if(state.energiView==="detalj"){await renderDetalj();return;}
   const R=calcRange(),minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   let S=null,serr=null;try{S=await loadSeries(minDate);}catch(e){serr=e.message;}
   const u=state.unit,un=unitName(u);
   const is235=state.prop==="235",T=S?(is235?S.tibber:S.d236):null;
   const presets=[["idag","Idag"],["vecka","Vecka"],["manad","Månad"],["halvar","Halvår"],["ar","År"],["valfri","Valfri period"]];
-  let h=`<div class="bar">${presets.map(([k,l])=>`<button class="chip" data-p="${k}" aria-pressed="${state.preset===k}">${l}</button>`).join("")}</div>`;
+  let h=energiSw()+`<div class="bar">${presets.map(([k,l])=>`<button class="chip" data-p="${k}" aria-pressed="${state.preset===k}">${l}</button>`).join("")}</div>`;
   if(state.preset==="valfri")h+=`<div class="bar"><label>Från <input type="date" id="from" value="${state.from||R.s}"></label><label>Till <input type="date" id="to" value="${state.to||R.e}"></label></div>`;
   h+=`<div class="bar"><label>Jämför mot <select id="cmp"><option value="prev">Föregående period (lika lång)</option><option value="yoy">Samma period året innan</option><option value="none">Ingen jämförelse</option></select></label></div>`;
   h+=`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name}</div>`;
@@ -1684,7 +1684,7 @@ async function renderDetalj(){
       if(T){const c=chartBlock("Dekarsön 236",T,R,effU(T,u));h+=c.html||c;}
       else h+=`<div class="note">Ange energikälla för Dekarsön 236 under Admin.</div>`;
     }catch(err){h+=`<div class="note">Historik kunde inte läsas: ${esc(err.message)}</div>`;}
-    $("#p-detalj").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;return;
+    $("#p-energi").innerHTML=energiSw()+h;const cm=$("#cmp");if(cm)cm.value=state.cmp;return;
   }
   let h=`<div class="bar" style="position:sticky;top:62px;z-index:10;background:var(--bg);padding:8px 0;margin:0 0 6px">${secs.map(([k,l])=>`<button class="chip" data-jump="det-${k}">${l}</button>`).join("")}</div>`;
   const views={timmar:()=>viewTimmar(),vp:()=>viewVP(R,u),vvb:async()=>viewVVB(),uterum:()=>viewUterum(R,u),traktor:()=>viewTraktor(R,u),tesla:()=>viewTesla(R,u)};
@@ -1692,7 +1692,7 @@ async function renderDetalj(){
     let body="";try{body=await views[k]();}catch(e){body=`<div class="card err">Kunde inte läsa data: ${esc(e.message)}</div>`;}
     h+=`<details class="det" id="det-${k}" ${(state.detClosed[`det-${k}`]!=null?state.detClosed[`det-${k}`]:!["timmar","vp"].includes(k))?"":"open"}><summary><h2 style="display:inline;font-size:20px">${l}</h2></summary>${body}</details>`;
   }
-  $("#p-detalj").innerHTML=h;
+  $("#p-energi").innerHTML=energiSw()+h;
   const c=$("#cmp");if(c)c.value=state.cmp;
 }
 
@@ -1708,7 +1708,9 @@ function devCard(d){
   if(c.dim&&c.dim.value!=null)h+=`<input type="range" oninput="var b=this.closest('.dev').querySelector('.dimv');if(b)b.textContent=this.value+' %'" min="1" max="100" value="${Math.round(c.dim.value*100)}" data-act="dim" aria-label="Ljusstyrka">`;
   return h+`</div>`;
 }
-function styrSwitch(){const v=state.styrView==="flows"?"flows":"styr";
+function viewSw(act,cur,opts){return `<div class="seg" role="tablist" style="margin-bottom:12px">${opts.map(([k,l])=>`<button data-act="${act}" data-v="${k}" role="tab" aria-pressed="${cur===k}">${l}</button>`).join("")}</div>`;}
+function styrSwitch(){return viewSw("styrview",state.styrView==="flows"?"flows":"styr",[["styr","Styrningar"],["flows","Flows"]]);}
+function styrSwitchOld(){const v=state.styrView==="flows"?"flows":"styr";
   return `<div class="seg" role="tablist" style="display:flex;gap:6px;margin-bottom:12px"><button class="btn ${v==="styr"?"pri":""}" data-act="styrview" data-v="styr" role="tab" aria-selected="${v==="styr"}">Styrningar</button><button class="btn ${v==="flows"?"pri":""}" data-act="styrview" data-v="flows" role="tab" aria-selected="${v==="flows"}">Flows</button></div>`;}
 function renderStyr(){
   if(state.styrView==="flows"){renderFlows();return;}
@@ -1964,7 +1966,7 @@ async function refresh(opts={}){
     if(!opts.quiet)setStatus("Hämtar…");
     if(isDemo())demoSetup();
     else{const [dv,zn]=await Promise.all([api("/api/manager/devices/device/"),api("/api/manager/zones/zone/")]);state.devices=dv||{};state.zones=zn||{};}
-    if(["flows","styr","sonos","oversikt","detalj","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
+    if(["flows","styr","sonos","oversikt","energi","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
     drawProp();showErr(null);
     await draw();
     setStatus((isDemo()?"Demo · ":"")+"Uppdaterad "+new Date().toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
@@ -1977,7 +1979,6 @@ async function draw(){
   state.keepFocus=document.activeElement&&["q","aq"].includes(document.activeElement.id);
   if(state.tab==="oversikt")await renderOversikt();
   else if(state.tab==="energi")await renderEnergi();
-  else if(state.tab==="detalj")await renderDetalj();
   else if(state.tab==="timpris")await renderTimpris();
   else if(state.tab==="klimat")await renderKlimat();
   else if(state.tab==="styr")renderStyr();
@@ -1991,7 +1992,7 @@ function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.q
 function showTab(t){
   state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
-  for(const k of ["oversikt","energi","timpris","detalj","klimat","styr","sonos","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  for(const k of ["oversikt","energi","timpris","klimat","styr","sonos","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
 }
 
@@ -2027,6 +2028,7 @@ document.addEventListener("click",async e=>{
     else if(act==="hide"){(cfg.ui.devices[id]=cfg.ui.devices[id]||{}).show=false;persist();draw();}
     else if(act==="unhide"){(cfg.ui.devices[b.dataset.dev]=cfg.ui.devices[b.dataset.dev]||{}).show=true;persist();draw();}
     else if(act==="toggle"){const d=state.devices[id];await setCap(id,"onoff",!d.capabilitiesObj.onoff.value);draw();}
+    else if(act==="energiview"){state.energiView=b.dataset.v;state.search="";draw();}
     else if(act==="styrview"){state.styrView=b.dataset.v;state.search="";draw();}
     else if(act==="flow"){await runFlow(id);state.flash[id]=true;draw();setTimeout(()=>{delete state.flash[id];draw();},1800);}
     else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
