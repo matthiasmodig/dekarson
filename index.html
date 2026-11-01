@@ -2299,7 +2299,7 @@ function renderHus(){
     {const all=r.none?[]:husCeil(r),cs=all.filter(d=>!husCeilPos(r,d)),dot=(d,x,y)=>{const on=!!capVal(d,"onoff");
       g+=`<g data-act="tgl" data-dev="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(devName(d))}: ${on?"tänd":"släckt"}" style="cursor:pointer"><title>${esc(devName(d))} · ${on?"tänd":"släckt"}</title><circle cx="${x}" cy="${y}" r="12" fill="${on?"hsl(45 95% 55%)":"var(--card,#fff)"}" stroke="var(--ink)" stroke-width="2.5"/><text x="${x}" y="${y+5}" text-anchor="middle" style="font-size:14px;font-weight:700;fill:${on?"#222":"var(--ink)"};pointer-events:none">${husLtr(d)}</text></g>`;};
       if(ABOVE_NAME.has(r.id)){/* takspot/taklampa strax ovanför rumsnamnet */
-        const sp=Math.min(30,(r.w-30)/Math.max(1,all.length)),y0=cy-8-fs*0.72-17;all.forEach((d,k)=>dot(d,cx+(k-(all.length-1)/2)*sp,y0));}
+        const top=all.filter(d=>!husCeilPos(r,d)),sp=Math.min(30,(r.w-30)/Math.max(1,top.length)),y0=cy-8-fs*0.72-17;top.forEach((d,k)=>dot(d,cx+(k-(top.length-1)/2)*sp,y0));all.filter(d=>husCeilPos(r,d)).forEach(d=>{const p=husCeilPos(r,d);dot(d,r.x+r.w*p[0],r.y+r.h*p[1]);});}
       else{cs.forEach((d,k)=>dot(d,r.x+r.w*(k+1)/(cs.length+1),r.y+30));all.filter(d=>husCeilPos(r,d)).forEach(d=>{const p=husCeilPos(r,d);dot(d,r.x+r.w*p[0],r.y+r.h*p[1]);});}
       if(r.id==="kok"){/* köksbänkens spottar till höger om W-raden, köksfläkten till vänster om rumsnamnet */
         const ds=husDevs(r),L=husLine(r,i,mode,fs),spots=ds.filter(d=>/spot/i.test(devName(d))&&!/tak|f(ö|o)nster/i.test(devName(d))&&hasOnoff(d)),fans=ds.filter(d=>/fl(ä|a)kt/i.test(devName(d))&&hasOnoff(d));
