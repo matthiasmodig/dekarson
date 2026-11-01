@@ -375,7 +375,14 @@ function isShown(d){
 }
 const isFav=d=>!!(cfg.ui.devices[d.id]&&cfg.ui.devices[d.id].fav);
 /* "Tvätt och tork" är en summaenhet för tvättmaskin + torktumlare: exkluderas ur alla beräkningar och listor, de enskilda enheterna räknas i stället */
-function propDevices(){return Object.values(state.devices).filter(d=>propOf(d)===state.prop&&d.id!==cfg.ids.tvtork);}
+/* ---- Centralt lager: sammanslagna visningsenheter (undantaget underhålls bara här) ---- */
+const SUMMARY_IDS=()=>[cfg.ids.tvtork].filter(Boolean);
+const isSummaryDevice=d=>!!d&&SUMMARY_IDS().includes(d.id);
+const isSummaryId=id=>SUMMARY_IDS().includes(id);
+const countable=ds=>ds.filter(d=>d&&!isSummaryDevice(d));
+const sumPower=ds=>countable(ds).reduce((a,d)=>a+(capVal(d,"measure_power")||0),0);
+const sumEnergy=ds=>countable(ds).reduce((a,d)=>a+(capVal(d,"meter_power")||0),0);
+function propDevices(){return countable(Object.values(state.devices).filter(d=>propOf(d)===state.prop));}
 
 function flowTriggerable(f,kind){
   if(f.triggerable===true)return true;
@@ -451,7 +458,7 @@ async function loadSeries(minDate){
   for(const [k,id] of EXTRA_SERIES()){if(!id||!state.devices[id])continue;
     S[k]={kwh:await safe(()=>fetchMerged(id,"meter_power",minDate,dailyFromCumulativeLive(capVal(state.devices[id],"meter_power")))),kr:{}};
     S[k].hkr=await safe(()=>hourlyKrBest(id));}
-  {const ds=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(i=>i&&state.devices[i]);
+  {const ds=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(i=>i&&state.devices[i]&&!isSummaryId(i));
    if(ds.length){const kwh={},hk={};
      for(const id of ds){const x=await safe(()=>fetchMerged(id,"meter_power",minDate,e=>dailyFromCumulative(e,false)));for(const d in x)kwh[d]=(kwh[d]||0)+x[d];
        const y=await safe(()=>hourlyKrBest(id));for(const d in y)hk[d]=(hk[d]||0)+y[d];}
@@ -506,7 +513,7 @@ async function hourlyKr(id){
   const ks=Object.keys(sm).sort();if(ks.length&&ks[0].slice(11)!=="00")delete out[ks[0].slice(0,10)]; /* första dygnet är bara delvis täckt av loggen */
   return out;
 }
-const EXTRA_SERIES=()=>[["tvm",cfg.ids.tvm],["tkt",cfg.ids.tkt],["tsk",cfg.ids.tsk],["vent",cfg.ids.ventilation],["kok",cfg.ids["koksfläkt"]],["spot",cfg.ids.spotKok],["avl",cfg.ids.avlopp]];
+const EXTRA_SERIES=()=>[["tvm",cfg.ids.tvm],["tkt",cfg.ids.tkt],["tsk",cfg.ids.tsk],["vent",cfg.ids.ventilation],["kok",cfg.ids["koksfläkt"]],["spot",cfg.ids.spotKok],["avl",cfg.ids.avlopp]].filter(x=>!isSummaryId(x[1]));
 function addEstKr(S){
   const T=S.tibber;if(!T)return S;
   for(const k of ["traktor","trl","trm","golv","entre","vent","kok","spot","avl","vvb","tvm","tkt","tsk"]){
@@ -2087,9 +2094,9 @@ async function viewTimmar(){
   return h;
 }
 function viewVVB(){
-  const ids=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(Boolean),ds=ids.map(i=>state.devices[i]).filter(Boolean),nb=state.devices[cfg.ids.nibe];
+  const ids=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(i=>i&&!isSummaryId(i)),ds=ids.map(i=>state.devices[i]).filter(Boolean),nb=state.devices[cfg.ids.nibe];
   const ttl=(k,f)=>{const t=nb&&((nb.capabilitiesObj||{})[k]||{}).title;return t&&t!==k?t:f;};
-  const tot=ds.reduce((a,d)=>a+(capVal(d,"measure_power")||0),0),kwh=ds.reduce((a,d)=>a+(capVal(d,"meter_power")||0),0);
+  const tot=sumPower(ds),kwh=sumEnergy(ds);
   let g=tileA('data-card="vvb"',"Effekt just nu",fmt(tot,0),"W",ds.length+" mätare/uttag","hero")
    +(capVal(nb,"capability_3")!=null?sensTile(cfg.ids.nibe,"capability_3",esc(ttl("capability_3","Varmvatten topp (BT7)")),fmt(capVal(nb,"capability_3"),1),"°C","NIBE"):"")
    +(capVal(nb,"capability_4")!=null?sensTile(cfg.ids.nibe,"capability_4",esc(ttl("capability_4","Varmvatten laddning (BT6)")),fmt(capVal(nb,"capability_4"),1),"°C","NIBE"):"")
@@ -2210,7 +2217,7 @@ function husWin(r){return husDevs(r).filter(d=>/f(ö|o)nster/i.test(devName(d))&
 function husInfo(r){
   const ds=husDevs(r),tp=husTemp(r,ds),hum=husHum(ds,tp),lamps=ds.filter(d=>isLamp(d)&&hasOnoff(d)),on=lamps.filter(d=>capVal(d,"onoff")).length;
   const w=ds.filter(d=>!isLamp(d)||capVal(d,"onoff")).reduce((a,d)=>a+(capVal(d,"measure_power")||0),0)+ds.filter(d=>isLamp(d)&&capVal(d,"onoff")&&false).length;
-  const wAll=ds.reduce((a,d)=>a+((capVal(d,"onoff")!==false?capVal(d,"measure_power"):0)||0),0);
+  const wAll=countable(ds).reduce((a,d)=>a+((capVal(d,"onoff")!==false?capVal(d,"measure_power"):0)||0),0);
   return {ds,tp,hum,lamps,on,w:wAll};}
 /* Fönsterlampor/spots längs rummets ytterkant. Varje markering är en liten knapp som tänder/släcker just den enheten. */
 /* Liten klickbar "NN %"-text inuti en kart-knapp: öppnar enhetens kort (ljusstyrka) i stället för att tända/släcka */
@@ -2462,7 +2469,7 @@ function nowModalHtml(){
   <div class="card" style="margin-top:12px">${on.length?on.map(x=>row(esc(devName(x.d)),zoneName(x.d),x.w)).join(""):`<div class="note">Inga mätta förbrukare är påslagna just nu.</div>`}${ovr!=null?row("Övrigt, ej mätt","",ovr,"var(--mut)")+`<div class="note" style="font-size:12px">${OVRNOTE}</div>`:""}</div>`;
 }
 function consumersNow(){
-  const skip=new Set([cfg.ids.tvtork,cfg.ids.nibe,cfg.ids.fastighet,cfg.ids.tibber,cfg.ids.live235,cfg.ids.d236,cfg.ids.price,cfg.ids.elpris,cfg.ids.l236_1,cfg.ids.l236_2,cfg.ids.l236_3]);
+  const skip=new Set([...SUMMARY_IDS(),cfg.ids.nibe,cfg.ids.fastighet,cfg.ids.tibber,cfg.ids.live235,cfg.ids.d236,cfg.ids.price,cfg.ids.elpris,cfg.ids.l236_1,cfg.ids.l236_2,cfg.ids.l236_3]);
     const agg=/^(Energi|Energiöversikt|Elmätare|Uppvärmning Hela|Hushållsel Hela|Fastighet)\b/i;["uppv","hush","vp","ovr","teslaE","trRep","golvRep"].forEach(k=>cfg.ids[k]&&skip.add(cfg.ids[k]));
     const on=propDevices().filter(d=>!skip.has(d.id)&&!agg.test(d.name)&&(capVal(d,"onoff")===true||(capVal(d,"measure_power")||0)>5)).map(d=>({d,w:capVal(d,"measure_power")}));
     {const t=state.devices[cfg.ids.tesla],cw=t&&capVal(t,"measure_charge_power");if(t&&state.prop==="235"&&capVal(t,"charging_on")===true&&cw>0)on.push({d:t,w:cw*1000});}
@@ -2627,7 +2634,7 @@ function demoSetup(){
     ...[1,2,3].map(i=>mk(cfg.ids["l236_"+i],"Elmätare 236 L"+i,"other","z236",{measure_power:170+i*20,meter_power:1000*i+Math.round(Date.now()/36e5)%50})),
     mk(cfg.ids.fastighet,"Fastighet","sensor","zh",{measure_power:3733,"measure_power.a":2924,"measure_power.b":438,"measure_power.c":371,measure_current:18.7,"measure_current.a":13.2,"measure_current.b":2.9,"measure_current.c":2.6,"measure_voltage.a":226,"measure_voltage.b":231.8,"measure_voltage.c":232.3}),
     mk(cfg.ids.floor,"Golvvärme","socket","zh",{onoff:true,measure_power:420,meter_power:812,"measure_temperature.1":32.4,"measure_temperature.2":27.9,"measure_temperature.3":29.1,"measure_temperature.4":25.6}),mk(cfg.ids.slab,"Betongplatta Uterum","sensor","z4",{measure_temperature:18.7,measure_humidity:52}),mk(cfg.ids.avlopp,"Avloppsbrunn","socket","zh",{onoff:true,measure_power:0}),
-    mk(cfg.ids.tvm,"Tvättmaskin Tvättstuga","socket","zh",{onoff:true,measure_power:0,meter_power:19.6}),mk(cfg.ids.tkt,"Torktumlare Tvättstuga","socket","zh",{onoff:true,measure_power:0,meter_power:17.4}),mk(cfg.ids.tsk,"Torkskåp Tvättstuga","socket","zh",{onoff:true,measure_power:0,meter_power:21.9}),
+    mk(cfg.ids.tvm,"Tvättmaskin Tvättstuga","socket","zh",{onoff:true,measure_power:94.78,meter_power:20.046}),mk(cfg.ids.tkt,"Torktumlare Tvättstuga","socket","zh",{onoff:true,measure_power:931.94,meter_power:17.809}),mk(cfg.ids.tvtork,"Tvätt och tork Tvättstuga","socket","zh",{onoff:true,measure_power:1026.72,meter_power:37.855}),mk(cfg.ids.tsk,"Torkskåp Tvättstuga","socket","zh",{onoff:true,measure_power:0,meter_power:21.9}),
     mk(cfg.ids.entre,"Entrévärme Utomhus","socket","zh",{onoff:false,measure_power:0,meter_power:81.8}),
     mk(cfg.ids.d236,"Energiöversikt 236","other","z236",{"measure_power.number1":509,"devicecapabilities_number.number2":172,"devicecapabilities_number.number3":184,"devicecapabilities_number.number4":107,"devicecapabilities_number.number5":172,"devicecapabilities_number.number6":184})
   ];
