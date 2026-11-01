@@ -597,6 +597,12 @@ async function loadVars(){
   try{if(!state.vars||Date.now()-state.vars.t>20000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};}catch(e){return null;}
   return state.vars.v;
 }
+/* Fördelning av traktorns uppmätta effekt: Homey-variablerna är källa, annars samma regel räknad här (MV på: högst 15 W laddning, resten MV; MV av: allt laddning) */
+function trSplit(){const D=cfg.ids,dl=state.devices[D.trLoad];let l=homeyVar(D.trLoadW),m=homeyVar(D.trMvW);
+  if(l!=null&&m!=null)return {l,m,e:{l:homeyVar(D.trLoadE),m:homeyVar(D.trMvE)}};
+  if(!dl)return {l:null,m:null,e:{}};const p=Math.max(0,capVal(dl,"measure_power")||0),on=!!capVal(state.devices[D.trHeat],"onoff"),ld=on?Math.min(15,p):p;
+  return {l:ld,m:on?p-ld:0,e:{}};}
+function trSub(k,noW){const x=trSplit(),w=k==="l"?x.l:x.m,e=x.e[k],en=e!=null?fmt(e,2)+" kWh beräknat":"beräknad fördelning";return noW?en:(w!=null?fmt(w,0)+" W · ":"")+en;}
 function homeyVar(id){const V=state.vars&&state.vars.v;if(!V)return null;const x=Object.values(V).find(y=>y.id===id);return x&&x.value!=null&&x.value!==""?Number(x.value):null;}
 function dtTile(label,id,fallback,note){
   const v=homeyVar(id),val=v!=null?v:(isDemo()?fallback:null);
@@ -748,10 +754,11 @@ function heatCards(){
   const dv=id=>state.devices[id];
   const sub=d=>{const dim=capVal(d,"dim"),kw=capVal(d,"meter_power");return (dim!=null&&capVal(d,"onoff")?Math.round(dim*100)+" % · ":"")+(kw!=null?fmt(kw,1)+" kWh totalt":"Ingen energimätare");};
   const t=(id,n)=>{const d=dv(id);return d&&hasOnoff(d)?onoffTile(d,n,n,sub(d),"",true):"";};
+  const tr_=(id,n,k)=>{const d=dv(id);return d&&hasOnoff(d)?onoffTile(d,n,n,trSub(k,true),"",true):"";};
   const r1=t(state.devices[cfg.ids.entre]?cfg.ids.entre:cfg.ids.floor,"Entréplatta");
   const tz=dv(cfg.ids.tesla),teslaT=tz?(()=>{const ch=capVal(tz,"charging_on")===true,kw=capVal(tz,"measure_charge_power"),soc=capVal(tz,"measure_soc_level"),mn=capVal(tz,"measure_time_to_full_charge")??capVal(tz,"measure_charge_minutes_to_full");
     return tileA('data-goto="status"',"Tesla",ch?"Laddar":"Laddar inte","",(ch&&kw!=null?fmt(kw,1)+" kW · ":"")+(soc!=null?fmt(soc,0)+" % batteri":"")+(ch&&mn?" · "+fmt(mn,0)+" min kvar":""));})():"";
-  const rA=t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+teslaT,rB=t(cfg.ids.trLoad,"Traktor laddning")+t(cfg.ids.trHeat,"Traktor MV")+r1;
+  const rA=t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+teslaT,rB=tr_(cfg.ids.trLoad,"Traktor laddning","l")+tr_(cfg.ids.trHeat,"Traktor MV","m")+r1;
   return `<section class="grp"><h3>Styrning och kontroll</h3>${rA?`<div class="rowN" style="--c:3;margin-bottom:12px">${rA}</div>`:""}${rB?`<div class="rowN" style="--c:3">${rB}</div>`:""}</section>`;
 }
 const PWRON=5;
@@ -1026,8 +1033,8 @@ async function renderOversikt(){
     g2+=sensTile(cfg.ids.nibe,"capability_0","Utetemperatur",fmt(capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out"),1),"°C",(feel!=null?"Känns som "+fmt(feel,1)+" °C (SMHI) · ":"")+"NIBE BT1");
     g2+=sensTile(cfg.ids.slab,"measure_temperature","Betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
     h+=elGrp;
-    {const tc=await tibberHtml();h+=tc.html;if(!tc.ok){try{h+=await priceBlock(0,true);}catch(err){}}}
     try{h+=planHtml();}catch(err){}
+    {const tc=await tibberHtml();h+=tc.html;if(!tc.ok){try{h+=await priceBlock(0,true);}catch(err){}}}
     if(state.devices[cfg.ids.tesla])h+=`<section class="grp" style="margin-top:14px"><h3>Tesla</h3>`+teslaTiles(state.unit)+`</section>`;
   }else{
     h+=`<section class="grp" style="margin-top:14px"><h3>Effekt · Dekarsön 236</h3>`+await medelEffektHtml()+`</section>`;
@@ -1068,7 +1075,7 @@ async function consumersHtml(S){
   const pw=d=>{const w=capVal(d,"measure_power");return w!=null?fmt(w,0)+" W":"–";};
   const rows=[["Traktor laddning (beräknad)",cfg.ids.trLoad,S.trl||S.traktor,"trl"],["Traktor MV (beräknad)",cfg.ids.trHeat,S.trm,"trm"],["Golvvärme uterum",cfg.ids.floor,S.golv],["Entrévärme utomhus",cfg.ids.entre,S.entre]];
   let h=`<section class="grp" style="margin-top:18px"><h3>Enskilda förbrukare · Dekarsön 235</h3><div class="card"><div style="overflow:auto"><table><tr><th>Utrustning</th><th>Status</th><th>Effekt</th><th>Idag</th><th>Denna månad</th><th>I år</th><th>Snittpris månad</th><th>Uppdaterad</th></tr>`;
-  for(const [nm,id,T,ck] of rows){const d=state.devices[id],lv=ck==="trl"?homeyVar(cfg.ids.trLoadW):ck==="trm"?homeyVar(cfg.ids.trMvW):null,pwv=lv!=null?fmt(lv,0)+" W":pw(d);
+  for(const [nm,id,T,ck] of rows){const d=state.devices[id],lv=ck==="trl"?trSplit().l:ck==="trm"?trSplit().m:null,pwv=lv!=null?fmt(lv,0)+" W":pw(d);
     h+=`<tr class="kcard" ${d?`data-onoff="${esc(id)}" data-nm="${esc(nm)}" tabindex="0" style="cursor:pointer"`:""}><td>${nm}</td><td>${status(d)}</td><td>${pwv}</td>${cell(T,t)}${cell(T,ms)}${cell(T,ys)}<td>${avg(T,ms)}</td><td>${upd(d)}</td></tr>`;}
   const te=state.devices[cfg.ids.teslaE],n=k=>capVal(te,"devicecapabilities_number."+k);
   if(te){const tcell=(e,kr)=>n(e)!=null?`<td>${fmt(n(e),1)} kWh<br><b>${n(kr)!=null?fmt(n(kr),0)+" kr":"–"}</b></td>`:`<td>–</td>`;
@@ -1494,7 +1501,6 @@ function costTableHtml(S,R){
     const kr=sumRange(T,"kr",R.s,R.e),kw=sumRange(T,"kwh",R.s,R.e),cov=R.len?Math.round((R.len-Math.min(kr.missing,kw.missing))/R.len*100):0;
     const why=k==="tibber"?"Total (räknas aldrig dubbelt)":T.calc?"Beräknad fördelning av uppmätt traktoreffekt · ingår i totalen, läggs inte till":T.derived?"Beräknad ≈ (Tibber − Hushåll − Uppvärmning)":T.est?"≈ kr = kWh × timpris när den var igång":["hush","uppv","vp"].includes(k)?"Homeys rapportenhet · överlappar totalen":"Homey";
     h+=`<tr class="kcard" data-card="${k}" tabindex="0" style="cursor:pointer"><td>${name}</td><td>${T.est||T.derived?"≈ ":""}${fmt(kr.v,0)}</td><td>${fmt(kw.v,0)}</td><td>${kw.v>0&&kr.v!=null?fmt(kr.v/kw.v,2):"–"}</td><td>${k==="tibber"?"100 %":(tot>0&&kr.v!=null?fmt(kr.v/tot*100,0)+" %":"–")}</td><td>${cov} %</td><td style="text-align:left;color:var(--mut);white-space:normal">${why}</td></tr>`;}
-  h+=`<tr><td>Traktor motorvärmare</td><td colspan="6" style="color:var(--mut)">Saknar egen energimätning · kostnad kan inte beräknas</td></tr>`;
   h+=`</table></div><div class="note">Hushållsel, Uppvärmning och Värmepump överlappar varandra och totalen, så delposterna ska inte summeras. Klicka på en rad för detaljer.</div></div>`;
   return h;
 }
@@ -1662,9 +1668,7 @@ const wdIdx=d=>(new Date(d+"T00:00:00Z").getUTCDay()+6)%7;
 function liveOf(k){
   const D=cfg.ids,g=(id,c)=>capVal(state.devices[id],c);
   const map={tibber:g(D.live235,"measure_power"),uppv:g(D.uppv,"measure_power"),vp:g(D.nibe,"measure_power"),traktor:g(D.trLoad,"measure_power"),golv:g(D.floor,"measure_power"),entre:g(D.entre,"measure_power"),vent:g(D.ventilation,"measure_power"),kok:g(D["koksfläkt"],"measure_power"),spot:g(D.spotKok,"measure_power"),avl:g(D.avlopp,"measure_power"),d236:g(D.d236,"measure_power.number1")};
-  if(k==="trl"||k==="trm"){let v=homeyVar(k==="trl"?D.trLoadW:D.trMvW);
-    if(v==null&&isDemo()){const g_=id=>state.devices[id],p=Math.max(0,g(D.trLoad,"measure_power")||0),on=!!capVal(g_(D.trHeat),"onoff"),ld=on?Math.min(15,p):p,mv=on?p-ld:0;v=k==="trl"?ld:mv;}
-    return v==null?"":"Nu "+fmt(v,0)+" W · beräknad";}
+  if(k==="trl"||k==="trm"){const x=trSplit(),v=k==="trl"?x.l:x.m;return v==null?"":"Nu "+fmt(v,0)+" W · beräknad";}
   const w=map[k];
   if(k==="tesla"){const on=g(D.tesla,"charging_on");return on==null?"":(on?"Laddar nu":"Laddar inte")+(g(D.tesla,"measure_soc_level")!=null?" · "+fmt(g(D.tesla,"measure_soc_level"),0)+" %":"");}
   return w==null?"":"Nu "+fmt(w,0)+" W";
@@ -1989,8 +1993,8 @@ async function viewTraktor(R,u){
   const l=state.devices[cfg.ids.trLoad],m=state.devices[cfg.ids.trHeat],un=unitName(u);
   const mOn=!!capVal(m,"onoff"),lOn=!!capVal(l,"onoff");
   const oo=(d,nm,label,val,unit,sub,cls)=>d?`<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${capVal(d,"onoff")?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${capVal(d,"onoff")?"on":""}"></span> ${ic(label)}${label}</div><div class="v">${val}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`:tile(label,val,unit,sub,cls);
-  let h=`<div class="grid">${oo(l,"Traktor laddning","Laddning",lOn?"PÅ":"Av","","Effekt "+fmt(capVal(l,"measure_power"),0)+" W · klicka för att styra och se historik","hero")}
-    ${oo(m,"Traktor MV","Motorvärmare",mOn?"PÅ":"Av","","Klicka för att styra och se historik")}${tileA('data-card="traktor"',"Total energi laddare",fmt(capVal(l,"meter_power"),1),"kWh","Ackumulerat i uttaget")}</div>`;
+  let h=`<div class="grid">${oo(l,"Traktor laddning","Laddning",lOn?"PÅ":"Av","",trSub("l")+" · klicka för att styra","hero")}
+    ${oo(m,"Traktor MV","Motorvärmare",mOn?"PÅ":"Av","",trSub("m")+" · klicka för att styra")}${tileA('data-card="trl"',"Laddning, historik",fmt(trSplit().e.l,2),"kWh","Beräknad fördelning")}${tileA('data-card="trm"',"Motorvärmare, historik",fmt(trSplit().e.m,2),"kWh","Beräknad fördelning")}${tile("Uppmätt total i uttaget",fmt(capVal(l,"meter_power"),1),"kWh","Fysisk mätare · laddning + MV")}</div>`;
   const minDate=R.ps&&R.ps<R.s?R.ps:R.s;
   return h;
 }
@@ -2177,7 +2181,7 @@ function renderHus(){
     g+=`<g data-act="tglc" data-dev="${esc(en.id)}" data-nm="Entréplatta" tabindex="0" role="button" aria-label="Entréplatta ${on?"på":"av"}, tryck för att ${on?"stänga av":"starta"}" style="cursor:pointer"><title>Entréplatta · ${on?"på":"av"}</title><rect x="1000" y="872" width="180" height="56" rx="10" fill="${on?"hsl(25 90% 60%)":"var(--card,#fff)"}" stroke="var(--ink)" stroke-width="3"/><text x="1090" y="896" text-anchor="middle" style="font-size:18px;font-weight:700;fill:${on?"#222":"var(--ink)"};pointer-events:none">Entréplatta ${on?"På":"Av"}</text><text x="1090" y="919" text-anchor="middle" style="font-size:17px;fill:${on?"#222":"var(--mut)"};pointer-events:none">${fmt(w||0,0)} W</text></g>`;}
     const av=state.devices[cfg.ids.avlopp];if(av&&hasOnoff(av)){const on=!!capVal(av,"onoff"),w=capVal(av,"measure_power");
     g+=`<g data-act="tglc" data-nm="Avloppsbrunn" data-dev="${esc(av.id)}" tabindex="0" role="button" aria-label="Avloppsbrunn ${on?"på":"av"}" style="cursor:pointer"><title>Avloppsbrunn · ${on?"på":"av"}</title><rect x="376" y="78" width="110" height="74" rx="12" fill="${on?"hsl(200 70% 60%)":"var(--card,#fff)"}" stroke="var(--ink)" stroke-width="3"/><text x="431" y="109" text-anchor="middle" style="font-size:18px;font-weight:700;fill:${on?"#102030":"var(--ink)"};pointer-events:none">Avlopp</text><text x="431" y="136" text-anchor="middle" style="font-size:16px;fill:${on?"#102030":"var(--mut)"};pointer-events:none">${on?"På":"Av"}${on&&w>0?" · "+fmt(w,0)+" W":""}</text></g>`;}}
-  [[cfg.ids.trLoad,"Traktor laddning",30],[cfg.ids.trHeat,"Traktor MV",200]].forEach(([id,l,x])=>{const d=state.devices[id];if(!d||!hasOnoff(d))return;const on=!!capVal(d,"onoff"),w=capVal(d,"measure_power");
+  [[cfg.ids.trLoad,"Traktor laddning",30],[cfg.ids.trHeat,"Traktor MV",200]].forEach(([id,l,x])=>{const d=state.devices[id];if(!d||!hasOnoff(d))return;const on=!!capVal(d,"onoff"),w=id===cfg.ids.trLoad?trSplit().l:trSplit().m;
     g+=`<g data-act="tgl" data-dev="${esc(d.id)}" tabindex="0" role="button" aria-label="${l} ${on?"på":"av"}" style="cursor:pointer"><title>${l} · ${on?"på":"av"}</title><rect x="${x}" y="204" width="160" height="50" rx="10" fill="${on?"hsl(140 60% 55%)":"var(--card,#fff)"}" stroke="var(--ink)" stroke-width="3"/><text x="${x+80}" y="226" text-anchor="middle" style="font-size:17px;font-weight:700;fill:${on?"#102010":"var(--ink)"};pointer-events:none">${l}</text><text x="${x+80}" y="245" text-anchor="middle" style="font-size:15px;fill:${on?"#102010":"var(--mut)"};pointer-events:none">${on?"På":"Av"}${on&&w>0?" · "+fmt(w,0)+" W":""}</text></g>`;});
   g+=`<g transform="translate(1470,70)"><circle r="46" fill="none" stroke="var(--ink)" stroke-width="3"/><path d="M0 -40 L9 8 L0 0 L-9 8Z" fill="var(--ink)"/><text y="68" text-anchor="middle" style="font-size:22px;font-weight:700;fill:var(--ink)">N</text></g>`;
   g+=`<text x="40" y="272" style="font-size:16px;fill:var(--mut)">27,4 m</text>`;
