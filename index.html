@@ -636,8 +636,10 @@ const ICON_RULES=[[/ytterdörr|lås\b|olåst/,"lock"],[/motorvärm|traktor mv/,"
 function iconSvg(n){return ICONS[n]?`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`:"";}
 function ic(label,def){const t=String(label||"").replace(/<[^>]*>/g,"").toLowerCase();for(const [r,n] of ICON_RULES)if(r.test(t))return iconSvg(n);return def?iconSvg(def):"";}
 function dualTile(attrs,label,a,b,cls){
-  const col=x=>`<div style="min-width:0"><div class="v" style="font-size:26px;white-space:nowrap">${x.est?"≈ ":""}${fmt(x.v,x.dec||0)} <small>${x.un}</small></div><div class="s" style="font-size:12.5px;min-height:18px;white-space:nowrap">${x.sub||""}</div></div>`;
-  return `<div ${attrs||""} ${attrs?'tabindex="0" role="button" style="cursor:pointer"':""} class="card tile ${cls||""}"><div class="l">${ic(label)}${label}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">${col(a)}${col(b)}</div></div>`;
+  const sm=/\bsm\b/.test(cls||"");
+  const col=x=>`<div style="min-width:0"><div class="v" style="font-size:${sm?20:26}px;white-space:nowrap">${x.est?"≈ ":""}${fmt(x.v,x.dec||0)} <small>${x.un}</small></div><div class="s" style="font-size:${sm?11.5:12.5}px;min-height:${sm?14:18}px;white-space:nowrap">${x.sub||""}</div></div>`;
+  const st=(attrs?"cursor:pointer;":"")+(sm?"padding:10px 12px;":"");
+  return `<div ${attrs||""} ${attrs?'tabindex="0" role="button"':""} ${st?`style="${st}"`:""} class="card tile ${cls||""}"><div class="l">${ic(label)}${label}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px">${col(a)}${col(b)}</div></div>`;
 }
 function tile(label,value,unit,sub,cls){return `<div class="card tile ${cls||""}"><div class="l">${ic(label)}${label}</div><div class="v">${value}${unit?` <small>${unit}</small>`:""}</div><div class="s">${sub||""}</div></div>`;}
 
@@ -1164,7 +1166,7 @@ async function renderEnergi(){
   h+=`</div></section>`;
   if(is235){const tb=state.devices[cfg.ids.tibber];
     const pk=capVal(tb,"meter_money_this_day"),pw=capVal(tb,"meter_kwh_this_day"),lk=capVal(tb,"meter_money_last_day"),lw=capVal(tb,"meter_kwh_last_day");
-    h+=grp("Idag och igår",dualTile('data-daily="kr"',"Idag",{v:pk,un:"kr",sub:delta(pk,lk,"mot igår")},{v:pw,un:"kWh",sub:delta(pw,lw,"mot igår")},"hero")+dualTile('data-daily="kr"',"Igår",{v:lk,un:"kr",sub:""},{v:lw,un:"kWh",sub:""}),2);}
+    h+=grp("Idag och igår",dualTile('data-daily="kr"',"Idag",{v:pk,un:"kr",sub:delta(pk,lk,"mot igår")},{v:pw,un:"kWh",sub:delta(pw,lw,"mot igår")},"sm")+dualTile('data-daily="kr"',"Igår",{v:lk,un:"kr",sub:""},{v:lw,un:"kWh",sub:""},"sm"),4);}
   h+=await dagbokHtml(false);
   if(is235){try{h+=await kortSections(R);}catch(e){h+=`<div class="note">Energikort kunde inte läsas: ${esc(e.message)}</div>`;}}
 
