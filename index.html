@@ -1082,11 +1082,25 @@ async function dagbokHtml(){
   if(!D)return `<section class="grp" style="margin-top:18px">${title}<div class="card note">Ange CSV-länken till fliken Dagbok under Admin → Energikällor så visas dygnshistoriken här.</div></section>`;
   const days=Object.keys(D).filter(d=>cols.some(c=>D[d][c[0]]&&D[d][c[0]].kwh!=null)).sort().reverse().slice(0,31);
   if(!days.length)return `<section class="grp" style="margin-top:18px">${title}<div class="card note">Inga rader för den här fastigheten i Dagbok-arket ännu.</div></section>`;
-  const cell=x=>x&&x.kwh!=null?`${fmt(x.kwh,1)} kWh${x.kr!=null?`<br><b>${fmt(x.kr,0)} kr</b>`:""}`:"–";
-  const sum=c=>days.reduce((a,d)=>{const x=D[d][c];return {k:a.k+(x&&x.kwh||0),r:a.r+(x&&x.kr||0)};},{k:0,r:0});
-  return `<section class="grp" style="margin-top:18px">${title}<div class="card"><div style="overflow:auto;max-height:460px"><table><tr><th>Datum</th>${cols.map(c=>`<th>${c[1]}</th>`).join("")}</tr>
-  ${days.map(d=>`<tr><td>${d}</td>${cols.map(c=>`<td>${cell(D[d][c[0]])}</td>`).join("")}</tr>`).join("")}
-  <tr><td><b>Summa ${days.length} dygn</b></td>${cols.map(c=>{const t=sum(c[0]);return `<td><b>${fmt(t.k,0)} kWh<br>${fmt(t.r,0)} kr</b></td>`;}).join("")}</tr></table></div>
+  const wd=d=>["sön","mån","tis","ons","tors","fre","lör"][new Date(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10)).getDay()];
+  const val=(d,c,m)=>{const x=D[d][c];return x&&x[m]!=null?x[m]:null;};
+  const mk=cols[0][0],tK=days.map(d=>val(d,mk,"kwh")||0),tR=days.map(d=>val(d,mk,"kr")),mxK=Math.max(1,...tK);
+  const n=days.length,sK=tK.reduce((a,b)=>a+b,0),rr=tR.filter(x=>x!=null),sR=rr.reduce((a,b)=>a+b,0);
+  const mi=tR.indexOf(Math.max(...rr)),hi=rr.length?mi:tK.indexOf(mxK);
+  const tiles=`<div class="rowN" style="--c:3;margin-bottom:12px">${tile("Senaste dygnet",fmt(tK[0],1),"kWh",days[0]+(tR[0]!=null?" · "+fmt(tR[0],0)+" kr":""),"hero")}${tile("Snitt per dygn",fmt(sK/n,1),"kWh",rr.length?fmt(sR/rr.length,0)+" kr per dygn · "+n+" dygn":n+" dygn")}${tile("Dyrast",rr.length?fmt(tR[hi],0):fmt(tK[hi],1),rr.length?"kr":"kWh",wd(days[hi])+" "+days[hi]+" · "+fmt(tK[hi],1)+" kWh")}</div>`;
+  /* stapeldiagram, äldst till vänster, dyraste dygnet markerat */
+  const rev=days.slice().reverse(),bw=100/rev.length,mxB=Math.max(1,...rev.map(d=>val(d,mk,"kwh")||0));
+  const chart=`<div style="display:flex;align-items:flex-end;gap:2px;height:96px;margin:4px 0 2px">${rev.map(d=>{const v=val(d,mk,"kwh")||0,r=val(d,mk,"kr");return `<div title="${wd(d)} ${d}: ${fmt(v,1)} kWh${r!=null?" · "+fmt(r,0)+" kr":""}" style="flex:1;height:${Math.max(3,v/mxB*100)}%;border-radius:3px 3px 0 0;background:${d===days[hi]?"var(--bad)":"var(--cur,#3b82f6)"};opacity:${d===days[hi]?1:.8}"></div>`;}).join("")}</div><div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut)"><span>${rev[0].slice(5)}</span><span>${rev[rev.length-1].slice(5)}</span></div>`;
+  const CL={hushall:"#3b82f6",uppv:"#f59e0b",ovrigt:"#94a3b8"};
+  const split=d=>{const t=val(d,"tibber","kwh");if(!is235||!t)return "";const p=k=>Math.max(0,(val(d,k,"kwh")||0)/t*100);
+    return `<div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--soft);min-width:120px" title="Hushåll ${fmt(p("hushall"),0)} % · Uppvärmning ${fmt(p("uppv"),0)} % · Övrigt ${fmt(p("ovrigt"),0)} %">${["hushall","uppv","ovrigt"].map(k=>`<i style="width:${p(k)}%;background:${CL[k]}"></i>`).join("")}</div>`;};
+  const rows=days.map(d=>{const v=val(d,mk,"kwh"),r=val(d,mk,"kr"),vp=is235?val(d,"vp","kwh"):null,we=["lör","sön"].includes(wd(d));
+    return `<tr><td style="white-space:nowrap"><b>${d.slice(8)}</b> <span style="color:var(--mut)">${wd(d)} ${["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"][+d.slice(5,7)-1]}</span>${we?` <span class="pill">helg</span>`:""}</td>
+      <td style="min-width:150px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:10px;border-radius:5px;background:var(--soft);overflow:hidden"><div style="width:${(v||0)/mxK*100}%;height:100%;background:${d===days[hi]?"var(--bad)":"var(--cur,#3b82f6)"}"></div></div><b style="width:62px;text-align:right">${v!=null?fmt(v,1)+" kWh":"–"}</b></div></td>
+      <td style="text-align:right;white-space:nowrap">${r!=null?"<b>"+fmt(r,0)+" kr</b>":"–"}</td>${is235?`<td>${split(d)}</td><td style="text-align:right;white-space:nowrap;color:var(--mut)">${vp!=null?"VP "+fmt(vp,1):""}</td>`:""}</tr>`;}).join("");
+  const legend=is235?`<div class="legend" style="margin:8px 0 0">${[["hushall","Hushåll"],["uppv","Uppvärmning"],["ovrigt","Övrigt"]].map(([k,l])=>`<span><i style="background:${CL[k]}"></i>${l}</span>`).join("")}</div>`:"";
+  return `<section class="grp" style="margin-top:18px">${title}${tiles}<div class="card" style="margin-bottom:12px"><h2>Förbrukning per dygn <span class="pill">${n} dygn</span></h2>${chart}<div class="note" style="margin-top:6px">Rött = dyraste dygnet. Håll över en stapel för detaljer.</div></div>
+  <div class="card"><div style="overflow:auto;max-height:520px"><table><tr><th>Dygn</th><th>Förbrukning</th><th style="text-align:right">Kostnad</th>${is235?`<th>Fördelning</th><th></th>`:""}</tr>${rows}</table></div>${legend}
   <div class="note">Källa: Homeys dagbok (Google Sheet), ett dygn per rad, skrivs 00:03. Datum tolkas som text, utan tidszonsomräkning.</div></div></section>`;
 }
 async function kortSections(R){
