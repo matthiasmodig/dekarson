@@ -2115,7 +2115,7 @@ async function viewVP(R,u){
   return h;
 }
 function teslaTiles(){
-  const t=state.devices[cfg.ids.tesla],e=state.devices[cfg.ids.teslaE],un=unitName(u);
+  const t=state.devices[cfg.ids.tesla],e=state.devices[cfg.ids.teslaE];
   const soc=capVal(t,"measure_soc_level")??capVal(t,"measure_battery"),on=capVal(t,"charging_on");
   const ts=(cap,l,v,u2,sb,c)=>t&&t.capabilitiesObj&&t.capabilitiesObj[cap]?sensTile(t.id,cap,l,v,u2,sb,c):tile(l,v,u2,sb,c);
   return `<div class="grid">${ts("measure_soc_level","Batteri",fmt(soc,0),"%",on?"Laddar just nu":"Laddar inte","hero")}
