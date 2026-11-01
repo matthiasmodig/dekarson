@@ -556,10 +556,11 @@ function onoffTile(d,nm,label,sub,cls,quick){if(!d)return "";const on=!!capVal(d
   if(quick)return `<div class="card tile ${cls||""}" data-act="toggle" data-id="${esc(d.id)}" tabindex="0" role="switch" aria-checked="${on}" title="Klicka för att slå ${on?"av":"på"}" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${ic(label)}${esc(label)}<button class="btn sm" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" style="float:right;padding:0 8px;min-height:24px;font-size:12px" title="Visa historik">Historik</button></div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W":""}${sub?(pw!=null?" · ":"")+sub:""}</div></div>`;
   return `<div class="card tile ${cls||""}" data-onoff="${esc(d.id)}" data-nm="${esc(nm)}" tabindex="0" role="button" title="Visa historik och styr" style="cursor:pointer;${on?"border:2px solid var(--on);":""}"><div class="l"><span class="dot ${on?"on":""}"></span> ${ic(label)}${esc(label)}</div><div class="v" style="${on?"color:var(--on)":""}">${on?"PÅ":"Av"}</div><div class="s">${pw!=null?fmt(pw,0)+" W":""}${sub?(pw!=null?" · ":"")+sub:""}</div></div>`;}
 function golvGroup(f,sensors){
-  if(!f)return "";const v=i=>capVal(f,"measure_temperature."+i);let h=onoffTile(f,"Golvvärme","Golvvärme","");
+  if(!f)return "";const v=i=>capVal(f,"measure_temperature."+i);let h="";
   if(sensors){h+=v(1)!=null?sensTile(f.id,"measure_temperature.1","Framledning golvvärme",fmt(v(1),1),"°C","Givare 1"):"";
-    h+=v(2)!=null?sensTile(f.id,"measure_temperature.2","Returledning golvvärme",fmt(v(2),1),"°C","Givare 2"):"";
-    h+=homeyVar(cfg.ids.dtGolv)!=null?dtTile("ΔT golvvärme",cfg.ids.dtGolv,0,"Fram − retur"):(v(1)!=null&&v(2)!=null?tile("ΔT golvvärme",fmt(v(1)-v(2),1),"°C","Fram − retur"):"");}
+    h+=v(2)!=null?sensTile(f.id,"measure_temperature.2","Returledning golvvärme",fmt(v(2),1),"°C","Givare 2"):"";}
+  h+=onoffTile(f,"Golvvärme","Golvvärme","");
+  if(sensors)h+=homeyVar(cfg.ids.dtGolv)!=null?dtTile("ΔT golvvärme",cfg.ids.dtGolv,0,"Fram − retur"):(v(1)!=null&&v(2)!=null?tile("ΔT golvvärme",fmt(v(1)-v(2),1),"°C","Fram − retur"):"");
   h+=capVal(f,"meter_power")!=null?tileA('data-card="golv"',"Energi totalt",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat"):"";
   return grp("Golvvärme",h,sensors?5:4);
 }
