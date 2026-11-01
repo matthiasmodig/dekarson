@@ -1159,11 +1159,13 @@ async function dagbokHtml(full){
 }
 async function kortSections(R){
   const c=await kortCtx(addDays(todayStr(),-400));
-  let h=`<section class="grp" style="margin-top:18px"><h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div></section>${await consumersHtml(c.S).catch(e=>`<div class="note">Förbrukare kunde inte läsas: ${esc(e.message)}</div>`)}<section class="grp"><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
+  let h=`<section class="grp" style="margin-top:18px"><h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div></section><section class="grp"><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
   for(const d of KORTCHARTS.map(k=>CHARTS.find(x=>x.k===k))){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
     h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
   return h+`</div></section>`;
 }
+function detBox(id,title,body,openDef,sum){const o=state.detClosed["det-"+id]!=null?!state.detClosed["det-"+id]:!!openDef;
+  return `<details class="det" id="det-${id}" ${o?"open":""} style="margin:12px 0"><summary><h2 style="display:inline;font-size:18px">${title}</h2>${sum?` <span class="note" style="margin:0 0 0 10px">${sum}</span>`:""}</summary>${body}</details>`;}
 function energiSw(){return viewSw("energiview",state.energiView==="detalj"?"detalj":"energi",[["energi","Energi"],["detalj","Detaljer"]]);}
 async function renderEnergi(){
   if(state.energiView==="detalj"){await renderDetalj();return;}
@@ -1177,7 +1179,7 @@ async function renderEnergi(){
   h+=`<div class="bar"><label>Jämför mot <select id="cmp"><option value="prev">Föregående period (lika lång)</option><option value="yoy">Samma period året innan</option><option value="none">Ingen jämförelse</option></select></label></div>`;
   h+=`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name}</div>`;
 
-  h+=`<section class="grp"><h3>${is235?"Hela huset · Tibber":"Effekt · Dekarsön 236"}</h3>`+await medelEffektHtml()+faseHtml()+`</section>`;
+  h+=`<section class="grp"><h3>${is235?"Hela huset · Tibber":"Effekt · Dekarsön 236"}</h3>`+await medelEffektHtml()+(()=>{const f=faseHtml();if(!f)return "";const ph=husPhases();return detBox("fas","Fasbalans",f,false,ph.map(([n,a])=>n+" "+fmt(a,1)+" A").join(" · "));})()+`</section>`;
   if(!is235){try{h+=await hist236Html();}catch(e){h+=`<div class="note">Historik kunde inte läsas: ${esc(e.message)}</div>`;}}
   if(!S){h+=`<div class="warn">Kunde inte läsa historiken från Homey: ${esc(serr)}</div>`;$("#p-energi").innerHTML=h;const c0=$("#cmp");if(c0)c0.value=state.cmp;return;}
   if(!T){h+=`<div class="card">Ange energikälla för ${PROPS.find(p=>p.k===state.prop).name} under Admin.</div>`;$("#p-energi").innerHTML=h;$("#cmp").value=state.cmp;return;}
@@ -1186,15 +1188,15 @@ async function renderEnergi(){
   const other=u==="kr"?"kwh":"kr",oun=unitName(other);
   const avg=cur.kwh.v>0&&cur.kr.v!=null?cur.kr.v/cur.kwh.v:null,pavg=prv&&prv.kwh.v>0&&prv.kr.v!=null?prv.kr.v/prv.kwh.v:null;
   const days=R.len-cur[u].missing||1,pdays=prv?R.len-prv[u].missing||1:1;
+  if(is235){const tb=state.devices[cfg.ids.tibber];
+    const pk=capVal(tb,"meter_money_this_day"),pw=capVal(tb,"meter_kwh_this_day"),lk=capVal(tb,"meter_money_last_day"),lw=capVal(tb,"meter_kwh_last_day");
+    h+=grp("Idag och igår",dualTile('data-daily="kr"',"Idag",{v:pk,un:"kr",sub:delta(pk,lk,"mot igår")},{v:pw,un:"kWh",sub:delta(pw,lw,"mot igår")},"sm")+dualTile('data-daily="kr"',"Igår",{v:lk,un:"kr",sub:""},{v:lw,un:"kWh",sub:""},"sm")+await dagbokHtml("card"),4);}
   h+=`<section class="grp" style="margin-top:6px"><h3>Vald period</h3><div class="rowN" style="--c:3">`;
   const dK=R.len-cur.kr.missing||1,dW=R.len-cur.kwh.missing||1,pdK=prv?R.len-prv.kr.missing||1:1,pdW=prv?R.len-prv.kwh.missing||1:1;
   h+=dualTile('data-daily="kr"',"Vald period",{v:cur.kr.v,un:"kr",sub:prv?delta(cur.kr.v,prv.kr.v,"mot "+fmt(prv.kr.v,0)):""},{v:cur.kwh.v,un:"kWh",sub:prv?delta(cur.kwh.v,prv.kwh.v,"mot "+fmt(prv.kwh.v,0)):""},"hero");
   h+=tileA('data-daily="kr"',"Snittpris",fmt(avg,2),"kr/kWh",pavg!=null?delta(avg,pavg,"mot "+fmt(pavg,2)):"");
   h+=dualTile('data-daily="kr"',"Per dygn",{v:cur.kr.v!=null?cur.kr.v/dK:null,un:"kr",sub:prv&&prv.kr.v!=null?delta(cur.kr.v/dK,prv.kr.v/pdK,""):""},{v:cur.kwh.v!=null?cur.kwh.v/dW:null,un:"kWh",sub:prv&&prv.kwh.v!=null?delta(cur.kwh.v/dW,prv.kwh.v/pdW,""):""});
   h+=`</div></section>`;
-  if(is235){const tb=state.devices[cfg.ids.tibber];
-    const pk=capVal(tb,"meter_money_this_day"),pw=capVal(tb,"meter_kwh_this_day"),lk=capVal(tb,"meter_money_last_day"),lw=capVal(tb,"meter_kwh_last_day");
-    h+=grp("Idag och igår",dualTile('data-daily="kr"',"Idag",{v:pk,un:"kr",sub:delta(pk,lk,"mot igår")},{v:pw,un:"kWh",sub:delta(pw,lw,"mot igår")},"sm")+dualTile('data-daily="kr"',"Igår",{v:lk,un:"kr",sub:""},{v:lw,un:"kWh",sub:""},"sm")+await dagbokHtml("card"),4);}
   if(!is235)h+=await dagbokHtml(false);
   if(is235){try{h+=await kortSections(R);}catch(e){h+=`<div class="note">Energikort kunde inte läsas: ${esc(e.message)}</div>`;}}
 
@@ -1208,7 +1210,7 @@ async function renderEnergi(){
   if(is235){
     const rows=SRC.map(src=>{const s=S[src.k];return {src,s,c:{kwh:sumRange(s,"kwh",R.s,R.e),kr:sumRange(s,"kr",R.s,R.e)},p:R.ps?{kwh:sumRange(s,"kwh",R.ps,R.pe),kr:sumRange(s,"kr",R.ps,R.pe)}:null};});
     const tot=cur[u].v;
-    h+=`<div class="card"><h2>Fördelning</h2><div style="overflow:auto"><table><tr><th>Källa</th><th>kWh</th><th>kr</th><th>kr/kWh</th><th>Andel (${un})</th>${prv?`<th>Förändring (${un})</th>`:""}</tr>`;
+    h+=`<details class="det" id="det-ford" ${state.detClosed["det-ford"]===false?"open":""} style="margin:12px 0"><summary><h2 style="display:inline;font-size:18px">Fördelning och kostnad per källa</h2></summary><div style="overflow:auto"><table><tr><th>Källa</th><th>kWh</th><th>kr</th><th>kr/kWh</th><th>Andel (${un})</th>${prv?`<th>Förändring (${un})</th>`:""}</tr>`;
     for(const r of rows){
       if(!r.s){h+=`<tr><td>${r.src.name}</td><td colspan="${prv?5:4}" style="color:var(--mut)">Ej konfigurerad</td></tr>`;continue;}
       const share=tot>0&&r.c[u].v!=null?r.c[u].v/tot*100:null,k=r.c.kwh.v>0&&r.c.kr.v!=null?r.c.kr.v/r.c.kwh.v:null;
@@ -1230,7 +1232,7 @@ async function renderEnergi(){
     if(cur[u].missing>0)notes.push(`${cur[u].missing} av ${R.len} dygn saknar data och är inte med i summan.`);
     if(rows.find(r=>r.s&&r.s.derived))notes.push("≈ Övrigt är beräknat (Tibber minus Hushållsel minus Uppvärmning). Skapa en rapportenhet för Övrigt i Homey och ange dess ID i Admin för att läsa det direkt.");
     if(notes.length)h+=`<div class="note">${notes.join(" ")}</div>`;
-    h+=`</div>`;
+    h+=`</details>`;
   }else{
     h+=`<div class="note">Dekarsön 236 räknas ur den kumulativa räknaren i den virtuella energiöversikten och finns därför bara sedan den togs i drift. Dagens värde visas först när dygnet är slut. Kostnaden använder Tibber-priset för 235 plus påslag.</div>`;
   }
@@ -2018,7 +2020,7 @@ async function viewUterum(R,u){await loadVars();
 }
 async function renderDetalj(){
   const R=calcRange(),u=state.unit;
-  const secs=[["timmar","Timmar och effekt"],["vp","Värmepump"],["vvb","Varmvattenberedare"],["uterum","Uterum"],["traktor","Traktor"],["tesla","Tesla"]];
+  const secs=[["timmar","Timmar och effekt"],["vp","Värmepump"],["vvb","Varmvattenberedare"],["uterum","Uterum"],["traktor","Traktor"],["tesla","Tesla"],["forb","Enskilda förbrukare"]];
   if(state.prop==="236"){
     const d=state.devices[cfg.ids.vp236],e=liveEnergy();let h=`<section class="grp"><h3>Effekt · Dekarsön 236</h3>`+await medelEffektHtml()+`</section>`;
     if(d){let g=onoffTile(d,"Luftvärmepump 236","Luftvärmepump","");
@@ -2035,7 +2037,7 @@ async function renderDetalj(){
     $("#p-energi").innerHTML=energiSw()+h;const cm=$("#cmp");if(cm)cm.value=state.cmp;return;
   }
   let h=`<div class="bar" style="position:sticky;top:62px;z-index:10;background:var(--bg);padding:8px 0;margin:0 0 6px">${secs.map(([k,l])=>`<button class="chip" data-jump="det-${k}">${l}</button>`).join("")}</div>`;
-  const views={timmar:()=>viewTimmar(),vp:()=>viewVP(R,u),vvb:async()=>viewVVB(),uterum:()=>viewUterum(R,u),traktor:()=>viewTraktor(R,u),tesla:()=>viewTesla(R,u)};
+  const views={timmar:()=>viewTimmar(),vp:()=>viewVP(R,u),vvb:async()=>viewVVB(),uterum:()=>viewUterum(R,u),traktor:()=>viewTraktor(R,u),tesla:()=>viewTesla(R,u),forb:async()=>{await loadVars();const minDate=R.ps&&R.ps<R.s?R.ps:R.s;return await consumersHtml(await loadSeries(minDate));}};
   for(const [k,l] of secs){
     let body="";try{body=await views[k]();}catch(e){body=`<div class="card err">Kunde inte läsa data: ${esc(e.message)}</div>`;}
     h+=`<details class="det" id="det-${k}" ${(state.detClosed[`det-${k}`]!=null?state.detClosed[`det-${k}`]:!["timmar","vp"].includes(k))?"":"open"}><summary><h2 style="display:inline;font-size:20px">${l}</h2></summary>${body}</details>`;
