@@ -2061,7 +2061,7 @@ function husInfo(r){
 /* Liten klickbar "NN %"-text inuti en kart-knapp: öppnar enhetens kort (ljusstyrka) i stället för att tända/släcka */
 function husPct(d,x,y,fs){const p=capVal(d,"dim");if(p==null||!capVal(d,"onoff"))return "";
   return `<g data-onoff="${esc(d.id)}" data-nm="${esc(devName(d))}" tabindex="0" role="button" aria-label="Ljusstyrka ${Math.round(p*100)} %, öppna kortet" style="cursor:pointer"><rect x="${x-34}" y="${y-fs}" width="68" height="${fs+8}" rx="${(fs+8)/2}" fill="var(--soft)" stroke="var(--ink)" stroke-width="1.5"/><text x="${x}" y="${y+2}" text-anchor="middle" style="font-size:${fs-2}px;font-weight:700;fill:var(--ink);pointer-events:none">${Math.round(p*100)} %</text></g>`;}
-function husLtr(d){const n=devName(d);return /spot/i.test(n)?"S":/lamp/i.test(n)?"L":"";}
+function husLtr(d){const n=devName(d);return /spot/i.test(n)?"S":/lamp/i.test(n)?"L":/fl(ä|a)kt/i.test(n)?"F":"";}
 function husCeil(r){const rk=d=>{const n=devName(d);return /v(ä|a)nster/i.test(n)?0:/mitten/i.test(n)?1:/h(ö|o)ger/i.test(n)?2:1.5;};
   return husDevs(r).filter(d=>/\btak(spot|lampa)?/i.test(devName(d))&&!/f(ö|o)nster/i.test(devName(d))&&hasOnoff(d)).sort((a,b)=>rk(a)-rk(b)||devName(a).localeCompare(devName(b),"sv"));}
 /* Garageportar: styrs av relä (Garageport enkel/dubbel), läge från Portsensor enkel/dubbel (alarm_contact = öppen) */
@@ -2108,6 +2108,8 @@ function husRoomSvg(r){
   if(!others.length&&!wn.length&&!cs0.length&&!husPorts(r).length)g+=`<text x="${W/2}" y="${H/2}" text-anchor="middle" style="font-size:22px;fill:var(--mut)">Inga enheter i rummet</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:900px;display:block;margin:6px auto 10px" role="group" aria-label="${esc(r.n)}">${g}</svg>`;}
 function husEdgeNote(r){return husWin(r).length?`Fönsterlampor och spots ligger i rummets ${husEdge(r)==="t"?"övre":"nedre"} kant. Tryck på en markering eller ruta för att tända eller släcka.`:"Tryck på en ruta för att tända/släcka eller se sensorn.";}
+function husLine(r,i,mode,fs){const p=[];if(mode!=="temp"&&i.tp)p.push(fmt(i.tp.t,1)+" °C");if(i.hum!=null)p.push(fmt(i.hum,0)+" % RF");if(mode!=="power"&&i.ds.length)p.push(i.w>=1000?fmt(i.w/1000,2)+" kW":fmt(i.w,0)+" W");
+  if(!p.length)return null;const t=p.join(" · ");return {t,f:Math.max(10,Math.min(Math.max(15,fs-5),(r.w-14)/(t.length*0.56)))};}
 function renderHus(){
   if(state.husRoom&&HUS_ROOMS.some(x=>x.id===state.husRoom)){$("#p-styr").innerHTML=styrSwitch()+`<div class="card">`+roomModalHtml(state.husRoom,true)+`</div>`;return;}
   const mode=["temp","lamp","power"].includes(state.husMode)?state.husMode:"temp";
@@ -2120,11 +2122,17 @@ function renderHus(){
   let g="";
   for(const r of HUS_ROOMS){const i=husInfo(r),c=col(r,i),cx=r.x+r.w/2,cy=r.y+r.h/2,fs=r.w<170?19:r.w<250?22:26;
     g+=`<g ${r.none?"":`class="hrm" data-room="${r.id}" tabindex="0" role="button" aria-label="${esc(r.n)}, ${esc(val(r,i))}"`} style="${r.none?"":"cursor:pointer"}"><rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${c.f}" fill-opacity="${c.o}" stroke="var(--ink)" stroke-width="${r.dash?3:5}" ${r.dash?'stroke-dasharray="14 8"':""} rx="2"/>
-      <text x="${cx}" y="${cy-(r.none?0:8)}" text-anchor="middle" style="font-size:${fs}px;font-weight:700;fill:var(--ink)">${esc(r.n)}</text>${r.none?"":`<text x="${cx}" y="${cy+fs-2}" text-anchor="middle" style="font-size:${fs-3}px;fill:var(--ink)">${esc(val(r,i))}</text>${(()=>{const p=[];if(mode!=="temp"&&i.tp)p.push(fmt(i.tp.t,1)+" °C");if(i.hum!=null)p.push(fmt(i.hum,0)+" % RF");if(mode!=="power"&&i.ds.length)p.push(i.w>=1000?fmt(i.w/1000,2)+" kW":fmt(i.w,0)+" W");return p.length?`<text x="${cx}" y="${cy+fs+fs-6}" text-anchor="middle" style="font-size:${Math.max(10,Math.min(Math.max(15,fs-5),(r.w-14)/(p.join(" · ").length*0.56))).toFixed(1)}px;fill:var(--ink);opacity:.8">${esc(p.join(" · "))}</text>`:"";})()}`}</g>`;
+      <text x="${cx}" y="${cy-(r.none?0:8)}" text-anchor="middle" style="font-size:${fs}px;font-weight:700;fill:var(--ink)">${esc(r.n)}</text>${r.none?"":`<text x="${cx}" y="${cy+fs-2}" text-anchor="middle" style="font-size:${fs-3}px;fill:var(--ink)">${esc(val(r,i))}</text>${(()=>{const L=husLine(r,i,mode,fs);return L?`<text x="${cx}" y="${cy+fs+fs-6}" text-anchor="middle" style="font-size:${L.f.toFixed(1)}px;fill:var(--ink);opacity:.8">${esc(L.t)}</text>`:"";})()}`}</g>`;
     g+=husWinMarks(r,0)+husPortG(r,0);
     {const all=r.none?[]:husCeil(r),cs=all.filter(d=>!husCeilPos(r,d)),dot=(d,x,y)=>{const on=!!capVal(d,"onoff");
       g+=`<g data-act="tgl" data-dev="${esc(d.id)}" tabindex="0" role="button" aria-label="${esc(devName(d))}: ${on?"tänd":"släckt"}" style="cursor:pointer"><title>${esc(devName(d))} · ${on?"tänd":"släckt"}</title><circle cx="${x}" cy="${y}" r="12" fill="${on?"hsl(45 95% 55%)":"var(--card,#fff)"}" stroke="var(--ink)" stroke-width="2.5"/><text x="${x}" y="${y+5}" text-anchor="middle" style="font-size:14px;font-weight:700;fill:${on?"#222":"var(--ink)"};pointer-events:none">${husLtr(d)}</text></g>`;};
-      cs.forEach((d,k)=>dot(d,r.x+r.w*(k+1)/(cs.length+1),r.y+30));all.filter(d=>husCeilPos(r,d)).forEach(d=>{const p=husCeilPos(r,d);dot(d,r.x+r.w*p[0],r.y+r.h*p[1]);});}}
+      cs.forEach((d,k)=>dot(d,r.x+r.w*(k+1)/(cs.length+1),r.y+30));all.filter(d=>husCeilPos(r,d)).forEach(d=>{const p=husCeilPos(r,d);dot(d,r.x+r.w*p[0],r.y+r.h*p[1]);});
+      if(r.id==="kok"){/* köksbänkens spottar till höger om W-raden, köksfläkten till vänster om rumsnamnet */
+        const ds=husDevs(r),L=husLine(r,i,mode,fs),spots=ds.filter(d=>/spot/i.test(devName(d))&&!/tak|f(ö|o)nster/i.test(devName(d))&&hasOnoff(d)),fans=ds.filter(d=>/fl(ä|a)kt/i.test(devName(d))&&hasOnoff(d));
+        /* W-texten: i Effekt-läget står den på värderaden, annars sist på tredje raden */
+        const onVal=mode==="power"||!L||!/W$/.test(L.t),vt=val(r,i),ly=onVal?cy+fs-2:cy+fs+fs-6,fz=onVal?fs-3:L.f,half=(onVal?vt.length:L.t.length)*fz*0.56/2,sx=Math.min(cx+half+20,r.x+r.w-18);
+        spots.forEach((d,k)=>dot(d,Math.min(sx,r.x+r.w-18-(spots.length-1)*30)+k*30,ly-fz*0.35));
+        const nh=r.n.length*fs*0.6/2;fans.forEach((d,k)=>dot(d,cx-nh-20-k*30,cy-8-fs*0.33));}}}
   // helhus och bil
   {const e=liveEnergy(),w=e.w,big=w!=null?(w>=1000?fmt(w/1000,2):fmt(w,0)):"–",un=w!=null&&w>=1000?"kW":"W";
     g+=`<g data-nowmodal="1" tabindex="0" role="button" aria-label="Hela huset ${big} ${un}, visa förbrukare" style="cursor:pointer"><rect x="30" y="40" width="330" height="150" rx="12" fill="var(--soft)" stroke="var(--ink)" stroke-width="3"/><text x="195" y="82" text-anchor="middle" style="font-size:22px;fill:var(--ink)">Hela huset nu</text><text x="195" y="146" text-anchor="middle" style="font-size:56px;font-weight:700;fill:var(--ink)">${big} <tspan style="font-size:26px;font-weight:500">${un}</tspan></text><text x="195" y="176" text-anchor="middle" style="font-size:16px;fill:var(--mut)">Tryck för förbrukare</text></g>`;}
