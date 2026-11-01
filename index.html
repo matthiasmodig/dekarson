@@ -831,7 +831,7 @@ function planSlots(){
   for(let i=1;i<=96;i++){const v=capVal(ed,"meter_price_h"+i);if(v!=null)m.set(hourKey(new Date(now.getTime()+i*36e5)),v);}
   const xp=extractPrices(ed);for(const k of Object.keys(xp))if(k>nk&&!m.has(k))m.set(k,xp[k]);
   return [...m.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([k,v])=>({k,v}));}
-const PLAN_PRESETS=[["Diskmaskin",1.2,2],["Tvättmaskin",1,2],["Torktumlare",2,2],["Tesla (3,7 kW)",3.7,4],["Varmvattenberedare",3,2]];
+const PLAN_PRESETS=[["Diskmaskin",1.2,2],["Tvättmaskin",1,2],["Torkskåp",0.9,3],["Torktumlare",1,2],["Tesla (7,4 kW)",7.4,4]];
 function planHtml(){
   const sl=planSlots();if(sl.length<2)return "";
   const P=cfg.plan=cfg.plan||{},hrs=Math.min(8,Math.max(1,Number(P.h)||2)),kw=Math.max(0.1,Number(String(P.kw||1).replace(",","."))||1);
