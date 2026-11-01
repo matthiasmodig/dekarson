@@ -2054,6 +2054,7 @@ function husInfo(r){
   const wAll=ds.reduce((a,d)=>a+((capVal(d,"onoff")!==false?capVal(d,"measure_power"):0)||0),0);
   return {ds,tp,hum,lamps,on,w:wAll};}
 function renderHus(){
+  if(state.husRoom&&HUS_ROOMS.some(x=>x.id===state.husRoom)){$("#p-styr").innerHTML=styrSwitch()+`<div class="card">`+roomModalHtml(state.husRoom,true)+`</div>`;return;}
   const mode=["temp","lamp","power"].includes(state.husMode)?state.husMode:"temp";
   const col=(r,i)=>{
     if(r.none)return {f:"var(--soft)",o:.6};
@@ -2083,9 +2084,9 @@ function renderHus(){
     <div class="card"><svg viewBox="0 0 1560 985" width="100%" role="group" aria-label="Planritning Dekarsön 235">${g}</svg>
     <div class="note">Varje rum visar temperatur, luftfuktighet (RF) och aktuell effekt live. Tryck på ett rum för lampor och enheter. Färgen visar ${mode==="temp"?"temperatur (blå kallt, röd varmt)":mode==="lamp"?"tända lampor (gul = något tänt)":"aktuell effekt i rummet"}. Planen är en förenklad ritning efter husritningen.</div></div>`;
   $("#p-styr").innerHTML=h;}
-function roomModalHtml(id){
+function roomModalHtml(id,inline){
   const r=HUS_ROOMS.find(x=>x.id===id);if(!r)return "";const i=husInfo(r);
-  const head=`<div class="mhead"><h2>${esc(r.n)}</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`;
+  const head=inline?`<div class="mhead"><button class="btn" data-roomback="1">← Planritning</button><h2 style="margin:0 0 0 8px">${esc(r.n)}</h2></div>`:`<div class="mhead"><h2>${esc(r.n)}</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`;
   let h=head+`<div class="grid">`;
   const hu=i.tp&&capVal(i.tp.d,"measure_humidity");
   h+=i.tp?sensTile(i.tp.d.id,"measure_temperature","Temperatur",fmt(i.tp.t,1),"°C",hu!=null?"Luftfuktighet "+fmt(hu,0)+" %":"Visa diagram över tid","hero"):tile("Temperatur","–","","Ingen temperatursensor");
@@ -2456,7 +2457,8 @@ document.addEventListener("click",async e=>{
   const mu=e.target.closest("[data-munit]");if(mu){state.unit=mu.dataset.munit;drawProp();draw();return;}
   const dl=e.target.closest("[data-daily]");if(dl){openModal("daily",dl.dataset.daily);return;}
   const hm=e.target.closest("[data-husmode]");if(hm){state.husMode=hm.dataset.husmode;draw();return;}
-  const rmo=e.target.closest("[data-room]");if(rmo&&!e.target.closest("[data-act]")){openModal("room",rmo.dataset.room);return;}
+  const rbk=e.target.closest("[data-roomback]");if(rbk){state.husRoom=null;draw();return;}
+  const rmo=e.target.closest("[data-room]");if(rmo&&!e.target.closest("[data-act]")){state.husRoom=rmo.dataset.room;draw();window.scrollTo(0,0);return;}
   const dg=e.target.closest("[data-dagbok]");if(dg){openModal("dagbok","");return;}
   const nw=e.target.closest("[data-nowmodal]");if(nw){openModal("now","");return;}
   const tpa=e.target.closest("[data-tpavg]");if(tpa){openModal("tpavg","");return;}
