@@ -1080,8 +1080,13 @@ async function dagbokHtml(full){
   let D;try{D=await loadDagbok();}catch(e){return `<div class="note">Dagbok kunde inte läsas: ${esc(e.message)}</div>`;}
   const title=`<h3>Dagbok · ${PROPS.find(p=>p.k===state.prop).name}</h3>`;
   if(!D)return `<section class="grp" style="margin-top:18px">${title}<div class="card note">Ange CSV-länken till fliken Dagbok under Admin → Energikällor så visas dygnshistoriken här.</div></section>`;
-  const days=Object.keys(D).filter(d=>cols.some(c=>D[d][c[0]]&&D[d][c[0]].kwh!=null)).sort().reverse().slice(0,31);
+  const days=Object.keys(D).filter(d=>cols.some(c=>D[d][c[0]]&&D[d][c[0]].kwh!=null)).sort().reverse();
   if(!days.length)return `<section class="grp" style="margin-top:18px">${title}<div class="card note">Inga rader för den här fastigheten i Dagbok-arket ännu.</div></section>`;
+  const allDays=days.slice(),mons=[...new Set(allDays.map(d=>d.slice(0,7)))],per=state.dagPer||"31";
+  if(!mons.includes(state.dagMon))state.dagMon=mons[0];
+  let days2=allDays;
+  if(!full)days2=allDays.slice(0,14);else if(per==="7")days2=allDays.slice(0,7);else if(per==="31")days2=allDays.slice(0,31);else if(per==="mon")days2=allDays.filter(d=>d.startsWith(state.dagMon));
+  days.length=0;days2.forEach(d=>days.push(d));
   const wd=d=>["sön","mån","tis","ons","tors","fre","lör"][new Date(+d.slice(0,4),+d.slice(5,7)-1,+d.slice(8,10)).getDay()];
   const val=(d,c,m)=>{const x=D[d][c];return x&&x[m]!=null?x[m]:null;};
   const mk=cols[0][0],tK=days.map(d=>val(d,mk,"kwh")||0),tR=days.map(d=>val(d,mk,"kr")),mxK=Math.max(1,...tK);
@@ -1098,6 +1103,8 @@ async function dagbokHtml(full){
     return `<tr><td style="white-space:nowrap"><b>${d.slice(8)}</b> <span style="color:var(--mut)">${wd(d)} ${["jan","feb","mar","apr","maj","jun","jul","aug","sep","okt","nov","dec"][+d.slice(5,7)-1]}</span>${we?` <span class="pill">helg</span>`:""}</td>
       <td style="min-width:150px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:10px;border-radius:5px;background:var(--soft);overflow:hidden"><div style="width:${(v||0)/mxK*100}%;height:100%;background:${d===days[hi]?"var(--bad)":"var(--cur,#3b82f6)"}"></div></div><b style="width:62px;text-align:right">${v!=null?fmt(v,1)+" kWh":"–"}</b></div></td>
       <td style="text-align:right;white-space:nowrap">${r!=null?"<b>"+fmt(r,0)+" kr</b>":"–"}</td>${is235?`<td>${split(d)}</td><td style="text-align:right;white-space:nowrap;color:var(--mut)">${vp!=null?"VP "+fmt(vp,1):""}</td>`:""}</tr>`;}).join("");
+  const mi2=mons.indexOf(state.dagMon),monL=m=>`${["januari","februari","mars","april","maj","juni","juli","augusti","september","oktober","november","december"][+m.slice(5)-1]} ${m.slice(0,4)}`;
+  const ctl=`<div class="bar" style="margin:0 0 12px">${[["7","7 dygn"],["31","31 dygn"],["mon","Månad"],["all","Allt"]].map(([p,l])=>`<button class="chip" data-dagper="${p}" aria-pressed="${per===p}">${l}</button>`).join("")}${per==="mon"?`<span class="grow"></span><button class="btn" data-dagmon="${mi2<mons.length-1?mons[mi2+1]:""}" ${mi2<mons.length-1?"":"disabled"}>‹</button><b style="min-width:130px;text-align:center">${monL(state.dagMon)}</b><button class="btn" data-dagmon="${mi2>0?mons[mi2-1]:""}" ${mi2>0?"":"disabled"}>›</button>`:""}</div>`;
   if(!full){const spk=days.slice(0,14).reverse().map(d=>val(d,mk,"kwh")||0),smx=Math.max(1,...spk),d0=days[0];
     const sp=`<div style="display:flex;align-items:flex-end;gap:2px;height:34px">${spk.map(v=>`<i style="flex:1;height:${Math.max(8,v/smx*100)}%;background:var(--cur,#3b82f6);opacity:.75;border-radius:2px"></i>`).join("")}</div>`;
     return `<section class="grp" style="margin-top:18px"><div class="card" data-dagbok="1" tabindex="0" role="button" title="Öppna dagboken" style="cursor:pointer;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:12px 16px">
@@ -1105,7 +1112,7 @@ async function dagbokHtml(full){
       <div style="flex:1;min-width:120px;max-width:260px">${sp}<div style="font-size:11.5px;color:var(--mut)">Senaste ${spk.length} dygnen</div></div>
       <div style="font-size:13px;color:var(--mut)">Snitt ${fmt(sK/n,1)} kWh${rr.length?" · "+fmt(sR/rr.length,0)+" kr":""}</div><span class="grow"></span><span class="btn">Öppna</span></div></section>`;}
   const legend=is235?`<div class="legend" style="margin:8px 0 0">${[["hushall","Hushåll"],["uppv","Uppvärmning"],["ovrigt","Övrigt"]].map(([k,l])=>`<span><i style="background:${CL[k]}"></i>${l}</span>`).join("")}</div>`:"";
-  return `<section class="grp" style="margin-top:18px">${title}${tiles}<div class="card" style="margin-bottom:12px"><h2>Förbrukning per dygn <span class="pill">${n} dygn</span></h2>${chart}<div class="note" style="margin-top:6px">Rött = dyraste dygnet. Håll över en stapel för detaljer.</div></div>
+  return `<section class="grp" style="margin-top:18px">${title}${ctl}${tiles}<div class="card" style="margin-bottom:12px"><h2>Förbrukning per dygn <span class="pill">${n} dygn</span></h2>${chart}<div class="note" style="margin-top:6px">Rött = dyraste dygnet. Håll över en stapel för detaljer.</div></div>
   <div class="card"><div style="overflow:auto;max-height:520px"><table><tr><th>Dygn</th><th>Förbrukning</th><th style="text-align:right">Kostnad</th>${is235?`<th>Fördelning</th><th></th>`:""}</tr>${rows}</table></div>${legend}
   <div class="note">Källa: Homeys dagbok (Google Sheet), ett dygn per rad, skrivs 00:03. Datum tolkas som text, utan tidszonsomräkning.</div></div></section>`;
 }
@@ -2417,6 +2424,8 @@ document.addEventListener("click",async e=>{
   const th=e.target.closest("#segTheme [data-theme]");if(th){setTheme(th.dataset.theme);return;}
   if(e.target.id==="panelBtn"){showTab("oversikt");setPanel(true);return;}
   if(e.target.id==="panelX"){setPanel(false);return;}
+  const dpr=e.target.closest("[data-dagper]");if(dpr){state.dagPer=dpr.dataset.dagper;renderModal();return;}
+  const dmo=e.target.closest("[data-dagmon]");if(dmo){if(dmo.dataset.dagmon){state.dagMon=dmo.dataset.dagmon;renderModal();}return;}
   const sp=e.target.closest("[data-sensper]");if(sp){state.sensPer=sp.dataset.sensper;renderModal();return;}
   const oo=e.target.closest("[data-onoff]"),oa=e.target.closest("[data-act]");if(oo&&!(oa&&oa!==oo&&oo.contains(oa))){openModal("onoff",oo.dataset.onoff);return;}
   const se=e.target.closest("[data-sens]");if(se){openModal("sens",se.dataset.sens);return;}
