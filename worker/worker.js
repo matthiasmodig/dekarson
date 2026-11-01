@@ -49,6 +49,21 @@ export default {
       }
       if (url.pathname === "/tibber" && req.method === "GET") {
         if (!(await sessionOk(req, env))) return json({ error: "Inte inloggad" }, 401, cors);
+        if (url.searchParams.get("history")) {
+          const hit = await env.KV.get("tp:hist", "json");
+          if (hit && Date.now() - hit.at < 10 * 60e3) return json(hit, 200, cors);
+          const ks = (await env.KV.list({ prefix: "tp:day:" })).keys.map((k) => k.name).sort().slice(-400);
+          const days = [];
+          for (const k of ks) {
+            const d = await env.KV.get(k, "json");
+            if (!d || !d.intervals || !d.intervals.length) continue;
+            const t = d.intervals.map((x) => x.t);
+            days.push({ day: d.day, n: t.length, avg: t.reduce((a, b) => a + b, 0) / t.length, min: Math.min(...t), max: Math.max(...t) });
+          }
+          const out = { at: Date.now(), days };
+          await env.KV.put("tp:hist", JSON.stringify(out), { expirationTtl: 3600 });
+          return json(out, 200, cors);
+        }
         const day = url.searchParams.get("day");
         if (day) {
           if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: "Ogiltigt datum" }, 400, cors);

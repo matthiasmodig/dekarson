@@ -905,6 +905,30 @@ async function loadTibber(){
     if(!r.ok)throw new Error(r.status===404||r.status===405?"Workern behöver uppdateras (worker/worker.js).":"Tibber-priser kunde inte läsas ("+r.status+")");d=await r.json();}
     catch(e){d={error:e.message,intervals:[]};}}
   state.tp={at:now,d,k:String(isDemo())};return d;}
+async function tpAvgModalHtml(){
+  const mk=Number(cfg.markup||0.448),dN=state.tp&&state.tp.d,tk=t=>new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Stockholm"}).format(new Date(t));
+  let h=`<h2 style="margin:0 0 4px">${ic("Elpris","coin")}Snittpris per dag · importpris</h2><div class="note" style="margin:0 0 10px">Tibber <code>total</code> + ${fmt(mk,3)} kr/kWh, öre/kWh. Preliminärt.</div>`;
+  let days=[],note="";
+  if(isDemo()){const t0=new Date();t0.setHours(12,0,0,0);for(let i=0;i<60;i++){const d=new Date(t0.getTime()-i*864e5);const avg=0.55+0.35*Math.sin(i/6)+((i*13)%7)*0.02;days.push({day:tk(d),n:96,avg:avg,min:avg-0.2,max:avg+0.3});}days.reverse();}
+  else if(isCloud()){try{const r=await fetch(base()+"/tibber?history=1",{headers:{"Authorization":"Bearer "+cfg.session}});const j=await r.json();
+      if(!Array.isArray(j.days))note="Workern behöver uppdateras (worker/worker.js) för att visa historik.";else days=j.days;}catch(e){note="Historiken kunde inte läsas: "+e.message;}}
+  else note="Historiken ligger i Cloudflare-workern och kräver molnläget.";
+  // dagens och morgondagens snitt från aktuell prisserie (ersätter lagrad post för samma dag)
+  const iv=((dN&&dN.intervals)||[]);const by={};iv.forEach(x=>{(by[tk(x.s)]=by[tk(x.s)]||[]).push(x.t);});
+  Object.entries(by).forEach(([day,t])=>{const rec={day,n:t.length,avg:t.reduce((a,b)=>a+b,0)/t.length,min:Math.min(...t),max:Math.max(...t)};const i=days.findIndex(x=>x.day===day);if(i>=0)days[i]=rec;else days.push(rec);});
+  days.sort((a,b)=>a.day<b.day?-1:1);
+  if(note)h+=`<div class="warn">${esc(note)}</div>`;
+  if(!days.length)return h+`<div class="note">Ingen prishistorik hittades ännu. Dagarna sparas i workern från och med att Tibber-hämtningen startade.</div>`;
+  const v=x=>(x.avg+mk)*100,vals=days.map(v),mx=Math.max(...vals,1),W=1000,H=200,L=40,B=26,T=10,R=6,bw=(W-L-R)/days.length,max=niceMax(mx*1.05),y=q=>T+(H-T-B)*(1-q/max);
+  const lo=Math.min(...vals),hi=Math.max(...vals),col=q=>`hsl(${Math.round(135-135*Math.min(1,Math.max(0,(q-lo)/Math.max(hi-lo,1))))} 62% ${state.dark?58:46}%)`;
+  let g="";for(let i=0;i<=4;i++){const q=max*i/4,yy=y(q);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(q,0)}</text>`;}
+  days.forEach((d,i)=>{const q=vals[i],top=y(q);g+=`<g class="pb" data-t="${d.day} – ${fmt(q,2)} öre/kWh" onmouseover="document.getElementById('tpd').textContent=this.dataset.t" ontouchstart="document.getElementById('tpd').textContent=this.dataset.t"><rect x="${L+i*bw}" y="${T}" width="${bw}" height="${H-T-B}" fill="transparent"/><rect x="${L+i*bw+bw*.07}" y="${top}" width="${bw*.86}" height="${Math.max(1,y(0)-top)}" fill="${col(q)}"/></g>`;
+    if(days.length<=40||i%Math.ceil(days.length/20)===0)g+=`<text x="${L+i*bw+bw/2}" y="${H-8}" text-anchor="middle" style="font-size:11px">${d.day.slice(8)}/${d.day.slice(5,7)}</text>`;});
+  const tot=vals.reduce((a,b)=>a+b,0)/vals.length;
+  h+=`<div class="card"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Snittpris per dag">${g}</svg><div class="note" id="tpd" style="min-height:19px;color:var(--ink)">Håll över en stapel för att se dagens snitt. Genomsnitt för ${days.length} dagar: ${fmt(tot,2)} öre/kWh.</div></div>`;
+  const WDn=["söndag","måndag","tisdag","onsdag","torsdag","fredag","lördag"];
+  h+=`<div class="card" style="overflow:auto"><table><tr><th>Datum</th><th>Veckodag</th><th style="text-align:right">Snitt</th><th style="text-align:right">Lägst</th><th style="text-align:right">Högst</th><th style="text-align:right">Intervall</th></tr>${days.slice().reverse().map(d=>`<tr><td>${d.day}</td><td>${WDn[new Date(d.day+"T12:00:00").getDay()]}</td><td style="text-align:right"><b>${fmt((d.avg+mk)*100,2)}</b></td><td style="text-align:right">${fmt((d.min+mk)*100,2)}</td><td style="text-align:right">${fmt((d.max+mk)*100,2)}</td><td style="text-align:right">${d.n}</td></tr>`).join("")}</table></div><div class="note">Alla värden i öre/kWh. Historiken sparas i Cloudflare-workern från och med att Tibber-hämtningen startade.</div>`;
+  return h;}
 async function tibberHtml(){
   if(state.prop!=="235")return {html:"",ok:true};
   let d;try{d=await loadTibber();}catch(e){return {html:"",ok:false};}
@@ -940,7 +964,7 @@ async function tibberHtml(){
     tl("Nu",ore(cur&&val(cur)),"öre/kWh","Importpris, preliminärt","hero")+
     tl("Billigast framåt",ore(mn&&val(mn)),"öre/kWh",mn?lab(mn):"")+tl("Dyrast framåt",ore(mx&&val(mx)),"öre/kWh",mx?lab(mx):"")+`</div>
     <div class="grid" style="margin:10px 0;grid-template-columns:repeat(2,minmax(0,1fr))">`+
-    tl("Snitt idag",ore(aT),"öre/kWh","Viktat efter tid")+tl("Snitt imorgon",aM!=null?ore(aM):"–","öre/kWh",aM!=null?"Viktat efter tid":"Publiceras ca 13:00")+`</div>`;
+    tl("Snitt idag",ore(aT),"öre/kWh","Viktat efter tid · tryck för historik").replace('<div class="card tile','<div data-tpavg="1" tabindex="0" role="button" title="Visa snittpris per dag" style="cursor:pointer" class="card tile')+tl("Snitt imorgon",aM!=null?ore(aM):"–","öre/kWh",aM!=null?"Viktat efter tid · tryck för historik":"Publiceras ca 13:00").replace('<div class="card tile','<div data-tpavg="1" tabindex="0" role="button" title="Visa snittpris per dag" style="cursor:pointer" class="card tile')+`</div>`;
   return {ok:true,html:`<div class="card" style="margin:12px 0"><h2 style="margin:0 0 6px">${ic("Elpris","coin")}Elpriscentral · Importpris Dekarsön 235 ${d.demo?`<span class="pill">demo</span>`:""}</h2>
     ${tiles}
     <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Elpris per kvart, idag och imorgon">${g}</svg>
@@ -1655,6 +1679,7 @@ async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
   if(m.t==="status"){body.innerHTML=statusModalHtml(m.k);return;}
   if(m.t==="cal"){body.innerHTML=calModalHtml();return;}
+  if(m.t==="tpavg"){body.innerHTML=await tpAvgModalHtml();return;}
   if(m.t==="onoff"){body.innerHTML=await onoffModalHtml(m.k);return;}
   if(m.t==="sens"){body.innerHTML=await sensModalHtml(m.k);return;}
   const c=await kortCtx(addDays(todayStr(),-760)),R=c.R,u=c.u;
@@ -2205,6 +2230,7 @@ document.addEventListener("click",async e=>{
   if(e.target.id==="dlg"){$("#dlg").close();state.modal=null;return;}
   const mu=e.target.closest("[data-munit]");if(mu){state.unit=mu.dataset.munit;drawProp();draw();return;}
   const dl=e.target.closest("[data-daily]");if(dl){openModal("daily",dl.dataset.daily);return;}
+  const tpa=e.target.closest("[data-tpavg]");if(tpa){openModal("tpavg","");return;}
   const cmo=e.target.closest("[data-calmodal]");if(cmo){openModal("cal","");return;}
   const sb=e.target.closest("[data-status]");if(sb){openModal("status",sb.dataset.status);return;}
   const kc=e.target.closest("[data-card]");if(kc){openModal("card",kc.dataset.card);return;}
