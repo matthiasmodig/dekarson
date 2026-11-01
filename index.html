@@ -205,7 +205,7 @@ const DEFAULTS={
     d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
     price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",m236prev:"b71aea9a-d306-45a2-90da-b3d589591c31",m236day:"1abf7a52-82b5-47ba-a4a4-0a456b938601",m236month:"30272262-e61d-4e99-b536-c843c3911500",m236prevE:"557af22f-ec2e-4f3a-b1ec-a0ab647667af",m236dayN:"bafbd37d-aa8e-46a3-8582-f08604fc8b88",m236monthN:"cfc670ef-0eff-42a8-9ecf-517091618958",l236_1:"9634d738-f370-44ec-b383-1dd540b63ea3",l236_2:"a09151a6-eec7-418e-b57f-6e6eff63f20d",l236_3:"ed39ab86-96bc-46e3-8af0-ee01960a45e5",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",timSnitt:"f8346588-0055-474e-94eb-d4fc2026ee6a",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
     tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
-    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",entre:"969c95cb-de0a-4222-9510-0761ca0d0721",fastighet:"983c3c84-a1ef-4c64-b36d-f6c6ff093792",importVar:"8d228260-2331-44ef-9edd-2139ec6ac983",dtVP:"d053deb1-b805-465b-b27e-cd9ca1e5fb77",dtGolv:"1fbcbf0a-62bf-48b8-8c89-cd53d1e4a05a",dtUterum:"dd26be28-32a0-45f7-a665-2705e5bf605e",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",inneKok:"97c95291-0a6a-45eb-a7d5-39695c4fa655",ventilation:"8904d830-126c-4c0d-9a6c-6bc67c1f77ad",koksfläkt:"ab42117b-5917-4f1b-aaa6-9537931a7c2f",spotKok:"626665dc-15f5-4fa9-9e6c-8fc4fbbe74fc",ytterdorr:"11743e4d-2bf0-408a-a606-db890cddd7c6",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
+    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",trLoadW:"25a939a2-aa43-4328-9ac2-e6387223596f",trMvW:"596bec26-0213-455f-8ea0-141525daeb81",trLoadE:"15b1d62c-760a-4490-a63f-f27951876be4",trMvE:"7f257491-7514-4a01-86ca-760185a7a3ee",entre:"969c95cb-de0a-4222-9510-0761ca0d0721",fastighet:"983c3c84-a1ef-4c64-b36d-f6c6ff093792",importVar:"8d228260-2331-44ef-9edd-2139ec6ac983",dtVP:"d053deb1-b805-465b-b27e-cd9ca1e5fb77",dtGolv:"1fbcbf0a-62bf-48b8-8c89-cd53d1e4a05a",dtUterum:"dd26be28-32a0-45f7-a665-2705e5bf605e",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",inneKok:"97c95291-0a6a-45eb-a7d5-39695c4fa655",ventilation:"8904d830-126c-4c0d-9a6c-6bc67c1f77ad",koksfläkt:"ab42117b-5917-4f1b-aaa6-9537931a7c2f",spotKok:"626665dc-15f5-4fa9-9e6c-8fc4fbbe74fc",ytterdorr:"11743e4d-2bf0-408a-a606-db890cddd7c6",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
   },
   ui:{devices:{},flows:{},status:{lights:true,sockets:true,locks:true,open:true,alarms:true,motion:true,battery:true,temps:true}}
 };
@@ -259,8 +259,10 @@ async function logList(){
   const r=await api("/api/manager/insights/log/");
   LOGLIST=Array.isArray(r)?r:Object.values(r||{});return LOGLIST;
 }
+/* Logic-variabler loggas i Insights som homey:manager:logic:<id>; anropas med devId "logic:<id>" */
+function logRef(devId,cap){if(String(devId).startsWith("logic:")){const v=devId.slice(6);return {uri:"homey:manager:logic",cap:v,full:"homey:manager:logic:"+v};}const uri="homey:device:"+devId;return {uri,cap,full:uri+":"+cap};}
 async function findLog(devId,cap){
-  const uri="homey:device:"+devId,full=uri+":"+cap,L=await logList();
+  const R0=logRef(devId,cap),uri=R0.uri,full=R0.full;cap=R0.cap;const L=await logList();
   return L.find(l=>l.uri===uri&&l.id===cap)||L.find(l=>l.id===full)||L.find(l=>(l.uri+":"+l.id)===full)||null;
 }
 const LOGPATHS=[
@@ -277,7 +279,7 @@ const LOGPATHS=[
 ];
 /* Homey vill ha loggens fulla id (homey:device:<id>:<cap>) som id-delen i adressen */
 function logPairs(devId,cap,lg){
-  const uri="homey:device:"+devId,full=(lg&&lg.id)||uri+":"+cap,p=[];
+  const R0=logRef(devId,cap),uri=R0.uri,full=(lg&&lg.id)||R0.full,p=[];cap=R0.cap;
   p.push([(lg&&lg.ownerUri)||uri,full]);
   p.push([uri,cap]);
   p.push([full.split(":").slice(0,2).join(":"),full]);
@@ -429,6 +431,9 @@ async function loadSeries(minDate){
   if(cfg.ids.golvRep)S.golv=await rep2(cfg.ids.golvRep);
   else if(cfg.ids.floor)S.golv={kwh:await safe(()=>fetchMerged(cfg.ids.floor,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
   if(cfg.ids.entre)S.entre={kwh:await safe(()=>fetchMerged(cfg.ids.entre,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
+  for(const [k,id] of [["trl",cfg.ids.trLoadE],["trm",cfg.ids.trMvE]]){if(!id)continue;const ref="logic:"+id;
+    S[k]={kwh:await safe(()=>fetchMerged(ref,"var",minDate,e=>dailyFromCumulative(e,false))),kr:{},calc:true};
+    S[k].hkr=await safe(()=>hourlyKrBest(ref));}
   for(const [k,id] of EXTRA_SERIES()){if(!id||!state.devices[id])continue;
     S[k]={kwh:await safe(()=>fetchMerged(id,"meter_power",minDate,e=>dailyFromCumulative(e,false))),kr:{}};
     S[k].hkr=await safe(()=>hourlyKrBest(id));}
@@ -490,7 +495,7 @@ async function hourlyKr(id){
 const EXTRA_SERIES=()=>[["vent",cfg.ids.ventilation],["kok",cfg.ids["koksfläkt"]],["spot",cfg.ids.spotKok],["avl",cfg.ids.avlopp]];
 function addEstKr(S){
   const T=S.tibber;if(!T)return S;
-  for(const k of ["traktor","golv","entre","vent","kok","spot","avl","vvb"]){
+  for(const k of ["traktor","trl","trm","golv","entre","vent","kok","spot","avl","vvb"]){
     const X=S[k];if(!X||Object.keys(X.kr||{}).length)continue;
     const kr={};for(const d of Object.keys(X.kwh)){const a=T.kwh[d],b=T.kr[d];if(X.hkr&&X.hkr[d]!=null)kr[d]=X.hkr[d];else if(a>0&&b!=null)kr[d]=X.kwh[d]*b/a;}
     X.kr=kr;X.est=true;}
@@ -1061,16 +1066,14 @@ async function consumersHtml(S){
   const upd=d=>{const c=d&&d.capabilitiesObj&&(d.capabilitiesObj.meter_power||d.capabilitiesObj.onoff||d.capabilitiesObj.measure_power);const x=c&&(c.lastUpdated||c.lastChanged);return x?new Date(x).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"–";};
   const status=d=>{if(!d||capVal(d,"onoff")==null)return "–";return capVal(d,"onoff")?`<span class="dot on"></span> På`:`<span class="dot"></span> Av`;};
   const pw=d=>{const w=capVal(d,"measure_power");return w!=null?fmt(w,0)+" W":"–";};
-  const rows=[["Traktor laddning",cfg.ids.trLoad,S.traktor],["Golvvärme uterum",cfg.ids.floor,S.golv],["Entrévärme utomhus",cfg.ids.entre,S.entre]];
+  const rows=[["Traktor laddning (beräknad)",cfg.ids.trLoad,S.trl||S.traktor,"trl"],["Traktor MV (beräknad)",cfg.ids.trHeat,S.trm,"trm"],["Golvvärme uterum",cfg.ids.floor,S.golv],["Entrévärme utomhus",cfg.ids.entre,S.entre]];
   let h=`<section class="grp" style="margin-top:18px"><h3>Enskilda förbrukare · Dekarsön 235</h3><div class="card"><div style="overflow:auto"><table><tr><th>Utrustning</th><th>Status</th><th>Effekt</th><th>Idag</th><th>Denna månad</th><th>I år</th><th>Snittpris månad</th><th>Uppdaterad</th></tr>`;
-  for(const [nm,id,T] of rows){const d=state.devices[id];
-    h+=`<tr class="kcard" ${d?`data-onoff="${esc(id)}" data-nm="${esc(nm)}" tabindex="0" style="cursor:pointer"`:""}><td>${nm}</td><td>${status(d)}</td><td>${pw(d)}</td>${cell(T,t)}${cell(T,ms)}${cell(T,ys)}<td>${avg(T,ms)}</td><td>${upd(d)}</td></tr>`;}
+  for(const [nm,id,T,ck] of rows){const d=state.devices[id],lv=ck==="trl"?homeyVar(cfg.ids.trLoadW):ck==="trm"?homeyVar(cfg.ids.trMvW):null,pwv=lv!=null?fmt(lv,0)+" W":pw(d);
+    h+=`<tr class="kcard" ${d?`data-onoff="${esc(id)}" data-nm="${esc(nm)}" tabindex="0" style="cursor:pointer"`:""}><td>${nm}</td><td>${status(d)}</td><td>${pwv}</td>${cell(T,t)}${cell(T,ms)}${cell(T,ys)}<td>${avg(T,ms)}</td><td>${upd(d)}</td></tr>`;}
   const te=state.devices[cfg.ids.teslaE],n=k=>capVal(te,"devicecapabilities_number."+k);
   if(te){const tcell=(e,kr)=>n(e)!=null?`<td>${fmt(n(e),1)} kWh<br><b>${n(kr)!=null?fmt(n(kr),0)+" kr":"–"}</b></td>`:`<td>–</td>`;
     const tk=S.tesla?sumRange(S.tesla,"kwh",t,t):{v:null},tr=S.tesla?sumRange(S.tesla,"kr",t,t):{v:null};
     h+=`<tr><td>Tesla Model Y</td><td>–</td><td>–</td><td>${tk.v!=null?fmt(tk.v,1)+" kWh<br><b>"+(tr.v!=null?fmt(tr.v,0)+" kr":"–")+"</b>":`<span style="color:var(--mut)">–</span>`}</td>${tcell(2,3)}${tcell(5,6)}<td>${n(4)!=null?fmt(n(4),0)+" öre":"–"}</td><td>${upd(te)}</td></tr>`;}
-  const mv=state.devices[cfg.ids.trHeat],sc=await trHeatSchablon().catch(()=>null);
-  h+=`<tr><td>Traktor motorvärmare</td><td>${status(mv)}</td><td colspan="2" style="color:var(--mut)">Saknar egen energimätning</td><td colspan="4" style="color:var(--mut)">${sc&&!sc.err?`Drifttid idag ${fmt(sc.today.h,1)} h, senaste 7 dygn ${fmt(sc.week.h,1)} h. <b>Schablon (${fmt(sc.W,0)} W, ej mätt):</b> idag ≈ ${fmt(sc.today.kwh,1)} kWh${sc.today.miss?"":" / ≈ "+fmt(sc.today.kr,0)+" kr"}, 7 dygn ≈ ${fmt(sc.week.kwh,1)} kWh${sc.week.miss?" (pris saknas för någon timme, ofullständig)":" / ≈ "+fmt(sc.week.kr,0)+" kr"}`:"Förbrukning och kostnad beräknas inte utan mätunderlag. Ange en känd effekt (W) under Admin för en tydligt märkt schablonberäkning."}</td></tr>`;
   h+=`</table></div><div class="note">Förbrukning per period är differenser mellan registrerade mätarställningar, inte mätarställningen i sig. Kronor med ≈ är timvis uppskattade (kWh × timpris för respektive timme, senaste 7 dygnen) eller dygnsuppskattade för äldre dygn. Tesla läses direkt från Homeys energiöversikt (inte omräknat). Klicka på en rad för historik. Datum enligt Europe/Stockholm.</div></div></section>`;
   return h;
 }
@@ -1192,7 +1195,7 @@ async function renderEnergi(){
       const d=prv&&r.p&&r.p[u].v?((r.c[u].v-r.p[u].v)/Math.abs(r.p[u].v)*100):null;
       h+=`<tr><td>${r.src.name}${r.s.derived?" ≈":""}</td><td>${fmt(r.c.kwh.v,0)}</td><td>${fmt(r.c.kr.v,0)}</td><td>${fmt(k,2)}</td><td>${r.src.total?"100 %":fmt(share,0)+" %"}</td>${prv?`<td class="${d>0?"up":"down"}">${d==null?"–":(d>0?"▲ ":"▼ ")+fmt(Math.abs(d),1)+" %"}</td>`:""}</tr>`;
       if(r.src.k==="ovr"){
-        const subs=[["traktor","Traktor"],["golv","Golvvärme Uterum"],["entre","Entrévärme utomhus"],["tesla","Tesla"]];let sk=0,sr=0,any=false;
+        const subs=[...(Object.keys((S.trl&&S.trl.kwh)||{}).length||Object.keys((S.trm&&S.trm.kwh)||{}).length?[["trl","Traktor laddning (beräknad)"],["trm","Traktor MV (beräknad)"]]:[["traktor","Traktor"]]),["golv","Golvvärme Uterum"],["entre","Entrévärme utomhus"],["tesla","Tesla"]];let sk=0,sr=0,any=false;
         const sc=(T,m)=>sumRange(T,m,R.s,R.e).v,sp=(T,m)=>R.ps?sumRange(T,m,R.ps,R.pe).v:null;
         for(const [k2,nm] of subs){const T2=S[k2];if(!T2)continue;any=true;
           const a=sc(T2,"kwh"),b=sc(T2,"kr"),a0=sp(T2,"kwh"),b0=sp(T2,"kr"),cu=u==="kr"?b:a,pu=u==="kr"?b0:a0;sk+=a||0;sr+=b||0;
@@ -1483,13 +1486,13 @@ async function priceBlock(past=24,compact=false){
 }
 function costTableHtml(S,R){
   let h="";
-  const rows=[["tibber","Totalt, hela huset"],["hush","Hushållsel"],["uppv","Uppvärmning"],["vp","Värmepump"],["ovr","Övrigt"],["tesla","Tesla"],["traktor","Traktor laddning"],["golv","Golvvärme Uterum"],["entre","Entrévärme utomhus"]];
+  const rows=[["tibber","Totalt, hela huset"],["hush","Hushållsel"],["uppv","Uppvärmning"],["vp","Värmepump"],["ovr","Övrigt"],["tesla","Tesla"],["trl","Traktor laddning (beräknad)"],["trm","Traktor MV (beräknad)"],["golv","Golvvärme Uterum"],["entre","Entrévärme utomhus"]];
   const tot=S.tibber?sumRange(S.tibber,"kr",R.s,R.e).v:null;
   h+=`<div class="card"><h2>Kostnadstabell <span class="pill">${R.s===R.e?R.s:R.s+" – "+R.e}</span></h2><div style="overflow:auto"><table><tr><th>Kategori</th><th>kr</th><th>kWh</th><th>kr/kWh</th><th>Andel</th><th>Täckning</th><th>Underlag</th></tr>`;
   for(const [k,name] of rows){const T=S[k];
     if(!T){h+=`<tr><td>${name}</td><td colspan="6" style="color:var(--mut)">Ej tillgänglig · ingen källa konfigurerad</td></tr>`;continue;}
     const kr=sumRange(T,"kr",R.s,R.e),kw=sumRange(T,"kwh",R.s,R.e),cov=R.len?Math.round((R.len-Math.min(kr.missing,kw.missing))/R.len*100):0;
-    const why=k==="tibber"?"Total (räknas aldrig dubbelt)":T.derived?"Beräknad ≈ (Tibber − Hushåll − Uppvärmning)":T.est?"≈ kr = kWh × timpris när den var igång":["hush","uppv","vp"].includes(k)?"Homeys rapportenhet · överlappar totalen":"Homey";
+    const why=k==="tibber"?"Total (räknas aldrig dubbelt)":T.calc?"Beräknad fördelning av uppmätt traktoreffekt · ingår i totalen, läggs inte till":T.derived?"Beräknad ≈ (Tibber − Hushåll − Uppvärmning)":T.est?"≈ kr = kWh × timpris när den var igång":["hush","uppv","vp"].includes(k)?"Homeys rapportenhet · överlappar totalen":"Homey";
     h+=`<tr class="kcard" data-card="${k}" tabindex="0" style="cursor:pointer"><td>${name}</td><td>${T.est||T.derived?"≈ ":""}${fmt(kr.v,0)}</td><td>${fmt(kw.v,0)}</td><td>${kw.v>0&&kr.v!=null?fmt(kr.v/kw.v,2):"–"}</td><td>${k==="tibber"?"100 %":(tot>0&&kr.v!=null?fmt(kr.v/tot*100,0)+" %":"–")}</td><td>${cov} %</td><td style="text-align:left;color:var(--mut);white-space:normal">${why}</td></tr>`;}
   h+=`<tr><td>Traktor motorvärmare</td><td colspan="6" style="color:var(--mut)">Saknar egen energimätning · kostnad kan inte beräknas</td></tr>`;
   h+=`</table></div><div class="note">Hushållsel, Uppvärmning och Värmepump överlappar varandra och totalen, så delposterna ska inte summeras. Klicka på en rad för detaljer.</div></div>`;
@@ -1648,7 +1651,7 @@ async function renderKlimat(){
 /* =====================================================================
    ENERGIKORT
    ===================================================================== */
-const KORT235=[["tibber","Hus"],["uppv","Uppvärmning"],["hush","Hushållsström"],["traktor","Traktor"],["entre","Entréplatta"],["vent","Ventilation"],["tesla","Tesla"]];
+const KORT235=[["tibber","Hus"],["uppv","Uppvärmning"],["hush","Hushållsström"],["trl","Traktor laddning"],["trm","Traktor MV"],["entre","Entréplatta"],["vent","Ventilation"],["tesla","Tesla"]];
 const KORTCHARTS=["sources","hours"];
 const KORT236=[["d236","Dekarsön 236"]];
 const korts=()=>state.prop==="235"?KORT235:KORT236;
@@ -1659,6 +1662,9 @@ const wdIdx=d=>(new Date(d+"T00:00:00Z").getUTCDay()+6)%7;
 function liveOf(k){
   const D=cfg.ids,g=(id,c)=>capVal(state.devices[id],c);
   const map={tibber:g(D.live235,"measure_power"),uppv:g(D.uppv,"measure_power"),vp:g(D.nibe,"measure_power"),traktor:g(D.trLoad,"measure_power"),golv:g(D.floor,"measure_power"),entre:g(D.entre,"measure_power"),vent:g(D.ventilation,"measure_power"),kok:g(D["koksfläkt"],"measure_power"),spot:g(D.spotKok,"measure_power"),avl:g(D.avlopp,"measure_power"),d236:g(D.d236,"measure_power.number1")};
+  if(k==="trl"||k==="trm"){let v=homeyVar(k==="trl"?D.trLoadW:D.trMvW);
+    if(v==null&&isDemo()){const p=Math.max(0,g(D.trLoad,"measure_power")||0),mv=p>100?Math.min(800,p):0;v=k==="trl"?p-mv:mv;}
+    return v==null?"":"Nu "+fmt(v,0)+" W · beräknad";}
   const w=map[k];
   if(k==="tesla"){const on=g(D.tesla,"charging_on");return on==null?"":(on?"Laddar nu":"Laddar inte")+(g(D.tesla,"measure_soc_level")!=null?" · "+fmt(g(D.tesla,"measure_soc_level"),0)+" %":"");}
   return w==null?"":"Nu "+fmt(w,0)+" W";
@@ -1688,7 +1694,7 @@ function kCard(k,name,S,R,u){
     <div class="top2"><span class="nm">${ic(name)}${name}</span><span class="live">${liveOf(k)}</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${col(kr.v,"kr",pk,T.est)}${col(kw.v,"kWh",pw,false)}</div>
     <div style="margin:4px 0 2px">${spark(sp)}</div>
-    <div class="meta">${avg?`<span>${avg}</span>`:""}${share?`<span>${share}</span>`:""}${T.est?`<span>≈ kr = kWh × timpris när den var igång</span>`:""}${eu==="kwh"&&u==="kr"?`<span>Kronor finns inte för den här källan</span>`:""}</div></div>`;
+    <div class="meta">${avg?`<span>${avg}</span>`:""}${share?`<span>${share}</span>`:""}${T.est?`<span>≈ kr = kWh × timpris när den var igång</span>`:""}${eu==="kwh"&&u==="kr"?`<span>Kronor finns inte för den här källan</span>`:""}${T.calc?`<span>Beräknad fördelning, ej separat mätt${(()=>{const ks=Object.keys(T.kwh||{}).sort();return ks.length?" · historik från "+ks[0]:" · historik saknas ännu";})()}</span>`:""}</div></div>`;
 }
 /* ---- diagramdefinitioner ---- */
 function monthKeys(n){const t=todayStr();const y=+t.slice(0,4),m=+t.slice(5,7),a=[];for(let i=n-1;i>=0;i--){let mm=m-i,yy=y;while(mm<1){mm+=12;yy--;}a.push(yy+"-"+pad(mm));}return a;}
@@ -1765,7 +1771,7 @@ const CHARTS=[
    async rows(c){const T=mainT(c);if(!T)return null;const eu=effU(T,c.u),l=dayList(T,eu,c.R.s,c.R.e).sort((a,b)=>b[1]-a[1]);return {head:["Dygn","Veckodag",unitName(eu)],body:l.slice(0,10).map(([d,v])=>[d,WD[wdIdx(d)],fmt(v,0)])};}}
 ];
 function tableHtml(r){return r?`<div style="overflow:auto"><table><tr>${r.head.map(h=>`<th>${h}</th>`).join("")}</tr>${r.body.map(b=>`<tr>${b.map(x=>`<td>${x}</td>`).join("")}</tr>`).join("")}</table></div>`:"";}
-async function kortCtx(minDate){const R=calcRange(),m=R.ps&&R.ps<R.s?R.ps:R.s;return {S:await loadSeries(minDate<m?minDate:m),R,u:state.unit};}
+async function kortCtx(minDate){await loadVars();const R=calcRange(),m=R.ps&&R.ps<R.s?R.ps:R.s;return {S:await loadSeries(minDate<m?minDate:m),R,u:state.unit};}
 async function renderKort(){
   const t=todayStr(),R=calcRange();
   const c=await kortCtx(addDays(t,-400));
@@ -1811,7 +1817,13 @@ async function renderModal(){
        ${tile(eu==="kr"?"Energi":"Kostnad",fmt(co.v,0),eu==="kr"?"kWh":"kr","")}
        ${tile("Dygn med data",l.length+" av "+R.len,"",cur.missing?cur.missing+" saknas":"Inga luckor")}</div>`;
       if(eu!==u)h+=`<div class="note">Kronor finns inte i Homey för den här källan, så kWh visas.</div>`;
-      if(T.est&&eu==="kr")h+=`<div class="note">≈ Kronor är uppskattade: kWh gånger hela husets snittpris för respektive dygn. Skapa en rapportenhet i Homey för exakt kostnad (se Admin).</div>`;
+      if(T.calc&&eu==="kr")h+=`<div class="note">≈ Kronor = beräknad kWh × timpriset (inkl. moms och påslag, Home Controls gemensamma elprismodell) för respektive timme; äldre dygn med dygnets snittpris.</div>`;else if(T.est&&eu==="kr")h+=`<div class="note">≈ Kronor är uppskattade: kWh gånger hela husets snittpris för respektive dygn. Skapa en rapportenhet i Homey för exakt kostnad (se Admin).</div>`;
+      if(T.calc){const ks=Object.keys(T.kwh||{}).sort();
+        h+=`<div class="note"><b>Beräknad fördelning.</b> Den fysiska mätaren på Traktor laddning mäter laddning och motorvärmare tillsammans. Homey-flödet fördelar mätt effekt: upp till 100 W räknas som laddning, över 100 W flyttas upp till 800 W till motorvärmaren. Summan av laddning och MV är alltid den uppmätta effekten. Historik finns bara från och med att datainsamlingen började${ks.length?" ("+ks[0]+")":""}; inga värden före det är uppskattade.</div>`;
+        try{const id="logic:"+(m.k==="trl"?cfg.ids.trLoadW:cfg.ids.trMvW),es=isDemo()?[]:await logEntries(id,"var","last7Days"),sm={},ct={};
+          for(const e of es){if(e.v==null)continue;const k=hourKey(new Date(e.t));sm[k]=(sm[k]||0)+e.v;ct[k]=(ct[k]||0)+1;}
+          const ks2=Object.keys(sm).sort().slice(-168);
+          h+=ks2.length?`<div class="card" style="margin-bottom:14px"><h2>Effekt per timme, senaste 7 dygnen (beräknad, medel W)</h2>${barChart(ks2.map(k=>sm[k]/ct[k]),null,ks2.map(k=>k.slice(8,10)+"/"+k.slice(5,7)+" "+k.slice(11)+":00"),"W")}</div>`:`<div class="note">Ingen timhistorik för effekten ännu.</div>`;}catch(e){}}
       const ch=chartBlock(name,T,R,eu);h+=(ch.html||ch);
       const mk=monthKeys(12);
       h+=`<div class="card" style="margin-bottom:14px"><h2>Månad för månad</h2>${barChart(mk.map(x=>monthSum(T,eu,x)),mk.map(x=>monthSum(T,eu,(+x.slice(0,4)-1)+x.slice(4))),mk.map(x=>MON[+x.slice(5)-1]),un)}
@@ -2446,12 +2458,12 @@ function renderAdmin(){
    ===================================================================== */
 function rnd(seed){let s=seed;return()=>{s=(s*1664525+1013904223)%4294967296;return s/4294967296;};}
 function demoSeries(minDate){
-  const t=todayStr(),R=rnd(7),S={tibber:{kwh:{},kr:{}},hush:{kwh:{},kr:{}},uppv:{kwh:{},kr:{}},vp:{kwh:{},kr:{}},ovr:{kwh:{},kr:{}},d236:{kwh:{},kr:{}},tesla:{kwh:{},kr:{}},traktor:{kwh:{},kr:{}},golv:{kwh:{},kr:{}},entre:{kwh:{},kr:{}},vent:{kwh:{},kr:{}},kok:{kwh:{},kr:{}},spot:{kwh:{},kr:{}},avl:{kwh:{},kr:{}},vvb:{kwh:{},kr:{}}};
+  const t=todayStr(),R=rnd(7),S={tibber:{kwh:{},kr:{}},hush:{kwh:{},kr:{}},uppv:{kwh:{},kr:{}},vp:{kwh:{},kr:{}},ovr:{kwh:{},kr:{}},d236:{kwh:{},kr:{}},tesla:{kwh:{},kr:{}},traktor:{kwh:{},kr:{}},trl:{kwh:{},kr:{},calc:true},trm:{kwh:{},kr:{},calc:true},golv:{kwh:{},kr:{}},entre:{kwh:{},kr:{}},vent:{kwh:{},kr:{}},kok:{kwh:{},kr:{}},spot:{kwh:{},kr:{}},avl:{kwh:{},kr:{}},vvb:{kwh:{},kr:{}}};
   for(let d=addDays(minDate,-2);d<=t;d=addDays(d,1)){
     const doy=(Date.parse(d)-Date.parse(d.slice(0,4)+"-01-01"))/864e5,w=(Math.cos((doy-15)/365*2*Math.PI)+1)/2;
     const heat=8+w*52*(0.8+R()*0.4),house=20+R()*18,other=3+R()*14,tot=heat+house+other,price=0.75+w*0.55+R()*0.35;
     const put=(k,kw)=>{S[k].kwh[d]=kw;S[k].kr[d]=kw*price*(0.95+R()*0.1);};
-    put("tibber",tot);put("hush",house);put("uppv",heat);put("vp",heat*0.92);put("ovr",other);put("d236",2+w*9*(0.7+R()*0.6));put("tesla",R()<0.4?0:8+R()*22);S.traktor.kwh[d]=R()<0.3?0:1+R()*4;S.golv.kwh[d]=w*(R()<0.2?0:6+R()*10);S.entre.kwh[d]=w*(R()<0.3?0:2+R()*6);S.vent.kwh[d]=1.5+R()*.4;S.kok.kwh[d]=R()<.5?0:.2+R()*.5;S.spot.kwh[d]=.3+R()*.2;S.avl.kwh[d]=R()<.6?0:.1+R()*.3;S.vvb.kwh[d]=3+R()*3;
+    put("tibber",tot);put("hush",house);put("uppv",heat);put("vp",heat*0.92);put("ovr",other);put("d236",2+w*9*(0.7+R()*0.6));put("tesla",R()<0.4?0:8+R()*22);{const tt=R()<0.3?0:1+R()*4,mv=tt*0.35;S.traktor.kwh[d]=tt;S.trl.kwh[d]=tt-mv;S.trm.kwh[d]=mv;}S.golv.kwh[d]=w*(R()<0.2?0:6+R()*10);S.entre.kwh[d]=w*(R()<0.3?0:2+R()*6);S.vent.kwh[d]=1.5+R()*.4;S.kok.kwh[d]=R()<.5?0:.2+R()*.5;S.spot.kwh[d]=.3+R()*.2;S.avl.kwh[d]=R()<.6?0:.1+R()*.3;S.vvb.kwh[d]=3+R()*3;
   }
   return S;
 }
