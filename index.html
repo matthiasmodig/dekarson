@@ -2198,7 +2198,7 @@ function roomModalHtml(id,inline){
     if(r.id==="tvatt"&&f)h+=floorSensTiles(f,"golv");
     if(r.id==="uterum"&&f)h+=floorSensTiles(f,"uterum");}
   h+=`</div>`;
-  if(r.id==="hall"){const dr=state.devices[cfg.ids.ytterdorr];if(dr){const l=!!capVal(dr,"locked");h+=`<div class="bar" style="margin-top:10px"><span class="dot ${l?"ok":"bad"}"></span><b>Ytterdörr: ${l?"Låst":"OLÅST"}</b><span class="grow"></span><button class="btn ${l?"":"pri"}" data-act="lock" data-dev="${esc(dr.id)}" data-to="${!l}">${l?"Lås upp":"Lås"}</button></div>`;}}
+  if(r.id==="hall"){const dr=state.devices[cfg.ids.ytterdorr];if(dr){const l=!!capVal(dr,"locked");h+=`<div class="bar" style="margin-top:10px"><span class="dot ${l?"ok":"bad"}"></span><b>Ytterdörr: ${l?"Låst":"OLÅST"}</b><span class="grow"></span><button class="btn ${l?"":"pri"}" data-act="lock" data-cf="1" data-dev="${esc(dr.id)}" data-to="${!l}">${l?"Lås upp":"Lås"}</button></div>`;}}
   {const wn=husWin(r),won=wn.filter(d=>capVal(d,"onoff")).length;if(wn.length)h+=`<div class="bar" style="margin-top:10px"><b>Fönster: ${won} av ${wn.length} tända</b><span class="note" style="margin:0">${esc(wn.map(devName).join(", "))}</span><span class="grow"></span><button class="btn pri" data-act="roomwin" data-room="${r.id}" data-to="${won===0}">Fönster ${won?"av":"på"}</button></div>`;}
   if(i.lamps.length)h+=`<div class="bar" style="margin-top:10px"><b>Lampor: ${i.on} av ${i.lamps.length} tända</b><button class="btn" data-act="roomlights" data-room="${r.id}" data-to="${i.on===0}">Lampor ${i.on?"av":"på"}</button></div>`;
   const ctl=i.ds.filter(d=>hasOnoff(d)&&isShown(d)).sort((a,b)=>devName(a).localeCompare(devName(b),"sv"));
