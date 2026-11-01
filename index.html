@@ -149,7 +149,6 @@ dialog::backdrop{background:#0009}
   <nav id="nav">
     <button data-tab="oversikt" aria-selected="true">Översikt</button>
     <button data-tab="styr" aria-selected="false">Enheter</button>
-    <button data-tab="sonos" aria-selected="false">Sonos</button>
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="timpris" aria-selected="false">Timpris</button>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
@@ -182,7 +181,6 @@ dialog::backdrop{background:#0009}
   <section id="p-timpris" class="hide"></section>
   <section id="p-klimat" class="hide"></section>
   <section id="p-styr" class="hide"></section>
-  <section id="p-sonos" class="hide"></section>
   <section id="p-status" class="hide"></section>
   <section id="p-admin" class="hide"></section>
 </main>
@@ -206,7 +204,7 @@ const DEFAULTS={
     d236:"1ca574f7-b087-479d-a716-ea9979384536",live235:"560efffc-57e8-4277-a202-933f2f6efb58",
     price:"295dc09b-d336-44d9-ae2b-69f4dabfa4fd",elpris:"d58b4538-b597-4d48-b58d-1794b7ff6d64",m236prev:"b71aea9a-d306-45a2-90da-b3d589591c31",m236day:"1abf7a52-82b5-47ba-a4a4-0a456b938601",m236month:"30272262-e61d-4e99-b536-c843c3911500",m236prevE:"557af22f-ec2e-4f3a-b1ec-a0ab647667af",m236dayN:"bafbd37d-aa8e-46a3-8582-f08604fc8b88",m236monthN:"cfc670ef-0eff-42a8-9ecf-517091618958",l236_1:"9634d738-f370-44ec-b383-1dd540b63ea3",l236_2:"a09151a6-eec7-418e-b57f-6e6eff63f20d",l236_3:"ed39ab86-96bc-46e3-8af0-ee01960a45e5",medDay:"099775fc-10b2-44c1-8c24-6a3cc38410f4",medMonth:"a56b2140-836d-4fbc-91a5-3288e42638c4",medDayN:"5321b749-cfdb-40a7-909b-6f71cc695ad3",medMonthN:"9e93aaa6-c48a-41b8-a498-06db07cc957b",timSnitt:"f8346588-0055-474e-94eb-d4fc2026ee6a",ute:"3150c9c6-321c-4899-bfa7-aba1cb2c69f4",smhi:"50f3bd05-f781-4228-ac26-1dfda87334e4",
     tesla:"ca242f00-ccb8-4294-9ce0-3dfc0ac7e80f",teslaE:"6a9cf6dd-fbe3-45b7-87ab-bbd2e4537740",nibe:"85cf3372-d5b3-4e5e-af3e-fb85706161ae",
-    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",entre:"969c95cb-de0a-4222-9510-0761ca0d0721",fastighet:"983c3c84-a1ef-4c64-b36d-f6c6ff093792",dtVP:"d053deb1-b805-465b-b27e-cd9ca1e5fb77",dtGolv:"1fbcbf0a-62bf-48b8-8c89-cd53d1e4a05a",dtUterum:"dd26be28-32a0-45f7-a665-2705e5bf605e",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",inneKok:"97c95291-0a6a-45eb-a7d5-39695c4fa655",ventilation:"8904d830-126c-4c0d-9a6c-6bc67c1f77ad",koksfläkt:"ab42117b-5917-4f1b-aaa6-9537931a7c2f",spotKok:"626665dc-15f5-4fa9-9e6c-8fc4fbbe74fc",ytterdorr:"11743e4d-2bf0-408a-a606-db890cddd7c6",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
+    trLoad:"703bcab7-aae9-4edc-a5ab-eb63010932ab",entre:"969c95cb-de0a-4222-9510-0761ca0d0721",fastighet:"983c3c84-a1ef-4c64-b36d-f6c6ff093792",importVar:"8d228260-2331-44ef-9edd-2139ec6ac983",dtVP:"d053deb1-b805-465b-b27e-cd9ca1e5fb77",dtGolv:"1fbcbf0a-62bf-48b8-8c89-cd53d1e4a05a",dtUterum:"dd26be28-32a0-45f7-a665-2705e5bf605e",trHeat:"27faf458-da78-4fd1-9f4d-38ff020b52ef",floor:"dd6e780b-d248-4361-a3da-f3c85cae414c",avlopp:"fcc9481a-db30-43ed-a120-fc1c82d53dae",inneKok:"97c95291-0a6a-45eb-a7d5-39695c4fa655",ventilation:"8904d830-126c-4c0d-9a6c-6bc67c1f77ad",koksfläkt:"ab42117b-5917-4f1b-aaa6-9537931a7c2f",spotKok:"626665dc-15f5-4fa9-9e6c-8fc4fbbe74fc",ytterdorr:"11743e4d-2bf0-408a-a606-db890cddd7c6",vvb:["c098d905-8ad7-44d9-a928-616d53d46cfa","4096413f-1648-4014-97fc-86aeb7032313","cf3990b1-3f99-4903-8e54-6ee25846254e"],slab:"0fcc0b8a-3ab5-4d8f-aa6e-e54fa9df9e8e",vp236:"1504a89d-10ee-4382-9a5b-b75db1dee780",trRep:"",golvRep:""
   },
   ui:{devices:{},flows:{},status:{lights:true,sockets:true,locks:true,open:true,alarms:true,motion:true,battery:true,temps:true}}
 };
@@ -1692,6 +1690,7 @@ async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
   if(m.t==="status"){body.innerHTML=statusModalHtml(m.k);return;}
   if(m.t==="cal"){body.innerHTML=calModalHtml();return;}
+  if(m.t==="room"){body.innerHTML=roomModalHtml(m.k);return;}
   if(m.t==="tpavg"){body.innerHTML=await tpAvgModalHtml();return;}
   if(m.t==="onoff"){body.innerHTML=await onoffModalHtml(m.k);return;}
   if(m.t==="sens"){body.innerHTML=await sensModalHtml(m.k);return;}
@@ -1930,11 +1929,111 @@ function devCard(d){
   return h+`</div>`;
 }
 function viewSw(act,cur,opts){return `<div class="seg" role="tablist" style="margin-bottom:12px">${opts.map(([k,l])=>`<button data-act="${act}" data-v="${k}" role="tab" aria-pressed="${cur===k}">${l}</button>`).join("")}</div>`;}
-function styrSwitch(){return viewSw("styrview",state.styrView==="flows"?"flows":"styr",[["styr","Styrningar"],["flows","Flows"]]);}
+function styrSwitch(){const v=["flows","sonos","hus"].includes(state.styrView)?state.styrView:"styr";return viewSw("styrview",v,[["styr","Styrningar"],["flows","Flows"],["sonos","Sonos"],["hus","Planritning"]]);}
 function styrSwitchOld(){const v=state.styrView==="flows"?"flows":"styr";
   return `<div class="seg" role="tablist" style="display:flex;gap:6px;margin-bottom:12px"><button class="btn ${v==="styr"?"pri":""}" data-act="styrview" data-v="styr" role="tab" aria-selected="${v==="styr"}">Styrningar</button><button class="btn ${v==="flows"?"pri":""}" data-act="styrview" data-v="flows" role="tab" aria-selected="${v==="flows"}">Flows</button></div>`;}
-function renderStyr(){
+/* ---------- Planritning Dekarsön 235 (SVG, ritad efter husritningen) ---------- */
+const HUS_ROOMS=[
+ {id:"garage",n:"Garage",x:30,y:292,w:355,h:533,z:/^garage$/i},
+ {id:"badrum",n:"Badrum",x:395,y:292,w:175,h:243,z:/^badrum$/i},
+ {id:"sovrum",n:"Sovrum 1",x:570,y:292,w:190,h:243,z:/^sovrum$/i,notName:/wic/i},
+ {id:"wic",n:"WiC",x:395,y:540,w:305,h:135,name:/wic/i},
+ {id:"tvatt",n:"Tvättstuga",x:395,y:675,w:305,h:150,z:/tvättstuga/i,notName:/wic/i},
+ {id:"matplats",n:"Matplats",x:765,y:292,w:185,h:238,z:/matplats/i},
+ {id:"vardagsrum",n:"Vardagsrum",x:950,y:292,w:230,h:238,z:/vardagsrum/i},
+ {id:"kok",n:"Kök",x:705,y:535,w:295,h:290,z:/^kök$/i},
+ {id:"hall",n:"Hall",x:1000,y:535,w:180,h:290,z:/^hall$/i},
+ {id:"wc",n:"WC",x:1185,y:292,w:135,h:178,z:/^wc$/i},
+ {id:"passage",n:"Passage",x:1185,y:470,w:135,h:62,none:true},
+ {id:"allrum",n:"Allrum",x:1325,y:292,w:205,h:238,z:/^allrum$/i},
+ {id:"sov2",n:"Klaras rum",x:1185,y:535,w:165,h:205,z:/klara/i},
+ {id:"sov3",n:"Måns rum",x:1355,y:535,w:175,h:205,z:/måns/i},
+ {id:"uterum",n:"Uterum",x:767,y:17,w:546,h:273,z:/^uterum$/i,dash:true}
+];
+function husDevs(r){if(r.none)return [];return propDevices().filter(d=>{const z=zoneName(d),n=devName(d);if(r.name)return r.name.test(n);return r.z&&r.z.test(z)&&!(r.notName&&r.notName.test(n));});}
+function husTemp(r,ds){
+  let sens=ds.find(d=>/^temperatursensor/i.test(devName(d))&&capVal(d,"measure_temperature")!=null);
+  if(!sens&&r.id==="uterum")sens=state.devices[cfg.ids.slab]&&capVal(state.devices[cfg.ids.slab],"measure_temperature")!=null?state.devices[cfg.ids.slab]:null;
+  return sens?{d:sens,t:capVal(sens,"measure_temperature")}:null;}
+function husInfo(r){
+  const ds=husDevs(r),tp=husTemp(r,ds),lamps=ds.filter(d=>isLamp(d)&&hasOnoff(d)),on=lamps.filter(d=>capVal(d,"onoff")).length;
+  const w=ds.filter(d=>!isLamp(d)||capVal(d,"onoff")).reduce((a,d)=>a+(capVal(d,"measure_power")||0),0)+ds.filter(d=>isLamp(d)&&capVal(d,"onoff")&&false).length;
+  const wAll=ds.reduce((a,d)=>a+((capVal(d,"onoff")!==false?capVal(d,"measure_power"):0)||0),0);
+  return {ds,tp,lamps,on,w:wAll};}
+function renderHus(){
+  const mode=["temp","lamp","power"].includes(state.husMode)?state.husMode:"temp";
+  const col=(r,i)=>{
+    if(r.none)return {f:"var(--soft)",o:.6};
+    if(mode==="temp"){if(!i.tp)return {f:"var(--soft)",o:.55};const t=i.tp.t,h=Math.round(215-Math.min(1,Math.max(0,(t-14)/12))*195);return {f:`hsl(${h} 75% 55%)`,o:.4};}
+    if(mode==="lamp"){if(!i.lamps.length)return {f:"var(--soft)",o:.55};return i.on?{f:"hsl(45 95% 55%)",o:.6}:{f:"var(--soft)",o:.8};}
+    if(!i.ds.length)return {f:"var(--soft)",o:.55};const h=Math.round(140-Math.min(1,i.w/1500)*140);return i.w>5?{f:`hsl(${h} 75% 50%)`,o:.45}:{f:"var(--soft)",o:.8};};
+  const val=(r,i)=>{if(r.none)return "";if(mode==="temp")return i.tp?fmt(i.tp.t,1)+" °C":"–";if(mode==="lamp")return i.lamps.length?`${i.on} av ${i.lamps.length} tända`:"Inga lampor";return i.ds.length?(i.w>=1000?fmt(i.w/1000,2)+" kW":fmt(i.w,0)+" W"):"–";};
+  let g="";
+  for(const r of HUS_ROOMS){const i=husInfo(r),c=col(r,i),cx=r.x+r.w/2,cy=r.y+r.h/2,fs=r.w<170?19:r.w<250?22:26;
+    g+=`<g ${r.none?"":`class="hrm" data-room="${r.id}" tabindex="0" role="button" aria-label="${esc(r.n)}, ${esc(val(r,i))}"`} style="${r.none?"":"cursor:pointer"}"><rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" fill="${c.f}" fill-opacity="${c.o}" stroke="var(--ink)" stroke-width="${r.dash?3:5}" ${r.dash?'stroke-dasharray="14 8"':""} rx="2"/>
+      <text x="${cx}" y="${cy-(r.none?0:8)}" text-anchor="middle" style="font-size:${fs}px;font-weight:700;fill:var(--ink)">${esc(r.n)}</text>${r.none?"":`<text x="${cx}" y="${cy+fs-2}" text-anchor="middle" style="font-size:${fs-3}px;fill:var(--ink)">${esc(val(r,i))}</text>`}</g>`;}
+  // ytterdörr och väderstreck
+  const door=state.devices[cfg.ids.ytterdorr],lk=door&&capVal(door,"locked");
+  g+=`<rect x="1000" y="817" width="180" height="14" fill="${lk===false?"var(--bad)":"var(--good)"}" opacity=".85"/><text x="1090" y="848" text-anchor="middle" style="font-size:16px;fill:var(--ink)">Ytterdörr ${lk==null?"":(lk?"låst":"OLÅST")}</text>`;
+  g+=`<g transform="translate(1470,70)"><circle r="46" fill="none" stroke="var(--ink)" stroke-width="3"/><path d="M0 -40 L9 8 L0 0 L-9 8Z" fill="var(--ink)"/><text y="68" text-anchor="middle" style="font-size:22px;font-weight:700;fill:var(--ink)">N</text></g>`;
+  g+=`<text x="40" y="272" style="font-size:16px;fill:var(--mut)">27,4 m</text>`;
+  const ute=capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(state.devices[cfg.ids.ute],"measure_temperature");
+  const chips=[["temp","Temperatur"],["lamp","Lampor"],["power","Effekt"]].map(([k,l])=>`<button class="chip" data-husmode="${k}" aria-pressed="${mode===k}">${l}</button>`).join("");
+  let h=styrSwitch()+`<div class="bar">${chips}<span class="grow"></span>${ute!=null?`<span class="note" style="margin:0">Ute <b>${fmt(ute,1)} °C</b></span>`:""}</div>
+    <div class="card"><svg viewBox="0 0 1560 860" width="100%" role="group" aria-label="Planritning Dekarsön 235">${g}</svg>
+    <div class="note">Tryck på ett rum för temperatur, lampor och enheter. Färgen visar ${mode==="temp"?"temperatur (blå kallt, röd varmt)":mode==="lamp"?"tända lampor (gul = något tänt)":"aktuell effekt i rummet"}. Planen är en förenklad ritning efter husritningen.</div></div>`;
+  $("#p-styr").innerHTML=h;}
+function roomModalHtml(id){
+  const r=HUS_ROOMS.find(x=>x.id===id);if(!r)return "";const i=husInfo(r);
+  const head=`<div class="mhead"><h2>${esc(r.n)}</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`;
+  let h=head+`<div class="grid">`;
+  const hu=i.tp&&capVal(i.tp.d,"measure_humidity");
+  h+=i.tp?sensTile(i.tp.d.id,"measure_temperature","Temperatur",fmt(i.tp.t,1),"°C",hu!=null?"Luftfuktighet "+fmt(hu,0)+" %":"Visa diagram över tid","hero"):tile("Temperatur","–","","Ingen temperatursensor");
+  h+=tile("Effekt i rummet",i.w>=1000?fmt(i.w/1000,2):fmt(i.w,0),i.w>=1000?"kW":"W",i.ds.length+" enheter");
+  h+=`</div>`;
+  if(i.lamps.length)h+=`<div class="bar" style="margin-top:10px"><b>Lampor: ${i.on} av ${i.lamps.length} tända</b><button class="btn" data-act="roomlights" data-room="${r.id}" data-to="${i.on===0}">Lampor ${i.on?"av":"på"}</button></div>`;
+  const ctl=i.ds.filter(d=>hasOnoff(d)&&isShown(d)).sort((a,b)=>devName(a).localeCompare(devName(b),"sv"));
+  h+=ctl.length?`<div class="grid" style="margin-top:6px">${ctl.map(devCard).join("")}</div>`:`<div class="note">Inga styrbara enheter i rummet.</div>`;
+  const sens=i.ds.filter(d=>capVal(d,"measure_temperature")!=null&&d!==(i.tp&&i.tp.d)&&!hasOnoff(d));
+  if(sens.length)h+=`<h3>Andra sensorer</h3><div class="grid">${sens.map(d=>sensTile(d.id,"measure_temperature",esc(devName(d)),fmt(capVal(d,"measure_temperature"),1),"°C","")).join("")}</div>`;
+  return h;}
+
+function vpElHtml(){
+  if(state.prop!=="235"){const d=state.devices[cfg.ids.vp236];if(!d)return "";
+    return `<div class="zonehead"><b>Värmepump och el</b></div><div class="grid">`+(hasOnoff(d)?devCard(d):tile("Luftvärmepump 236",fmt(capVal(d,"measure_power"),0),"W","Ingen på/av-styrning"))+`</div>`;}
+  const nb=state.devices[cfg.ids.nibe],hv=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).map(id=>state.devices[id]).filter(Boolean),fa=state.devices[cfg.ids.fastighet];
+  const e=liveEnergy(),hus=e.w,wOf=d=>d?(capVal(d,"measure_power")??capVal(d,"measure_watt_avg")):null;
+  const vpW=wOf(nb),vvW=hv.length?hv.reduce((a,d)=>a+(wOf(d)||0),0):null,uppW=capVal(state.devices[cfg.ids.uppv],"measure_power");
+  const pd=state.devices[cfg.ids.price],lvl=capVal(pd,"measure_price_info_level")||capVal(pd,"price_level"),LV={VERY_CHEAP:"Mycket billigt",CHEAP:"Billigt",NORMAL:"Normalt",EXPENSIVE:"Dyrt",VERY_EXPENSIVE:"Mycket dyrt"};
+  const hv0=homeyVar(cfg.ids.importVar),imp=hv0!=null?hv0:(capVal(pd,"measure_price_total")!=null?capVal(pd,"measure_price_total")+Number(cfg.markup||0.448):null);
+  const kw=w=>w==null?"–":(w>=1000?fmt(w/1000,2):fmt(w,0)),ku=w=>w!=null&&w>=1000?"kW":"W";
+  const ute=capVal(nb,"capability_0")??capVal(state.devices[cfg.ids.ute],"measure_temperature"),dT=homeyVar(cfg.ids.dtVP);
+  let h=`<div class="zonehead"><b>Värmepump och el</b></div><div class="rowN" style="--c:4;margin-bottom:12px">`+
+    tileA('data-card="tibber"',"Hela huset nu",kw(hus),ku(hus),(e.day!=null?"Idag "+fmt(e.day,e.day>100?0:1)+" "+(state.unit==="kr"?"kr":"kWh"):"Tryck för historik"))+
+    tileA('data-card="uppv"',"Uppvärmning nu",kw(uppW),ku(uppW),hus&&uppW!=null?fmt(uppW/hus*100,0)+" % av huset":"Tryck för historik")+
+    tileA('data-card="vp"',"Värmepump NIBE",kw(vpW),ku(vpW),(ute!=null?"Ute "+fmt(ute,1)+" °C":"")+(dT!=null?" · ΔT "+fmt(dT,1)+" °C":""))+
+    tileA('data-goto="timpris"',"Elpris nu",imp!=null?fmt(imp*100,0):"–","öre/kWh",(lvl?(LV[lvl]||lvl):"Importpris")+(lvl&&/CHEAP/.test(lvl)?" · bra läge för varmvatten":""))+`</div>`;
+  // effektfördelning
+  const parts=[["Värmepump",vpW,"var(--accent)"],["Varmvatten",vvW,"hsl(25 85% 52%)"]].filter(x=>x[1]!=null&&x[1]>0),known=parts.reduce((a,x)=>a+x[1],0);
+  if(hus>0){const rest=Math.max(0,hus-known),all=[...parts,["Övrigt i huset",rest,"var(--mut)"]];
+    h+=`<div class="card" style="margin-bottom:12px"><h2 style="margin:0 0 8px;font-size:16px">Vad drar ström just nu</h2>
+      <div style="display:flex;height:22px;border-radius:11px;overflow:hidden;background:var(--soft)" role="img" aria-label="Effektfördelning">${all.map(([n,w,c])=>`<div title="${n} ${fmt(w,0)} W" style="width:${w/Math.max(hus,known)*100}%;background:${c}"></div>`).join("")}</div>
+      <div class="bar" style="margin:8px 0 0;gap:16px;font-size:13.5px">${all.map(([n,w,c])=>`<span><i style="display:inline-block;width:10px;height:10px;border-radius:5px;background:${c};margin-right:5px"></i>${n} <b>${fmt(w,0)} W</b> <span style="color:var(--mut)">${fmt(w/Math.max(hus,known)*100,0)} %</span></span>`).join("")}</div></div>`;}
+  // varmvattenberedare
+  if(hv.length){const onN=hv.filter(d=>capVal(d,"onoff")).length;
+    h+=`<div class="bar" style="margin:6px 0"><b>Varmvattenberedare</b><span class="note" style="margin:0">${onN} av ${hv.filter(hasOnoff).length} på${vvW!=null?" · "+fmt(vvW,0)+" W":""}</span><span class="grow"></span><button class="btn sm" data-act="vvball" data-to="true">Alla på</button><button class="btn sm" data-act="vvball" data-to="false">Alla av</button></div>
+      <div class="grid" style="margin-bottom:12px">${hv.map((d,i)=>hasOnoff(d)?devCard(d):tile("Varmvattenberedare "+(i+1),kw(wOf(d)),ku(wOf(d)),"Ingen på/av-styrning")).join("")}</div>`;}
+  // NIBE på/av om den finns, annars inget
+  if(nb&&hasOnoff(nb))h+=`<div class="grid" style="margin-bottom:12px">${devCard(nb)}</div>`;
+  // fasbelastning
+  if(fa){const co=fa.capabilitiesObj||{},fuse=Number(cfg.fuse)||20,ph=[["a","L1"],["b","L2"],["c","L3"]].map(([x,n])=>({n,a:co["measure_current."+x]&&co["measure_current."+x].value,w:co["measure_power."+x]&&co["measure_power."+x].value})).filter(x=>x.a!=null);
+    if(ph.length)h+=`<div class="card" data-goto="status" style="cursor:pointer;margin-bottom:12px"><h2 style="margin:0 0 8px;font-size:16px">Belastning per fas <span class="note" style="margin:0 0 0 6px;font-weight:400">${fuse} A huvudsäkring</span></h2>${ph.map(x=>{const p=Math.min(100,x.a/fuse*100),c=p>85?"var(--bad)":p>65?"hsl(40 90% 50%)":"var(--good)";return `<div style="display:flex;align-items:center;gap:10px;margin:4px 0"><b style="width:26px">${x.n}</b><div style="flex:1;height:12px;border-radius:6px;background:var(--soft);overflow:hidden"><div style="width:${p}%;height:100%;background:${c}"></div></div><span style="width:150px;text-align:right;font-size:13.5px">${fmt(x.a,1)} A${x.w!=null?" · "+fmt(x.w,0)+" W":""}</span></div>`;}).join("")}</div>`;}
+  return h;}
+async function renderStyr(){
   if(state.styrView==="flows"){renderFlows();return;}
+  if(state.styrView==="sonos"){renderSonos();return;}
+  if(state.styrView==="hus"){renderHus();return;}
+  await loadVars();
   const hv=(Array.isArray(cfg.ids.vvb)?cfg.ids.vvb:[]).filter(Boolean),ids235=[cfg.ids.nibe,...hv,cfg.ids.live235,cfg.ids.tibber],idsGrp=new Set(state.prop==="235"?ids235:[cfg.ids.vp236]);
   const devs=propDevices().filter(d=>hasOnoff(d)&&isShown(d)&&!idsGrp.has(d.id));
   const hidden=propDevices().filter(d=>hasOnoff(d)&&!idsGrp.has(d.id)&&cfg.ui.devices[d.id]&&cfg.ui.devices[d.id].show===false);
@@ -1943,11 +2042,8 @@ function renderStyr(){
   const by={};for(const d of list)(by[zoneName(d)]=by[zoneName(d)]||[]).push(d);
   let h=styrSwitch()+`<div class="bar"><label>Rum <select id="styrzone"><option value="">Alla rum</option>${rooms.map(z=>`<option ${z===zsel?"selected":""}>${esc(z)}</option>`).join("")}</select></label><span class="grow"></span>
     <button class="btn" data-act="alloff">Släck alla lampor</button></div>`;
-  const gd=(state.prop==="235"?[[cfg.ids.nibe,"NIBE värmepump","vp"],...hv.map((id,i)=>[id,"Varmvattenberedare "+(i+1),null]),[cfg.ids.tibber,"Tibber, hela huset","tibber"]]:[[cfg.ids.vp236,"Luftvärmepump 236",null]]).filter(x=>!zsel&&state.devices[x[0]]);
-  if(gd.length){h+=`<div class="zonehead"><b>Värmepump och el</b></div><div class="grid">`+gd.map(([id,nm,card])=>{const d=state.devices[id];
-    if(hasOnoff(d))return devCard(d);
-    const w=capVal(d,"measure_power")??capVal(d,"measure_watt_avg");
-    return `<div class="card dev" ${card?`data-card="${card}" tabindex="0" role="button" style="cursor:pointer"`:""}><div class="row"><div><div class="nm">${esc(nm)}</div><div class="sub">${w!=null?fmt(w,0)+" W":"Ingen effektmätning"}${capVal(d,"meter_power")!=null?" · "+fmt(capVal(d,"meter_power"),1)+" kWh totalt":""}</div></div></div></div>`;}).join("")+`</div>`;}
+  const gd=zsel?[]:[1];
+  if(gd.length)h+=vpElHtml();
   for(const z of Object.keys(by).sort((a,b)=>a.localeCompare(b,"sv"))){
     const lights=by[z].filter(isLamp),anyOn=lights.some(d=>d.capabilitiesObj.onoff.value);
     h+=`<div class="zonehead"><b>${esc(z)}</b>${lights.length?`<button class="btn sm" data-act="zone" data-zone="${esc(z)}" data-to="${!anyOn}">Lampor ${anyOn?"av":"på"}</button>`:""}</div><div class="grid">${by[z].sort((a,b)=>devName(a).localeCompare(devName(b),"sv")).map(devCard).join("")}</div>`;
@@ -1968,9 +2064,9 @@ function flowCard(f){
 function renderSonos(){
   const q=(state.search||"").toLowerCase();
   const all=state.flows.filter(f=>isSonos(f)&&flowShown(f)),list=all.filter(f=>!q||flowName(f).toLowerCase().includes(q)).sort((a,b)=>flowName(a).localeCompare(flowName(b),"sv"));
-  let h=`<div class="bar"><input type="search" id="q" placeholder="Sök Sonos-flow" value="${esc(state.search)}"></div>`;
+  let h=styrSwitch()+`<div class="bar"><input type="search" id="q" placeholder="Sök Sonos-flow" value="${esc(state.search)}"></div>`;
   h+=list.length?`<div class="grid wide">${list.map(flowCard).join("")}</div>`:`<div class="card">Inga Sonos-flows hittades. Flows vars namn innehåller "Sonos" visas här.</div>`;
-  $("#p-sonos").innerHTML=h;
+  $("#p-styr").innerHTML=h;
   const qi=$("#q");if(qi&&state.keepFocus){qi.focus();qi.setSelectionRange(qi.value.length,qi.value.length);}
 }
 function renderFlows(){
@@ -2192,7 +2288,7 @@ async function refresh(opts={}){
     if(!opts.quiet)setStatus("Hämtar…");
     if(isDemo())demoSetup();
     else{const [dv,zn]=await Promise.all([api("/api/manager/devices/device/"),api("/api/manager/zones/zone/")]);state.devices=dv||{};state.zones=zn||{};}
-    if(["flows","styr","sonos","oversikt","energi","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
+    if(["flows","styr","oversikt","energi","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
     drawProp();showErr(null);
     await draw();
     setStatus((isDemo()?"Demo · ":"")+"Uppdaterad "+new Date().toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
@@ -2207,8 +2303,7 @@ async function draw(){
   else if(state.tab==="energi")await renderEnergi();
   else if(state.tab==="timpris")await renderTimpris();
   else if(state.tab==="klimat")await renderKlimat();
-  else if(state.tab==="styr")renderStyr();
-  else if(state.tab==="sonos")renderSonos();
+  else if(state.tab==="styr")await renderStyr();
   else if(state.tab==="status")renderStatus();
   else renderAdmin();
   if(state.modal&&$("#dlg").open)await renderModal();
@@ -2218,7 +2313,7 @@ function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.q
 function showTab(t){
   state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
-  for(const k of ["oversikt","energi","timpris","klimat","styr","sonos","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  for(const k of ["oversikt","energi","timpris","klimat","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
 }
 
@@ -2243,6 +2338,8 @@ document.addEventListener("click",async e=>{
   if(e.target.id==="dlg"){$("#dlg").close();state.modal=null;return;}
   const mu=e.target.closest("[data-munit]");if(mu){state.unit=mu.dataset.munit;drawProp();draw();return;}
   const dl=e.target.closest("[data-daily]");if(dl){openModal("daily",dl.dataset.daily);return;}
+  const hm=e.target.closest("[data-husmode]");if(hm){state.husMode=hm.dataset.husmode;draw();return;}
+  const rmo=e.target.closest("[data-room]");if(rmo&&!e.target.closest("[data-act]")){openModal("room",rmo.dataset.room);return;}
   const tpa=e.target.closest("[data-tpavg]");if(tpa){openModal("tpavg","");return;}
   const cmo=e.target.closest("[data-calmodal]");if(cmo){openModal("cal","");return;}
   const sb=e.target.closest("[data-status]");if(sb){openModal("status",sb.dataset.status);return;}
@@ -2259,6 +2356,8 @@ document.addEventListener("click",async e=>{
     else if(act==="unhide"){(cfg.ui.devices[b.dataset.dev]=cfg.ui.devices[b.dataset.dev]||{}).show=true;persist();draw();}
     else if(act==="toggle"){const d=state.devices[id];await setCap(id,"onoff",!d.capabilitiesObj.onoff.value);draw();}
     else if(act==="energiview"){state.energiView=b.dataset.v;state.search="";draw();}
+    else if(act==="vvball"){const to=b.dataset.to==="true";for(const id of (cfg.ids.vvb||[])){const d=state.devices[id];if(d&&hasOnoff(d))await setCap(id,"onoff",to);}draw();}
+    else if(act==="roomlights"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husDevs(r).filter(d=>isLamp(d)&&hasOnoff(d)))await setCap(d.id,"onoff",to);draw();}
     else if(act==="styrview"){state.styrView=b.dataset.v;state.search="";draw();}
     else if(act==="flow"){await runFlow(id);state.flash[id]=true;draw();setTimeout(()=>{delete state.flash[id];draw();},1800);}
     else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
