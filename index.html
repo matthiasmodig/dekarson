@@ -672,18 +672,24 @@ function attnHtml(){
   return `<div class="card ${att.length?"attn":""}" style="grid-column:1/-1"><h2>Behöver uppmärksamhet <span class="pill ${att.length?"bad":""}">${att.length}</span></h2>${att.length?`<ul style="margin:0;padding-left:18px">${att.map(x=>`<li>${x}</li>`).join("")}</ul>`:`<div class="note" style="margin:0">Inget just nu.</div>`}</div>`;
 }
 function heatDevs(){return [[cfg.ids.floor,"Golvvärme"],[cfg.ids.entre,"Entréplatta"],[cfg.ids.trLoad,"Traktor laddning"],[cfg.ids.trHeat,"Traktor MV"],[cfg.ids.avlopp,"Avloppsbrunn"]].map(([id,n])=>[state.devices[id],n]).filter(x=>x[0]&&hasOnoff(x[0]));}
-function calBtn(){
+function tempBar(){
+  if(state.prop!=="235")return "";
+  const kk=state.devices[cfg.ids.inneKok],sl=state.devices[cfg.ids.slab],nb=state.devices[cfg.ids.nibe],ud=state.devices[cfg.ids.ute];
+  const ute=capVal(nb,"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out");
+  const it=(id,cap,name,v)=>v==null?"":`<span data-sens="${esc(id)}|${esc(cap)}" tabindex="0" role="button" title="Visa diagram över tid" style="cursor:pointer;white-space:nowrap">${name} <b>${fmt(v,1)}°</b></span>`;
+  const parts=[it(kk&&kk.id,"measure_temperature","Inne",kk&&capVal(kk,"measure_temperature")),it(cfg.ids.nibe,"capability_0","Ute",ute),it(sl&&sl.id,"measure_temperature","Betongplatta",sl&&capVal(sl,"measure_temperature"))].filter(Boolean);
+  return parts.length?`<div class="bar" style="margin:8px 0 0;gap:18px;font-size:14px"><span style="color:var(--mut)">Temperatur</span>${parts.join("")}</div>`:"";}
+function calBrick(){
   const c=state.cal;if(!c||c.err==="none")return "";
   const open=`href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener"`,now=Date.now();
-  if(c.err)return `<a class="chip" ${open} title="${esc(c.err)}" style="text-decoration:none;color:inherit">${ic("Kalender","clock")}Kalender</a>`;
+  const inner=(body)=>`<section class="grp"><div class="rowN" style="--c:3"><a class="card tile" ${open} title="Öppna Google Kalender" aria-label="Öppna Google Kalender" style="display:block;color:inherit;text-decoration:none"><div class="l">${ic("Kalender","clock")}Kalender</div>${body}</div></div></section>`.replace('</div></div></section>','</a></div></section>');
+  if(c.err)return inner(`<div class="s">${esc(c.err)}</div>`);
   const list=c.ev.filter(e=>e.end>now).slice(0,5);
   const td=new Date();td.setHours(0,0,0,0);
   const dl=t=>{const d=new Date(Math.max(t,td.getTime())),df=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-td)/864e5);return df===0?"idag":df===1?"imorgon":d.toLocaleDateString("sv-SE",{weekday:"short",day:"numeric",month:"short"});};
   const tm=e=>e.allDay?"heldag":new Date(e.start).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
-  const one=e=>dl(e.start)+" "+tm(e)+" "+e.title;
-  const tip=list.length?list.map(one).join("\n"):"Inga kommande händelser";
-  const n=list[0],txt=n?(one(n).length>34?one(n).slice(0,33)+"…":one(n)):"inga händelser";
-  return `<a class="chip" ${open} title="${esc(tip)}" aria-label="Öppna Google Kalender. Kommande: ${esc(tip.replace(/\n/g,", "))}" style="text-decoration:none;color:inherit">${ic("Kalender","clock")}Kalender: ${esc(txt)}</a>`;}
+  if(!list.length)return inner(`<div class="s">Inga kommande händelser</div>`);
+  return inner(list.map(e=>`<div style="font-size:13.5px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--mut)">${esc(dl(e.start))} ${tm(e)}</span> ${esc(e.title)}</div>`).join(""));}
 function statusBar(){
   const L=statusLists(),unl=L.locks.filter(x=>!x.ok).length,al=L.alarms.length+L.open.length;
   const chip=(k,dot,txt)=>`<button class="chip" data-status="${k}"><span class="dot ${dot}"></span>${txt}</button>`;
@@ -693,7 +699,7 @@ function statusBar(){
     ${chip("locks",!L.locks.length?"":(unl?"bad":"ok"),L.locks.length?(unl?`Lås: ${unl} olåst`:"Lås: alla låsta"):"Lås: –")}
     ${chip("alarms",al?"bad":"ok",`Larm/öppet: ${al}`)}
     ${chip("motion",L.motion.length?"on":"",`Rörelse: ${L.motion.length}`)}
-    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}${calBtn()}</div>
+    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}</div>${tempBar()}
     <div class="note" style="margin-top:6px">Klicka på en ruta för detaljer och för att ändra.</div></div>`;
 }
 
@@ -930,7 +936,7 @@ async function tibberHtml(){
 async function renderOversikt(){
   const e=liveEnergy();
   try{await loadCal();}catch(e){}
-  const sb=statusBar();let h=sb+heatCards();
+  const sb=statusBar();let h=sb+calBrick()+heatCards();
   if(state.prop==="235"){
     const tb=state.devices[cfg.ids.tibber],now=new Date(),frac=Math.max(now.getMinutes()+now.getSeconds()/60,1)/60;
     const thisH=capVal(tb,"meter_kwh_this_hour"),kd=capVal(tb,"meter_kwh_this_day"),kdp=capVal(tb,"meter_kwh_last_day"),rd=capVal(tb,"meter_money_this_day"),rdp=capVal(tb,"meter_money_last_day");
@@ -947,7 +953,7 @@ async function renderOversikt(){
     if(kk)g2+=sensTile(kk.id,"measure_temperature","Inomhus (kök)",fmt(capVal(kk,"measure_temperature"),1),"°C",capVal(kk,"measure_humidity")!=null?sensLink(kk.id,"measure_humidity","Luftfuktighet "+fmt(capVal(kk,"measure_humidity"),0)+" %"):"Kök representerar inomhus");
     g2+=sensTile(cfg.ids.nibe,"capability_0","Utetemperatur",fmt(capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out"),1),"°C",(feel!=null?"Känns som "+fmt(feel,1)+" °C (SMHI) · ":"")+"NIBE BT1");
     g2+=sensTile(cfg.ids.slab,"measure_temperature","Betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
-    h=h.replace(sb,sb+grp("Temperatur",g2,3).replace('<section class="grp">','<section class="grp slim">'))+elGrp;
+    h+=elGrp;
     {const tc=await tibberHtml();h+=tc.html;if(!tc.ok){try{h+=await priceBlock(0,true);}catch(err){}}}
     try{h+=planHtml();}catch(err){}
     if(state.devices[cfg.ids.tesla])h+=`<section class="grp" style="margin-top:14px"><h3>Tesla</h3>`+teslaTiles(state.unit)+`</section>`;
