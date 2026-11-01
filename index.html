@@ -1794,7 +1794,9 @@ function renderStatus(){
   if(S.lights)h+=cat("Tända lampor",L.lights.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
   if(S.sockets){const skip=new Set([cfg.ids.nibe,cfg.ids.fastighet,cfg.ids.tibber,cfg.ids.live235,cfg.ids.d236,cfg.ids.price,cfg.ids.elpris,cfg.ids.l236_1,cfg.ids.l236_2,cfg.ids.l236_3]);
     const agg=/^(Energi|Energiöversikt|Elmätare|Uppvärmning Hela|Hushållsel Hela|Fastighet)\b/i;["uppv","hush","vp","ovr","teslaE","trRep","golvRep"].forEach(k=>cfg.ids[k]&&skip.add(cfg.ids[k]));
-    const on=propDevices().filter(d=>!skip.has(d.id)&&!agg.test(d.name)&&(capVal(d,"onoff")===true||(capVal(d,"measure_power")||0)>5)).map(d=>({d,w:capVal(d,"measure_power")})).sort((a,b)=>(b.w||0)-(a.w||0));
+    const on=propDevices().filter(d=>!skip.has(d.id)&&!agg.test(d.name)&&(capVal(d,"onoff")===true||(capVal(d,"measure_power")||0)>5)).map(d=>({d,w:capVal(d,"measure_power")}));
+    {const t=state.devices[cfg.ids.tesla],cw=t&&capVal(t,"measure_charge_power");if(t&&state.prop==="235"&&capVal(t,"charging_on")===true&&cw>0)on.push({d:t,w:cw*1000});}
+    on.sort((a,b)=>(b.w||0)-(a.w||0));
     const tot=on.reduce((a,x)=>a+(x.w||0),0);
     h+=cat("Påslagna enheter och förbrukare",on.map(x=>`<span class="dot on"></span>${esc(devName(x.d))} <span class="pill">${esc(zoneName(x.d))}</span></span><span>${x.w!=null?fmt(x.w,0)+" W":"– W"}`).concat(on.length?[`<b>Summa uppmätt</b></span><b>${fmt(tot,0)} W`]:[]),"",on.length,"grid-column:span 2;min-width:0");}
   {const ph=[];
