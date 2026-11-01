@@ -1798,7 +1798,9 @@ function renderStatus(){
     {const t=state.devices[cfg.ids.tesla],cw=t&&capVal(t,"measure_charge_power");if(t&&state.prop==="235"&&capVal(t,"charging_on")===true&&cw>0)on.push({d:t,w:cw*1000});}
     on.sort((a,b)=>(b.w||0)-(a.w||0));
     const tot=on.reduce((a,x)=>a+(x.w||0),0);
-    h+=cat("Påslagna enheter och förbrukare",on.map(x=>`<span class="dot on"></span>${esc(devName(x.d))} <span class="pill">${esc(zoneName(x.d))}</span></span><span>${x.w!=null?fmt(x.w,0)+" W":"– W"}`).concat(on.length?[`<b>Summa uppmätt</b></span><b>${fmt(tot,0)} W`]:[]),"",on.length,"grid-column:span 2;min-width:0");}
+    const houseW=state.prop==="236"?[1,2,3].reduce((a,i)=>{const d=state.devices[cfg.ids["l236_"+i]];return a+(d&&capVal(d,"measure_power")||0);},0):(()=>{const f=state.devices[cfg.ids.fastighet];return f?(capVal(f,"measure_power")??[".a",".b",".c"].reduce((a,x)=>a+(capVal(f,"measure_power"+x)||0),0)):null;})();
+    const ovr=houseW!=null&&houseW>0?Math.max(0,houseW-tot):null;
+    h+=cat("Påslagna enheter och förbrukare",on.map(x=>`<span class="dot on"></span>${esc(devName(x.d))} <span class="pill">${esc(zoneName(x.d))}</span></span><span>${x.w!=null?fmt(x.w,0)+" W":"– W"}`).concat(on.length?[`<b>Summa uppmätt</b></span><b>${fmt(tot,0)} W`]:[]).concat(ovr!=null?[`Övrigt, ej mätt <span class="pill">Fastighet minus uppmätt</span></span><span>${fmt(ovr,0)} W`,`<span class="note" style="margin:0;font-size:12px">Kan vara: kyl och frys, spis och ugn, TV och router, laddare, cirkulationspumpar och styrelektronik i värmesystemet, omätta lampor och uttag samt standby-förbrukning.</span>`]:[]),"",on.length,"grid-column:span 2;min-width:0");}
   {const ph=[];
     if(state.prop==="236"){[1,2,3].forEach(i=>{const d=state.devices[cfg.ids["l236_"+i]];if(d)ph.push({n:"L"+i,w:capVal(d,"measure_power"),a:capVal(d,"measure_current"),v:capVal(d,"measure_voltage")});});}
     else if(state.devices[cfg.ids.fastighet]){const co=state.devices[cfg.ids.fastighet].capabilitiesObj||{},g=k=>co[k]&&co[k].value!=null?co[k].value:null;
