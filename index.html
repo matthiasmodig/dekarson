@@ -871,6 +871,12 @@ async function calHtml(){
 
 /* ---------- Planera elförbrukning (billigaste fönstret) ---------- */
 function planSlots(){
+  /* Tibber-priser (hela publicerade perioden, kvartar → timmedel, inkl. påslag) har företräde framför Homeys 8-timmarsfönster */
+  const td=state.tp&&state.tp.d,iv=td&&!td.error?td.intervals||[]:[];
+  if(iv.length){const mk=Number(cfg.markup||0.448),nk=hourKey(new Date()),g=new Map();
+    for(const x of iv){const k=hourKey(new Date(x.s));if(k<nk)continue;const a=g.get(k)||{s:0,n:0};a.s+=x.t+mk;a.n++;g.set(k,a);}
+    const out=[...g.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([k,a])=>({k,v:a.s/a.n}));
+    if(out.length>=2)return out;}
   const ed=state.devices[cfg.ids.elpris],now=new Date(),nk=hourKey(now),m=new Map();
   const h0=capVal(ed,"meter_price_h0");if(h0!=null)m.set(nk,h0);
   for(let i=1;i<=96;i++){const v=capVal(ed,"meter_price_h"+i);if(v!=null)m.set(hourKey(new Date(now.getTime()+i*36e5)),v);}
@@ -879,7 +885,7 @@ function planSlots(){
 const PLAN_PRESETS=[["Diskmaskin",1.2,2],["Tvättmaskin",1,2],["Torkskåp",0.9,3],["Torktumlare",1,2],["Tesla (7,4 kW)",7.4,4]];
 function planHtml(){
   const sl=planSlots();if(sl.length<2)return "";
-  const P=cfg.plan=cfg.plan||{},hrs=Math.min(8,Math.max(1,Number(P.h)||2)),kw=Math.max(0.1,Number(String(P.kw||1).replace(",","."))||1);
+  const P=cfg.plan=cfg.plan||{},hrs=Math.min(12,Math.max(1,Number(P.h)||2)),kw=Math.max(0.1,Number(String(P.kw||1).replace(",","."))||1);
   const lbl=k=>k.slice(8,10)+"/"+k.slice(5,7)+" kl "+k.slice(11)+":00",endLbl=k=>{const d=new Date(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8,10),+k.slice(11)+1);return pad(d.getDate())+"/"+pad(d.getMonth()+1)+" kl "+pad(d.getHours())+":00";};
   const fromK=P.from&&sl.some(x=>x.k===P.from)?P.from:sl[0].k,toK=P.to&&sl.some(x=>x.k===P.to)?P.to:sl[sl.length-1].k;
   const pool=sl.filter(x=>x.k>=fromK&&x.k<=toK);
@@ -896,10 +902,10 @@ function planHtml(){
       (nowAvg!=null?tile("Om du startar nu",fmt(kr(nowAvg),2),"kr",c<kr(nowAvg)?"Du sparar "+fmt(kr(nowAvg)-c,2)+" kr":"Nu är billigast"):"")+
       (worst&&worst.i!==best.i?tile("Dyrast i fönstret",fmt(kr(worst.avg),2),"kr",lbl(worst.w[0].k)):"")+`</div>`;}
   return `<div class="card" style="margin:12px 0"><h2 style="margin:0 0 8px">${ic("Planera","clock")}Planera elförbrukning</h2>
-    <div class="note" style="margin:0 0 8px">Hitta billigaste sammanhängande timmarna utifrån Tibber-priserna (inkl. påslag). Välj apparat eller ange egen effekt.</div>
+    <div class="note" style="margin:0 0 8px">Hitta billigaste sammanhängande timmarna i hela den period Tibber har publicerat priser för (inkl. påslag). Välj apparat eller ange egen effekt.</div>
     <div class="bar" style="flex-wrap:wrap">${PLAN_PRESETS.map(([n,k,h])=>`<button class="chip" data-plan-preset="${k}|${h}" aria-pressed="${kw===k&&hrs===h}">${n}</button>`).join("")}</div>
     <div class="bar" style="flex-wrap:wrap;gap:10px">
-      <label>Förbrukar i <select data-plan="h">${[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}" ${n===hrs?"selected":""}>${n} h</option>`).join("")}</select></label>
+      <label>Förbrukar i <select data-plan="h">${[1,2,3,4,5,6,7,8,9,10,11,12].map(n=>`<option value="${n}" ${n===hrs?"selected":""}>${n} h</option>`).join("")}</select></label>
       <label>med effekt <input type="text" inputmode="decimal" data-plan="kw" value="${esc(String(kw).replace(".",","))}" style="width:64px"> kW</label>
       <label>Starta tidigast <select data-plan="from">${opt(sl,fromK,lbl)}</select></label>
       <label>Klart senast <select data-plan="to">${opt(sl,toK,endLbl)}</select></label></div>${res}
