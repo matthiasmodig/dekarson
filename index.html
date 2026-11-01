@@ -1089,12 +1089,13 @@ async function loadDagbok(){
   state.dagbok={t:Date.now(),v};return v;
 }
 async function dagbokHtml(full){
+  const asCard=full==="card";if(asCard)full=false;
   const is235=state.prop==="235",cols=is235?[["tibber","Totalt"],["hushall","Hushåll"],["uppv","Uppvärmning"],["vp","VP"],["ovrigt","Övrigt"]]:[["d236","Förbrukning"]];
   let D;try{D=await loadDagbok();}catch(e){return `<div class="note">Dagbok kunde inte läsas: ${esc(e.message)}</div>`;}
   const title=`<h3>Dagbok · ${PROPS.find(p=>p.k===state.prop).name}</h3>`;
-  if(!D)return `<section class="grp" style="margin-top:18px">${title}<div class="card note">Ange CSV-länken till fliken Dagbok under Admin → Energikällor så visas dygnshistoriken här.</div></section>`;
+  if(!D)return asCard?`<div class="card tile sm" style="padding:10px 12px"><div class="l">Dagbok</div><div class="s">Ange CSV-länk i Admin</div></div>`:`<section class="grp" style="margin-top:18px">${title}<div class="card note">Ange CSV-länken till fliken Dagbok under Admin → Energikällor så visas dygnshistoriken här.</div></section>`;
   const days=Object.keys(D).filter(d=>cols.some(c=>D[d][c[0]]&&D[d][c[0]].kwh!=null)).sort().reverse();
-  if(!days.length)return `<section class="grp" style="margin-top:18px">${title}<div class="card note">Inga rader för den här fastigheten i Dagbok-arket ännu.</div></section>`;
+  if(!days.length)return asCard?`<div class="card tile sm" style="padding:10px 12px"><div class="l">Dagbok</div><div class="s">Inga rader ännu</div></div>`:`<section class="grp" style="margin-top:18px">${title}<div class="card note">Inga rader för den här fastigheten i Dagbok-arket ännu.</div></section>`;
   const allDays=days.slice(),mons=[...new Set(allDays.map(d=>d.slice(0,7)))],per=state.dagPer||"31";
   if(!mons.includes(state.dagMon))state.dagMon=mons[0];
   let days2=allDays;
@@ -1120,10 +1121,10 @@ async function dagbokHtml(full){
   const ctl=`<div class="bar" style="margin:0 0 12px">${[["7","7 dygn"],["31","31 dygn"],["mon","Månad"],["all","Allt"]].map(([p,l])=>`<button class="chip" data-dagper="${p}" aria-pressed="${per===p}">${l}</button>`).join("")}${per==="mon"?`<span class="grow"></span><button class="btn" data-dagmon="${mi2<mons.length-1?mons[mi2+1]:""}" ${mi2<mons.length-1?"":"disabled"}>‹</button><b style="min-width:130px;text-align:center">${monL(state.dagMon)}</b><button class="btn" data-dagmon="${mi2>0?mons[mi2-1]:""}" ${mi2>0?"":"disabled"}>›</button>`:""}</div>`;
   if(!full){const spk=days.slice(0,14).reverse().map(d=>val(d,mk,"kwh")||0),smx=Math.max(1,...spk),d0=days[0];
     const sp=`<div style="display:flex;align-items:flex-end;gap:2px;height:34px">${spk.map(v=>`<i style="flex:1;height:${Math.max(8,v/smx*100)}%;background:var(--cur,#3b82f6);opacity:.75;border-radius:2px"></i>`).join("")}</div>`;
-    return `<section class="grp" style="margin-top:18px"><div class="card" data-dagbok="1" tabindex="0" role="button" title="Öppna dagboken" style="cursor:pointer;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:12px 16px">
-      <div style="min-width:130px"><div style="font-size:12.5px;color:var(--mut)">${ic("Dagbok","chart")}Dagbok · ${wd(d0)} ${d0.slice(5)}</div><div style="font-size:22px;font-weight:700">${fmt(tK[0],1)} <small style="font-size:13px;font-weight:500">kWh</small>${tR[0]!=null?` <small style="font-size:13px;font-weight:500;color:var(--mut)">· ${fmt(tR[0],0)} kr</small>`:""}</div></div>
-      <div style="flex:1;min-width:120px;max-width:260px">${sp}<div style="font-size:11.5px;color:var(--mut)">Senaste ${spk.length} dygnen</div></div>
-      <div style="font-size:13px;color:var(--mut)">Snitt ${fmt(sK/n,1)} kWh${rr.length?" · "+fmt(sR/rr.length,0)+" kr":""}</div><span class="grow"></span><span class="btn">Öppna</span></div></section>`;}
+    const card=`<div data-dagbok="1" tabindex="0" role="button" title="Öppna dagboken" class="card tile sm" style="cursor:pointer;padding:10px 12px"><div class="l">${ic("Dagbok","chart")}Dagbok · ${wd(d0)} ${d0.slice(5)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px"><div><div class="v" style="font-size:20px;white-space:nowrap">${tR[0]!=null?fmt(tR[0],0):"–"} <small>kr</small></div></div><div><div class="v" style="font-size:20px;white-space:nowrap">${fmt(tK[0],1)} <small>kWh</small></div></div></div>
+      <div style="margin-top:4px;opacity:.9">${sp}</div><div class="s" style="font-size:11.5px">Snitt ${fmt(sK/n,1)} kWh${rr.length?" · "+fmt(sR/rr.length,0)+" kr":""} · tryck för mer</div></div>`;
+    return asCard?card:`<section class="grp" style="margin-top:18px">${card}</section>`;}
   const legend=is235?`<div class="legend" style="margin:8px 0 0">${[["hushall","Hushåll"],["uppv","Uppvärmning"],["ovrigt","Övrigt"]].map(([k,l])=>`<span><i style="background:${CL[k]}"></i>${l}</span>`).join("")}</div>`:"";
   return `<section class="grp" style="margin-top:18px">${title}${ctl}${tiles}<div class="card" style="margin-bottom:12px"><h2>Förbrukning per dygn <span class="pill">${n} dygn</span></h2>${chart}<div class="note" style="margin-top:6px">Rött = dyraste dygnet. Håll över en stapel för detaljer.</div></div>
   <div class="card"><div style="overflow:auto;max-height:520px"><table><tr><th>Dygn</th><th>Förbrukning</th><th style="text-align:right">Kostnad</th>${is235?`<th>Fördelning</th><th></th>`:""}</tr>${rows}</table></div>${legend}
@@ -1166,8 +1167,8 @@ async function renderEnergi(){
   h+=`</div></section>`;
   if(is235){const tb=state.devices[cfg.ids.tibber];
     const pk=capVal(tb,"meter_money_this_day"),pw=capVal(tb,"meter_kwh_this_day"),lk=capVal(tb,"meter_money_last_day"),lw=capVal(tb,"meter_kwh_last_day");
-    h+=grp("Idag och igår",dualTile('data-daily="kr"',"Idag",{v:pk,un:"kr",sub:delta(pk,lk,"mot igår")},{v:pw,un:"kWh",sub:delta(pw,lw,"mot igår")},"sm")+dualTile('data-daily="kr"',"Igår",{v:lk,un:"kr",sub:""},{v:lw,un:"kWh",sub:""},"sm"),4);}
-  h+=await dagbokHtml(false);
+    h+=grp("Idag och igår",dualTile('data-daily="kr"',"Idag",{v:pk,un:"kr",sub:delta(pk,lk,"mot igår")},{v:pw,un:"kWh",sub:delta(pw,lw,"mot igår")},"sm")+dualTile('data-daily="kr"',"Igår",{v:lk,un:"kr",sub:""},{v:lw,un:"kWh",sub:""},"sm")+await dagbokHtml("card"),4);}
+  if(!is235)h+=await dagbokHtml(false);
   if(is235){try{h+=await kortSections(R);}catch(e){h+=`<div class="note">Energikort kunde inte läsas: ${esc(e.message)}</div>`;}}
 
   const curA=dayArray(T,u,R.s,R.len),prvA=R.ps?dayArray(T,u,R.ps,R.len):null;
