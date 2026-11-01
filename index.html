@@ -802,7 +802,7 @@ function parseIcs(txt,from,to){
   return out.sort((a,b)=>a.start-b.start);}
 async function loadCal(){
   const now=Date.now();if(state.cal&&now-state.cal.at<300000&&state.cal.u===(cfg.calUrl||"")+cfg.demo)return state.cal;
-  const from=new Date();from.setHours(0,0,0,0);const f=from.getTime(),to=f+7*864e5;let ev=[],err=null;
+  const from=new Date();from.setHours(0,0,0,0);const f=from.getTime(),to=f+30*864e5;let ev=[],err=null;
   if(isDemo()){const D=(dd,h,m,t)=>{const s=new Date(from);s.setDate(s.getDate()+dd);s.setHours(h,m,0,0);return {start:s.getTime(),end:s.getTime()+36e5,allDay:false,title:t,loc:""};};ev=[D(0,17,30,"Hämta paket"),D(1,8,0,"Rörmokare Dekarsön"),D(2,19,0,"Middag hos Klara"),D(4,10,0,"Besiktning bil"),{...D(5,0,0,"Familjehelg"),allDay:true}];}
   else if(!cfg.calUrl)err="none";
   else if(!isCloud())err="Kalendern kräver molnläget (adressen hämtas via din Cloudflare-worker).";
@@ -813,16 +813,16 @@ async function loadCal(){
 async function calHtml(){
   let c;try{c=await loadCal();}catch(e){return "";}
   if(c.err==="none")return "";
-  const dayLbl=t=>{const d=new Date(t),td=new Date();td.setHours(0,0,0,0);const df=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-td)/864e5);return df===0?"Idag":df===1?"Imorgon":d.toLocaleDateString("sv-SE",{weekday:"long",day:"numeric",month:"short"});};
+  const dayLbl=t=>{const d=new Date(t),td=new Date();td.setHours(0,0,0,0);const df=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-td)/864e5);return df===0?"Idag":df===1?"Imorgon":d.toLocaleDateString("sv-SE",{weekday:"short",day:"numeric",month:"short"});};
+  const open=`href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener"`;
   let h=`<section class="grp" style="margin-top:14px"><h3>${ic("Kalender","clock")}Kalender</h3>`;
-  if(c.err)return h+`<div class="note">${esc(c.err)}</div></section>`;
-  const now=Date.now(),list=c.ev.filter(e=>e.end>now);
-  if(!list.length)return h+`<div class="note">Inga händelser de närmaste 7 dagarna.</div></section>`;
-  let last="";h+=`<div class="card">`;
-  for(const e of list){const dl=dayLbl(Math.max(e.start,new Date().setHours(0,0,0,0)));if(dl!==last){h+=`<div class="note" style="margin:10px 0 2px;font-weight:700;text-transform:capitalize">${esc(dl)}</div>`;last=dl;}
-    const tm=e.allDay?"Heldag":new Date(e.start).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
-    h+=`<div class="stat"><span><b style="display:inline-block;min-width:58px">${tm}</b> ${esc(e.title)}${e.loc?` <span class="pill">${esc(e.loc)}</span>`:""}</span></div>`;}
-  return h+`</div></section>`;}
+  if(c.err)return h+`<a class="card" ${open} style="display:block;color:inherit;text-decoration:none"><div class="note" style="margin:0">${esc(c.err)}</div></a></section>`;
+  const now=Date.now(),list=c.ev.filter(e=>e.end>now).slice(0,5);
+  h+=`<a class="card" ${open} aria-label="Öppna Google Kalender" title="Öppna Google Kalender" style="display:block;color:inherit;text-decoration:none"><h2 style="margin:0 0 6px;font-size:16px">Kommande ${list.length||""} ${list.length===1?"händelse":"händelser"}</h2>`;
+  if(!list.length)h+=`<div class="note" style="margin:0">Inga kommande händelser de närmaste 30 dagarna.</div>`;
+  for(const e of list){const tm=e.allDay?"Heldag":new Date(e.start).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
+    h+=`<div class="stat"><span><b style="display:inline-block;min-width:92px;text-transform:capitalize">${esc(dayLbl(Math.max(e.start,new Date().setHours(0,0,0,0))))}</b><span style="display:inline-block;min-width:54px;color:var(--mut)">${tm}</span> ${esc(e.title)}${e.loc?` <span class="pill">${esc(e.loc)}</span>`:""}</span></div>`;}
+  return h+`<div class="note" style="margin:8px 0 0">Tryck för att öppna Google Kalender</div></a></section>`;}
 
 /* ---------- Planera elförbrukning (billigaste fönstret) ---------- */
 function planSlots(){
