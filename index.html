@@ -11,10 +11,10 @@
   --r:16px;
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){--bg:#0e1013;--card:#171a1f;--ink:#eef0f3;--mut:#9aa3af;--line:#272c34;--soft:#1e2228;
+  :root:not([data-theme="light"]){--il:64%;--bg:#0e1013;--card:#171a1f;--ink:#eef0f3;--mut:#9aa3af;--line:#272c34;--soft:#1e2228;
     --cur:#6da2ff;--prev:#7b8494;--good:#4cc38a;--bad:#ff7b7b;--on:#ffc24a;--accent:#6da2ff;--accent-ink:#0b1220}
 }
-:root[data-theme="dark"]{--bg:#0e1013;--card:#171a1f;--ink:#eef0f3;--mut:#9aa3af;--line:#272c34;--soft:#1e2228;
+:root[data-theme="dark"]{--il:64%;--bg:#0e1013;--card:#171a1f;--ink:#eef0f3;--mut:#9aa3af;--line:#272c34;--soft:#1e2228;
     --cur:#6da2ff;--prev:#7b8494;--good:#4cc38a;--bad:#ff7b7b;--on:#ffc24a;--accent:#6da2ff;--accent-ink:#0b1220}
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -68,11 +68,10 @@ h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transf
 .rowN{display:grid;gap:12px;grid-template-columns:repeat(var(--c,4),minmax(0,1fr))}
 .grp{margin:0 0 22px}.grp>h3{margin:0 0 10px}
 @media(max-width:900px){.rowN{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.ico{width:1.1em;height:1.1em;vertical-align:-.2em;margin-right:6px;opacity:.75;flex:none}
-.tile .l .ico,.kcard .nm .ico,.dev .nm .ico,.grp>h3 .ico,.zonehead .ico,.chip .ico{color:var(--accent);opacity:.95}
+.ico{width:1.2em;height:1.2em;vertical-align:-.25em;margin-right:7px;flex:none;color:hsl(var(--ih,215) 74% var(--il,44%));fill:hsl(var(--ih,215) 74% var(--il,44%) / .16);stroke-width:1.9}
 .zonehead .ico{width:1.25em;height:1.25em}
 .grp>h3 .ico{margin-right:7px}
-.side nav .ico{width:18px;height:18px;margin-right:10px;vertical-align:-4px}
+.side nav .ico{width:20px;height:20px;margin-right:10px;vertical-align:-5px}
 .flrow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
 @media(max-width:900px){.flrow{grid-template-columns:1fr 1fr}.flrow .flow{grid-column:auto!important}}
 @media(max-width:560px){.flrow{grid-template-columns:1fr}}
@@ -695,7 +694,8 @@ const ICON_RULES=[[/ytterdörr|lås\b|olåst/,"lock"],[/motorvärm|traktor mv/,"
 [/garage|\bport\b|portsensor/,"garage"],[/\bdörr|passage|\bhall\b/,"door"],[/sovrum|måns|klara/,"bed"],[/badrum/,"bath"],[/\bwc\b/,"toilet"],[/vardagsrum|allrum/,"sofa"],
 [/matplats/,"table"],[/\bkök/,"stove"],[/\bwic\b/,"wardrobe"],[/uterum/,"sun"],[/tvätt/,"washer"],
 [/kalender/,"calendar"],[/jämför/,"sliders"],[/väder|smhi|moln/,"cloud"],[/sonos|musik|högtalare/,"speaker"],[/zigbee|repeater|wifi/,"wifi"],[/elmätare|fastighet/,"meter"]];
-function iconSvg(n){return ICONS[n]?`<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`:"";}
+const ICON_HUE={house:215,bolt:42,flame:16,thermo:355,drop:200,fan:188,lock:268,bulb:46,car:218,tractor:28,plug:285,coin:40,battery:140,gauge:258,waves:172,speaker:300,wind:205,map:158,toggles:235,play:140,pulse:340,cog:220,chart:215,clock:230,washer:208,dryer:18,wardrobe:30,dish:194,stove:8,bed:262,bath:192,toilet:222,sofa:20,table:32,garage:225,door:24,sun:40,cloud:208,manhole:220,motion:305,bell:44,calendar:352,sliders:245,wifi:210,humid:198,meter:215,radiator:10,snow:192,screen:220};
+function iconSvg(n){return ICONS[n]?`<svg class="ico" style="--ih:${ICON_HUE[n]!=null?ICON_HUE[n]:215}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`:"";}
 function ic(label,def){const t=String(label||"").replace(/<[^>]*>/g,"").toLowerCase();for(const [r,n] of ICON_RULES)if(r.test(t))return iconSvg(n);return def?iconSvg(def):"";}
 function dualTile(attrs,label,a,b,cls){
   const sm=/\bsm\b/.test(cls||"");
