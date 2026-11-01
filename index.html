@@ -671,6 +671,18 @@ function attnHtml(){
   return `<div class="card ${att.length?"attn":""}" style="grid-column:1/-1"><h2>Behöver uppmärksamhet <span class="pill ${att.length?"bad":""}">${att.length}</span></h2>${att.length?`<ul style="margin:0;padding-left:18px">${att.map(x=>`<li>${x}</li>`).join("")}</ul>`:`<div class="note" style="margin:0">Inget just nu.</div>`}</div>`;
 }
 function heatDevs(){return [[cfg.ids.floor,"Golvvärme"],[cfg.ids.entre,"Entréplatta"],[cfg.ids.trLoad,"Traktor laddning"],[cfg.ids.trHeat,"Traktor MV"],[cfg.ids.avlopp,"Avloppsbrunn"]].map(([id,n])=>[state.devices[id],n]).filter(x=>x[0]&&hasOnoff(x[0]));}
+function calBtn(){
+  const c=state.cal;if(!c||c.err==="none")return "";
+  const open=`href="https://calendar.google.com/calendar/u/0/r" target="_blank" rel="noopener"`,now=Date.now();
+  if(c.err)return `<a class="chip" ${open} title="${esc(c.err)}" style="text-decoration:none;color:inherit">${ic("Kalender","clock")}Kalender</a>`;
+  const list=c.ev.filter(e=>e.end>now).slice(0,5);
+  const td=new Date();td.setHours(0,0,0,0);
+  const dl=t=>{const d=new Date(Math.max(t,td.getTime())),df=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-td)/864e5);return df===0?"idag":df===1?"imorgon":d.toLocaleDateString("sv-SE",{weekday:"short",day:"numeric",month:"short"});};
+  const tm=e=>e.allDay?"heldag":new Date(e.start).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
+  const one=e=>dl(e.start)+" "+tm(e)+" "+e.title;
+  const tip=list.length?list.map(one).join("\n"):"Inga kommande händelser";
+  const n=list[0],txt=n?(one(n).length>34?one(n).slice(0,33)+"…":one(n)):"inga händelser";
+  return `<a class="chip" ${open} title="${esc(tip)}" aria-label="Öppna Google Kalender. Kommande: ${esc(tip.replace(/\n/g,", "))}" style="text-decoration:none;color:inherit">${ic("Kalender","clock")}Kalender: ${esc(txt)}</a>`;}
 function statusBar(){
   const L=statusLists(),unl=L.locks.filter(x=>!x.ok).length,al=L.alarms.length+L.open.length;
   const chip=(k,dot,txt)=>`<button class="chip" data-status="${k}"><span class="dot ${dot}"></span>${txt}</button>`;
@@ -680,7 +692,7 @@ function statusBar(){
     ${chip("locks",!L.locks.length?"":(unl?"bad":"ok"),L.locks.length?(unl?`Lås: ${unl} olåst`:"Lås: alla låsta"):"Lås: –")}
     ${chip("alarms",al?"bad":"ok",`Larm/öppet: ${al}`)}
     ${chip("motion",L.motion.length?"on":"",`Rörelse: ${L.motion.length}`)}
-    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}</div>
+    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}${calBtn()}</div>
     <div class="note" style="margin-top:6px">Klicka på en ruta för detaljer och för att ändra.</div></div>`;
 }
 
@@ -916,6 +928,7 @@ async function tibberHtml(){
     <div class="note">Öre/kWh, svensk tid, ${N} intervall. Senast hämtat från Tibber: ${esc(fa)}${d.cached?" (från cache)":""}${d.error?` · <span style="color:var(--bad)">${esc(d.error)}</span>`:""}. Visar importpris = Tibber <code>total</code> + ${fmt(mk,3)} kr/kWh (Homeys formel), <b>preliminärt</b> tills det är verifierat att energiskatten (ingår i Tibbers <code>tax</code>) inte dubbelräknas; det är inte heller hela elkostnaden inkl. elnät.${diff!=null?` Kontroll mot Homey <code>measure_price_total</code>: ${fmt(hv,4)} kr mot Tibber ${fmt(cur.t,4)} kr (${diff>=0?"+":""}${fmt(diff*100,2)} öre${Math.abs(diff)>0.005?" – avvikelse, kontrollera uppdateringstid/avrundning i Tibber-appen i Homey":" – stämmer"}).`:""} Priserna sparas permanent i workerns KV (en post per startsAt, inga dubbletter). Morgondagens priser visas så snart Tibber har publicerat dem.</div></div>`};}
 async function renderOversikt(){
   const e=liveEnergy();
+  try{await loadCal();}catch(e){}
   let h=statusBar()+heatCards();
   if(state.prop==="235"){
     const tb=state.devices[cfg.ids.tibber],now=new Date(),frac=Math.max(now.getMinutes()+now.getSeconds()/60,1)/60;
@@ -941,7 +954,6 @@ async function renderOversikt(){
     h+=`<section class="grp" style="margin-top:14px"><h3>Effekt · Dekarsön 236</h3>`+await medelEffektHtml()+`</section>`;
     h+=`<div class="grid">`+tile("Effekt just nu",e.w!=null?fmt(e.w,0):"–","W","Dekarsön 236","hero")+tile("Denna månad",fmt(e.month,0),unitName(state.unit),"")+tile("I år",fmt(e.year,0),unitName(state.unit),"")+`</div>`;
   }
-  h+=await calHtml();
   const favs=propDevices().filter(d=>isFav(d)&&hasOnoff(d));
   const ff=state.flows.filter(f=>cfg.ui.flows[f.id]&&cfg.ui.flows[f.id].fav);
   if(favs.length||ff.length){
