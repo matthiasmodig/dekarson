@@ -8,3 +8,8 @@ SITE_ORIGIN = "https://dekarson.matthiasmodig.se"
 [[kv_namespaces]]
 binding = "KV"
 id = "3c3c49f7a1e8467196eedb66b917bfa1"
+
+# Hämtar Tibber-priser var 15:e minut mellan 12:00 och 22:59 UTC (efter kl. 13 svensk tid, sommar- och vintertid).
+# Workern hoppar själv över anropet när morgondagens priser redan finns, så Tibber inte belastas i onödan.
+[triggers]
+crons = ["*/15 11-21 * * *"]

@@ -47,6 +47,15 @@ export default {
         const r = await fetch(target.toString(), { cf: { cacheTtl: 300, cacheEverything: true } });
         return new Response(await r.text(), { status: r.status, headers: { "Content-Type": "text/calendar; charset=utf-8", ...cors } });
       }
+      if (url.pathname === "/tibber" && req.method === "GET") {
+        if (!(await sessionOk(req, env))) return json({ error: "Inte inloggad" }, 401, cors);
+        const day = url.searchParams.get("day");
+        if (day) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json({ error: "Ogiltigt datum" }, 400, cors);
+          return json((await env.KV.get("tp:day:" + day, "json")) || { day, intervals: [] }, 200, cors);
+        }
+        return json(await tibberCurrent(env, false), 200, cors);
+      }
       if (url.pathname.startsWith("/api/")) {
         if (!(await sessionOk(req, env))) return json({ error: "Inte inloggad" }, 401, cors);
         const allowed = ALLOWED.some(([m, re]) => m === req.method && re.test(url.pathname));
@@ -58,7 +67,67 @@ export default {
       return json({ error: String(e && e.message || e) }, 502, cors);
     }
   },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(tibberCurrent(env, true).catch(() => {}));
+  },
 };
+
+/* ---------- Tibber elpriser (Dekarsön 235), 15-minutersupplösning ----------
+   Secrets: TIBBER_API_TOKEN (obligatorisk), TIBBER_HOME_ID (krävs om kontot har fler än ett hem).
+   Priserna sparas permanent per dag i KV (tp:day:YYYY-MM-DD), nyckel = startsAt, så inga dubbletter uppstår.
+   Token skickas aldrig till webbläsaren och ingår aldrig i svar. */
+const TIBBER_Q = `query GetTibberPrices { viewer { homes { id appNickname timeZone currentSubscription { priceInfo(resolution: QUARTER_HOURLY) {
+  current { startsAt energy tax total currency level } today { startsAt energy tax total currency level } tomorrow { startsAt energy tax total currency level } } } } } }`;
+const stockholmDay = (iso) => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Stockholm", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+const stockholmHour = () => +new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Stockholm", hour: "numeric", hourCycle: "h23" }).format(new Date());
+
+async function tibberCurrent(env, fromCron) {
+  const cached = (await env.KV.get("tp:cur", "json")) || null;
+  const now = Date.now(), today = stockholmDay(new Date()), age = cached ? now - cached.fetchedAt : Infinity;
+  const hasTomorrow = !!(cached && cached.intervals.some((x) => stockholmDay(x.s) > today));
+  const wantTomorrow = stockholmHour() >= 13 && !hasTomorrow;
+  const dayChanged = cached && cached.today !== today;
+  const stale = !cached || dayChanged || age > 6 * 3600e3 || (wantTomorrow && age > 10 * 60e3);
+  if (!stale) return { ...cached, cached: true };
+  const lastTry = +(await env.KV.get("tp:lastTry")) || 0;
+  if (now - lastTry < 5 * 60e3 && cached) return { ...cached, cached: true };
+  await env.KV.put("tp:lastTry", String(now), { expirationTtl: 3600 });
+  try {
+    if (!env.TIBBER_API_TOKEN) throw new Error("TIBBER_API_TOKEN saknas som secret i Cloudflare-workern dekarson-api.");
+    const r = await fetch("https://api.tibber.com/v1-beta/gql", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + env.TIBBER_API_TOKEN, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: TIBBER_Q }),
+    });
+    if (!r.ok) throw new Error("Tibber svarade " + r.status);
+    const j = await r.json();
+    if (j.errors) throw new Error("Tibber: " + String(j.errors[0] && j.errors[0].message).slice(0, 120));
+    const homes = (j.data && j.data.viewer && j.data.viewer.homes) || [];
+    const home = env.TIBBER_HOME_ID ? homes.find((h) => h.id === env.TIBBER_HOME_ID) : homes.length === 1 ? homes[0] : null;
+    if (!home) throw new Error(env.TIBBER_HOME_ID ? "Hittade inte hemmet TIBBER_HOME_ID hos Tibber." : "Kontot har flera hem. Sätt secret TIBBER_HOME_ID till rätt id: " + homes.map((h) => h.id + " (" + h.appNickname + ")").join(", "));
+    const pi = home.currentSubscription && home.currentSubscription.priceInfo;
+    if (!pi) throw new Error("Hemmet saknar prisinformation.");
+    const map = new Map();
+    for (const x of [...(pi.today || []), ...(pi.tomorrow || [])]) map.set(x.startsAt, { s: x.startsAt, e: x.energy, x: x.tax, t: x.total, l: x.level, c: x.currency });
+    const intervals = [...map.values()].sort((a, b) => (a.s < b.s ? -1 : 1));
+    const cur = pi.current ? { s: pi.current.startsAt, e: pi.current.energy, x: pi.current.tax, t: pi.current.total } : null;
+    const byDay = {};
+    for (const x of intervals) (byDay[stockholmDay(x.s)] = byDay[stockholmDay(x.s)] || []).push(x);
+    for (const [d, arr] of Object.entries(byDay)) {
+      const old = (await env.KV.get("tp:day:" + d, "json")) || { day: d, intervals: [] };
+      const m = new Map(old.intervals.map((x) => [x.s, x]));
+      arr.forEach((x) => m.set(x.s, x));
+      await env.KV.put("tp:day:" + d, JSON.stringify({ day: d, intervals: [...m.values()].sort((a, b) => (a.s < b.s ? -1 : 1)) }));
+    }
+    const out = { fetchedAt: now, today, homeId: home.id, tz: home.timeZone, resolution: "QUARTER_HOURLY", current: cur, intervals };
+    await env.KV.put("tp:cur", JSON.stringify(out));
+    return { ...out, cached: false };
+  } catch (e) {
+    if (fromCron) throw e;
+    if (cached) return { ...cached, cached: true, error: String(e.message || e) };
+    return { error: String(e.message || e), intervals: [] };
+  }
+}
 
 const json = (o, status = 200, headers = {}) =>
   new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json", ...headers } });
