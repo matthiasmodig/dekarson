@@ -29,6 +29,8 @@ button{cursor:pointer}
 .brand{font-weight:750;font-size:19px;letter-spacing:-.3px;padding:4px 10px 12px}
 .side .grp{font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--mut);padding:14px 10px 4px}
 nav{display:flex;flex-direction:column;gap:1px}
+.side nav#nav{flex:1;min-height:0}
+.side nav .sp{flex:1;min-height:12px}
 nav button{border:0;background:transparent;padding:10px 12px;font-weight:600;color:var(--mut);text-align:left;border-radius:10px;white-space:nowrap}
 nav button:hover{background:var(--soft)}
 nav button[aria-selected=true]{background:var(--soft);color:var(--ink);box-shadow:inset 3px 0 0 var(--accent)}
@@ -151,10 +153,10 @@ dialog::backdrop{background:#0009}
     <button data-tab="styr" aria-selected="false">Enheter</button>
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
+    <div class="sp"></div>
     <button data-tab="status" aria-selected="false">Status</button>
     <button data-tab="admin" aria-selected="false">Admin</button>
   </nav>
-  <div class="sp"></div>
   <div class="foot">
     <div class="seg sm" id="segTheme" role="group" aria-label="Tema"><button data-theme="auto">Auto</button><button data-theme="light">Ljust</button><button data-theme="dark">Mörkt</button></div>
     <button class="btn sm" id="panelBtn">Panel-läge</button>
