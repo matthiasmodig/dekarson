@@ -685,7 +685,11 @@ function tempBar(){
   const ute=capVal(nb,"capability_0")??capVal(ud,"measure_temperature")??capVal(state.devices[cfg.ids.tesla],"measure_climate_temperature_out");
   const it=(id,cap,name,v)=>v==null?"":`<span data-sens="${esc(id)}|${esc(cap)}" tabindex="0" role="button" title="Visa diagram över tid" style="cursor:pointer;white-space:nowrap">${name} <b>${fmt(v,1)}°</b></span>`;
   const parts=[it(kk&&kk.id,"measure_temperature","Inne",kk&&capVal(kk,"measure_temperature")),it(cfg.ids.nibe,"capability_0","Ute",ute),it(sl&&sl.id,"measure_temperature","Betongplatta",sl&&capVal(sl,"measure_temperature"))].filter(Boolean);
-  return parts.length?`<div class="bar" style="margin:8px 0 0;gap:18px;font-size:14px"><span style="color:var(--mut)">Temperatur</span>${parts.join("")}</div>`:"";}
+  const dv=id=>state.devices[id],lk=dv(cfg.ids.ytterdorr);
+  const sw=(id,n)=>{const d=dv(id);if(!d||!hasOnoff(d))return "";const on=!!capVal(d,"onoff");return `<span data-onoff="${esc(id)}" data-nm="${n}" tabindex="0" role="button" title="Visa och styr" style="cursor:pointer;white-space:nowrap"><span class="dot ${on?"on":""}"></span> ${n} <b>${on?"På":"Av"}</b></span>`;};
+  const lkp=lk?(()=>{const ok=!!capVal(lk,"locked");return `<span data-status="locks" tabindex="0" role="button" title="Lås eller lås upp" style="cursor:pointer;white-space:nowrap"><span class="dot ${ok?"ok":"bad"}"></span> Ytterdörr <b style="color:var(--${ok?"good":"bad"})">${ok?"Låst":"OLÅST"}</b></span>`;})():"";
+  const rest=[lkp,sw(cfg.ids.ventilation,"Ventilation"),sw(cfg.ids.avlopp,"Avloppsbrunn")].filter(Boolean);
+  return parts.length||rest.length?`<div class="bar" style="margin:8px 0 0;gap:18px;font-size:14px">${parts.length?`<span style="color:var(--mut)">Temperatur</span>${parts.join("")}`:""}${rest.length?`<span style="width:1px;height:16px;background:var(--line,#ccc)"></span>${rest.join("")}`:""}</div>`:"";}
 function calModalHtml(){
   const c=state.cal,now=Date.now();
   let h=`<h2 style="margin:0 0 10px">${ic("Kalender","clock")}Kalender</h2>`;
@@ -732,11 +736,11 @@ function heatCards(){
   const dv=id=>state.devices[id];
   const sub=d=>{const dim=capVal(d,"dim"),kw=capVal(d,"meter_power");return (dim!=null&&capVal(d,"onoff")?Math.round(dim*100)+" % · ":"")+(kw!=null?fmt(kw,1)+" kWh totalt":"Ingen energimätare");};
   const t=(id,n)=>{const d=dv(id);return d&&hasOnoff(d)?onoffTile(d,n,n,sub(d),"",true):"";};
-  const r1=lockTile(dv(cfg.ids.ytterdorr))+t(cfg.ids.ventilation,"Ventilation")+t(cfg.ids.avlopp,"Avloppsbrunn")+t(state.devices[cfg.ids.entre]?cfg.ids.entre:cfg.ids.floor,"Entréplatta");
+  const r1=t(state.devices[cfg.ids.entre]?cfg.ids.entre:cfg.ids.floor,"Entréplatta");
   const tz=dv(cfg.ids.tesla),teslaT=tz?(()=>{const ch=capVal(tz,"charging_on")===true,kw=capVal(tz,"measure_charge_power"),soc=capVal(tz,"measure_soc_level"),mn=capVal(tz,"measure_time_to_full_charge")??capVal(tz,"measure_charge_minutes_to_full");
     return tileA('data-goto="status"',"Tesla",ch?"Laddar":"Laddar inte","",(ch&&kw!=null?fmt(kw,1)+" kW · ":"")+(soc!=null?fmt(soc,0)+" % batteri":"")+(ch&&mn?" · "+fmt(mn,0)+" min kvar":""));})():"";
-  const r2=teslaT+t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+t(cfg.ids.trLoad,"Traktor laddning")+t(cfg.ids.trHeat,"Traktor MV");
-  return `<section class="grp"><h3>Styrning och kontroll</h3>${r1?`<div class="rowN" style="--c:4;margin-bottom:12px">${r1}</div>`:""}${r2?`<div class="rowN" style="--c:4">${r2}</div>`:""}</section>`;
+  const r2=r1+teslaT+t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+t(cfg.ids.trLoad,"Traktor laddning")+t(cfg.ids.trHeat,"Traktor MV");
+  return `<section class="grp"><h3>Styrning och kontroll</h3>${r2?`<div class="rowN" style="--c:4">${r2}</div>`:""}</section>`;
 }
 const PWRON=5;
 async function onoffSegs(id,f,t,cap){
