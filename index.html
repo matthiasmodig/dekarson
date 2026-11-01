@@ -151,6 +151,7 @@ dialog::backdrop{background:#0009}
   <nav id="nav">
     <button data-tab="oversikt" aria-selected="true">Översikt</button>
     <button data-tab="styr" aria-selected="false">Enheter</button>
+    <button data-tab="plan" aria-selected="false">Planritning</button>
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
     <div class="sp"></div>
@@ -624,6 +625,7 @@ gauge:'<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/>',
 waves:'<path d="M3 9c2-2 4 2 6 0s4 2 6 0 4 2 6 0M3 15c2-2 4 2 6 0s4 2 6 0 4 2 6 0"/>',
 speaker:'<rect x="6" y="3" width="12" height="18" rx="3"/><circle cx="12" cy="15" r="3"/><circle cx="12" cy="7" r=".8"/>',
 wind:'<path d="M3 12h13a3 3 0 1 0-3-3M3 7h8M3 17h10a3 3 0 1 1-3 3"/>',
+map:'<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
 toggles:'<rect x="2" y="7" width="20" height="10" rx="5"/><circle cx="16" cy="12" r="3"/>',
 play:'<path d="M7 4l13 8-13 8z"/>',
 pulse:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
@@ -2026,7 +2028,7 @@ function devCard(d){
   return h+`</div>`;
 }
 function viewSw(act,cur,opts){return `<div class="seg" role="tablist" style="margin-bottom:12px">${opts.map(([k,l])=>`<button data-act="${act}" data-v="${k}" role="tab" aria-pressed="${cur===k}">${l}</button>`).join("")}</div>`;}
-function styrSwitch(){const v=["flows","sonos","hus"].includes(state.styrView)?state.styrView:"styr";return viewSw("styrview",v,[["styr","Styrningar"],["flows","Flows"],["sonos","Sonos"],["hus","Planritning"]]);}
+function styrSwitch(){const v=["flows","sonos"].includes(state.styrView)?state.styrView:"styr";return viewSw("styrview",v,[["styr","Styrningar"],["flows","Flows"],["sonos","Sonos"]]);}
 function styrSwitchOld(){const v=state.styrView==="flows"?"flows":"styr";
   return `<div class="seg" role="tablist" style="display:flex;gap:6px;margin-bottom:12px"><button class="btn ${v==="styr"?"pri":""}" data-act="styrview" data-v="styr" role="tab" aria-selected="${v==="styr"}">Styrningar</button><button class="btn ${v==="flows"?"pri":""}" data-act="styrview" data-v="flows" role="tab" aria-selected="${v==="flows"}">Flows</button></div>`;}
 /* ---------- Planritning Dekarsön 235 (SVG, ritad efter husritningen) ---------- */
@@ -2122,7 +2124,7 @@ function husPhases(){const fa=state.devices[cfg.ids.fastighet],co=fa&&fa.capabil
 function husTxt(x,y,anchor,label,dev,cap,fs){const v=capVal(dev,cap);if(v==null)return "";
   return `<g data-sens="${esc(dev.id)}|${cap}" tabindex="0" role="button" aria-label="${esc(label)} ${fmt(v,1)} °C" style="cursor:pointer"><title>${esc(label)}</title><text x="${x}" y="${y}" text-anchor="${anchor}" style="font-size:${fs||14}px;fill:var(--ink)">${esc(label.split("|")[0])} <tspan style="font-weight:700">${fmt(v,1)} °C</tspan></text></g>`;}
 function renderHus(){
-  if(state.husRoom&&HUS_ROOMS.some(x=>x.id===state.husRoom)){$("#p-styr").innerHTML=styrSwitch()+`<div class="card">`+roomModalHtml(state.husRoom,true)+`</div>`;return;}
+  if(state.husRoom&&HUS_ROOMS.some(x=>x.id===state.husRoom)){$("#p-styr").innerHTML=`<div class="card">`+roomModalHtml(state.husRoom,true)+`</div>`;return;}
   const mode=["temp","lamp","power"].includes(state.husMode)?state.husMode:"temp";
   const col=(r,i)=>{
     if(r.none)return {f:"var(--soft)",o:.6};
@@ -2167,7 +2169,7 @@ function renderHus(){
   g+=`<text x="40" y="272" style="font-size:16px;fill:var(--mut)">27,4 m</text>`;
   const ute=capVal(state.devices[cfg.ids.nibe],"capability_0")??capVal(state.devices[cfg.ids.ute],"measure_temperature");
   const chips=[["temp","Temperatur"],["lamp","Lampor"],["power","Effekt"]].map(([k,l])=>`<button class="chip" data-husmode="${k}" aria-pressed="${mode===k}">${l}</button>`).join("");
-  let h=styrSwitch()+`<div class="bar">${chips}<span class="grow"></span>${ute!=null?`<span class="note" style="margin:0">Ute <b>${fmt(ute,1)} °C</b></span>`:""}</div>
+  let h=`<div class="bar">${chips}<span class="grow"></span>${ute!=null?`<span class="note" style="margin:0">Ute <b>${fmt(ute,1)} °C</b></span>`:""}</div>
     <div class="card"><svg viewBox="0 0 1560 985" width="100%" role="group" aria-label="Planritning Dekarsön 235">${g}</svg>
     <div class="note">Varje rum visar temperatur, luftfuktighet (RF) och aktuell effekt live. Tryck på ett rum för lampor och enheter. Färgen visar ${mode==="temp"?"temperatur (blå kallt, röd varmt)":mode==="lamp"?"tända lampor (gul = något tänt)":"aktuell effekt i rummet"}. Planen är en förenklad ritning efter husritningen.</div></div>`;
   $("#p-styr").innerHTML=h;}
@@ -2517,12 +2519,13 @@ async function draw(){
   else renderAdmin();
   if(state.modal&&$("#dlg").open)await renderModal();
 }
-const NAV_ICONS={oversikt:"house",styr:"toggles",flows:"play",sonos:"speaker",energi:"bolt",timpris:"coin",detalj:"chart",klimat:"thermo",status:"pulse",admin:"cog"};
+const NAV_ICONS={oversikt:"house",styr:"toggles",plan:"map",flows:"play",sonos:"speaker",energi:"bolt",timpris:"coin",detalj:"chart",klimat:"thermo",status:"pulse",admin:"cog"};
 function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.querySelector(".ico"))b.insertAdjacentHTML("afterbegin",iconSvg(NAV_ICONS[b.dataset.tab]));});}
 function showTab(t){
   if(t==="timpris")t="oversikt";
+  if(t==="plan"){t="styr";state.styrView="hus";state.husRoom=null;}else if(t==="styr"&&state.styrView==="hus")state.styrView="styr";
   state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
-  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===t));
+  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===(t==="styr"&&state.styrView==="hus"?"plan":t)));
   for(const k of ["oversikt","energi","klimat","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
 }
