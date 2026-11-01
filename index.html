@@ -823,6 +823,42 @@ async function calHtml(){
     const tm=e.allDay?"Heldag":new Date(e.start).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
     h+=`<div class="stat"><span><b style="display:inline-block;min-width:58px">${tm}</b> ${esc(e.title)}${e.loc?` <span class="pill">${esc(e.loc)}</span>`:""}</span></div>`;}
   return h+`</div></section>`;}
+
+/* ---------- Planera elförbrukning (billigaste fönstret) ---------- */
+function planSlots(){
+  const ed=state.devices[cfg.ids.elpris],now=new Date(),nk=hourKey(now),m=new Map();
+  const h0=capVal(ed,"meter_price_h0");if(h0!=null)m.set(nk,h0);
+  for(let i=1;i<=96;i++){const v=capVal(ed,"meter_price_h"+i);if(v!=null)m.set(hourKey(new Date(now.getTime()+i*36e5)),v);}
+  const xp=extractPrices(ed);for(const k of Object.keys(xp))if(k>nk&&!m.has(k))m.set(k,xp[k]);
+  return [...m.entries()].sort((a,b)=>a[0]<b[0]?-1:1).map(([k,v])=>({k,v}));}
+const PLAN_PRESETS=[["Diskmaskin",1.2,2],["Tvättmaskin",1,2],["Torktumlare",2,2],["Tesla (3,7 kW)",3.7,4],["Varmvattenberedare",3,2]];
+function planHtml(){
+  const sl=planSlots();if(sl.length<2)return "";
+  const P=cfg.plan=cfg.plan||{},hrs=Math.min(8,Math.max(1,Number(P.h)||2)),kw=Math.max(0.1,Number(String(P.kw||1).replace(",","."))||1);
+  const lbl=k=>k.slice(8,10)+"/"+k.slice(5,7)+" kl "+k.slice(11)+":00",endLbl=k=>{const d=new Date(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8,10),+k.slice(11)+1);return pad(d.getDate())+"/"+pad(d.getMonth()+1)+" kl "+pad(d.getHours())+":00";};
+  const fromK=P.from&&sl.some(x=>x.k===P.from)?P.from:sl[0].k,toK=P.to&&sl.some(x=>x.k===P.to)?P.to:sl[sl.length-1].k;
+  const pool=sl.filter(x=>x.k>=fromK&&x.k<=toK);
+  let best=null,worst=null;
+  for(let i=0;i+hrs<=pool.length;i++){const w=pool.slice(i,i+hrs);const avg=w.reduce((a,x)=>a+x.v,0)/hrs;const r={i,w,avg};if(!best||avg<best.avg)best=r;if(!worst||avg>worst.avg)worst=r;}
+  const nowAvg=sl.length>=hrs?sl.slice(0,hrs).reduce((a,x)=>a+x.v,0)/hrs:null;
+  const kr=a=>a*kw*hrs,opt=(arr,sel,f)=>arr.map(x=>`<option value="${x.k}" ${x.k===sel?"selected":""}>${f(x.k)}</option>`).join("");
+  let res;
+  if(!best)res=`<div class="note">Tidsfönstret är för kort för ${hrs} h. Välj en senare sluttid eller kortare tid.</div>`;
+  else{const st=best.w[0].k,en=best.w[best.w.length-1].k,c=kr(best.avg);
+    res=`<div class="grid" style="margin-top:10px">`+
+      tile("Starta kl",st.slice(11)+":00","",st.slice(8,10)+"/"+st.slice(5,7)+" · klart "+endLbl(en),"hero")+
+      tile("Kostnad",fmt(c,2),"kr",fmt(best.avg,2)+" kr/kWh i snitt")+
+      (nowAvg!=null?tile("Om du startar nu",fmt(kr(nowAvg),2),"kr",c<kr(nowAvg)?"Du sparar "+fmt(kr(nowAvg)-c,2)+" kr":"Nu är billigast"):"")+
+      (worst&&worst.i!==best.i?tile("Dyrast i fönstret",fmt(kr(worst.avg),2),"kr",lbl(worst.w[0].k)):"")+`</div>`;}
+  return `<div class="card" style="margin:12px 0"><h2 style="margin:0 0 8px">${ic("Planera","clock")}Planera elförbrukning</h2>
+    <div class="note" style="margin:0 0 8px">Hitta billigaste sammanhängande timmarna utifrån Tibber-priserna (inkl. påslag). Välj apparat eller ange egen effekt.</div>
+    <div class="bar" style="flex-wrap:wrap">${PLAN_PRESETS.map(([n,k,h])=>`<button class="chip" data-plan-preset="${k}|${h}" aria-pressed="${kw===k&&hrs===h}">${n}</button>`).join("")}</div>
+    <div class="bar" style="flex-wrap:wrap;gap:10px">
+      <label>Förbrukar i <select data-plan="h">${[1,2,3,4,5,6,7,8].map(n=>`<option value="${n}" ${n===hrs?"selected":""}>${n} h</option>`).join("")}</select></label>
+      <label>med effekt <input type="text" inputmode="decimal" data-plan="kw" value="${esc(String(kw).replace(".",","))}" style="width:64px"> kW</label>
+      <label>Starta tidigast <select data-plan="from">${opt(sl,fromK,lbl)}</select></label>
+      <label>Klart senast <select data-plan="to">${opt(sl,toK,endLbl)}</select></label></div>${res}
+    <div class="note">Priserna gäller hela timmar. Morgondagens priser kommer vanligen från ca 13:00. Kostnaden är pris × effekt × tid för en jämn last.</div></div>`;}
 async function renderOversikt(){
   const e=liveEnergy();
   let h=statusBar()+heatCards();
@@ -844,6 +880,7 @@ async function renderOversikt(){
     g2+=sensTile(cfg.ids.slab,"measure_temperature","Betongplattan",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(cfg.ids.slab,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"Uterum");
     h+=grp("Temperatur",g2,3)+elGrp;
     try{h+=await priceBlock(0,true);}catch(err){}
+    try{h+=planHtml();}catch(err){}
     if(state.devices[cfg.ids.tesla])h+=`<section class="grp" style="margin-top:14px"><h3>Tesla</h3>`+teslaTiles(state.unit)+`</section>`;
   }else{
     h+=`<section class="grp" style="margin-top:14px"><h3>Effekt · Dekarsön 236</h3>`+await medelEffektHtml()+`</section>`;
@@ -2082,6 +2119,7 @@ document.addEventListener("click",async e=>{
   const dl=e.target.closest("[data-daily]");if(dl){openModal("daily",dl.dataset.daily);return;}
   const sb=e.target.closest("[data-status]");if(sb){openModal("status",sb.dataset.status);return;}
   const kc=e.target.closest("[data-card]");if(kc){openModal("card",kc.dataset.card);return;}
+  const pp=e.target.closest("[data-plan-preset]");if(pp){const [k,h]=pp.dataset.planPreset.split("|");cfg.plan=cfg.plan||{};cfg.plan.kw=k;cfg.plan.h=h;persist();draw();return;}
   const cc=e.target.closest("[data-chart]");if(cc){openModal("chart",cc.dataset.chart);return;}
   const jp=e.target.closest("[data-jump]");if(jp){const el=document.getElementById(jp.dataset.jump);if(el){el.open=true;el.scrollIntoView({behavior:"smooth",block:"start"});}return;}
   const b=e.target.closest("[data-act]");if(!b)return;
@@ -2118,6 +2156,7 @@ document.addEventListener("change",async e=>{
   try{
     if(t.dataset.act==="dim"){await setCap(t.closest("[data-id]").dataset.id,"dim",Number(t.value)/100);draw();return;}
     if(t.id==="sensfrom"||t.id==="sensto"){state[t.id==="sensfrom"?"sensFrom":"sensTo"]=t.value;await renderModal();return;}
+    if(t.dataset&&t.dataset.plan){cfg.plan=cfg.plan||{};cfg.plan[t.dataset.plan]=t.value;if(t.dataset.plan==="to"||t.dataset.plan==="from"){const sl=planSlots();if(cfg.plan.from&&cfg.plan.to&&cfg.plan.from>cfg.plan.to){if(t.dataset.plan==="from")cfg.plan.to=sl[sl.length-1].k;else cfg.plan.from=sl[0].k;}}persist();draw();return;}
     if(t.id==="styrzone"){state.styrZone=t.value;draw();return;}
     if(t.id==="climzone"){state.climZone=t.value;draw();return;}
     if(t.id==="mcmp"){state.cmp=t.value;draw();return;}
