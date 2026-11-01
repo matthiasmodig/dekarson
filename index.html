@@ -559,19 +559,19 @@ function golvGroup(f,sensors){
   if(!f)return "";const v=i=>capVal(f,"measure_temperature."+i);let h="";
   if(sensors){h+=v(1)!=null?sensTile(f.id,"measure_temperature.1","Framledning golvvärme",fmt(v(1),1),"°C","Givare 1"):"";
     h+=v(2)!=null?sensTile(f.id,"measure_temperature.2","Returledning golvvärme",fmt(v(2),1),"°C","Givare 2"):"";}
-  h+=onoffTile(f,"Golvvärme","Golvvärme","");
   if(sensors)h+=homeyVar(cfg.ids.dtGolv)!=null?dtTile("ΔT golvvärme",cfg.ids.dtGolv,0,"Fram − retur"):(v(1)!=null&&v(2)!=null?tile("ΔT golvvärme",fmt(v(1)-v(2),1),"°C","Fram − retur"):"");
   h+=capVal(f,"meter_power")!=null?tileA('data-card="golv"',"Energi totalt",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat"):"";
-  return grp("Golvvärme",h,sensors?5:4);
+  return grp("Golvvärme",h,4);
 }
-function uterumGroup(sl,f,withFloor){
+function uterumGroup(sl,f,withFloor,klimat){
   const v=i=>capVal(f,"measure_temperature."+i);let h="";
+  if(klimat&&f)h+=onoffTile(f,"Golvvärme uterum","Golvvärme uterum","");
   if(sl)h+=sensTile(sl.id,"measure_temperature","Betongplatta",fmt(capVal(sl,"measure_temperature"),1),"°C",capVal(sl,"measure_humidity")!=null?sensLink(sl.id,"measure_humidity","Luftfuktighet "+fmt(capVal(sl,"measure_humidity"),0)+" %"):"");
   if(f){h+=v(3)!=null?sensTile(f.id,"measure_temperature.3","Framledning uterum",fmt(v(3),1),"°C","Givare 3"):"";
     h+=v(4)!=null?sensTile(f.id,"measure_temperature.4","Returledning uterum",fmt(v(4),1),"°C","Givare 4"):"";
     h+=homeyVar(cfg.ids.dtUterum)!=null?dtTile("ΔT uterum",cfg.ids.dtUterum,0,"Fram − retur"):(v(3)!=null&&v(4)!=null?tile("ΔT uterum",fmt(v(3)-v(4),1),"°C","Fram − retur"):"");}
   if(withFloor&&f){h+=onoffTile(f,"Golvvärme","Golvvärme","");if(capVal(f,"meter_power")!=null)h+=tileA('data-card="golv"',"Golvvärme energi",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat");}
-  return h?grp("Uterum",h,4):"";
+  return h?grp("Uterum",h,klimat?5:4):"";
 }
 function ventGroup(){
   const d=state.devices[cfg.ids.ventilation];if(!d)return "";
@@ -1525,10 +1525,12 @@ async function renderKlimat(){
   await loadVars();
   const all=propDevices().filter(d=>capVal(d,"measure_temperature")!=null&&!excluded(d)&&d.id!==cfg.ids.floor&&d.id!==cfg.ids.nibe&&d.id!==cfg.ids.tesla&&d.id!==cfg.ids.slab&&d.id!==cfg.ids.ventilation&&d.id!==cfg.ids.fastighet&&d.id!==cfg.ids.entre);
   const zones=[...new Set(all.map(zoneName))].sort((a,b)=>a.localeCompare(b,"sv"));
-  const list=all.filter(d=>!state.climZone||zoneName(d)===state.climZone).sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")||a.name.localeCompare(b.name,"sv"));
+  const hideK=d=>{const z=zoneName(d),n=devName(d);return (/tvättstuga/i.test(z)&&!/^temperatursensor/i.test(n))||(/kök/i.test(z)&&/^diskmaskin/i.test(n));};
+  const tsFirst=d=>/^temperatursensor/i.test(devName(d))?0:1;
+  const list=all.filter(d=>!hideK(d)&&(!state.climZone||zoneName(d)===state.climZone)).sort((a,b)=>zoneName(a).localeCompare(zoneName(b),"sv")||tsFirst(a)-tsFirst(b)||a.name.localeCompare(b.name,"sv"));
   let h="";
   if(state.prop==="235"){
-    h+=nibeGroup()+ventGroup()+golvGroup(state.devices[cfg.ids.floor],true)+uterumGroup(state.devices[cfg.ids.slab],state.devices[cfg.ids.floor]);
+    h+=nibeGroup()+ventGroup()+golvGroup(state.devices[cfg.ids.floor],true)+uterumGroup(state.devices[cfg.ids.slab],state.devices[cfg.ids.floor],false,true);
   }
   h+=`<div class="bar"><b>Rum för rum</b><label>Visa <select id="climzone"><option value="">Alla rum</option>${zones.map(z=>`<option ${z===state.climZone?"selected":""}>${esc(z)}</option>`).join("")}</select></label></div>`;
   if(!list.length)h+=`<div class="card">Inga temperaturgivare hittades för ${PROPS.find(p=>p.k===state.prop).name}.</div>`;
