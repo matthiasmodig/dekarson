@@ -906,8 +906,12 @@ function planHtml(){
     <div class="note">Priserna gäller hela timmar. Morgondagens priser kommer vanligen från ca 13:00. Kostnaden är pris × effekt × tid för en jämn last.</div></div>`;}
 
 /* ---------- Elpriscentral (Tibber GraphQL via worker, 15 min) ---------- */
+/* Efter 13:00 svensk tid väntar vi på morgondagens priser: kolla oftare tills de finns */
+function tpWaiting(d){if(!d||d.error||!(d.intervals||[]).length)return false;
+  const sd=t=>new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Stockholm"}).format(new Date(t)),h=+new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Stockholm",hour:"numeric",hourCycle:"h23"}).format(new Date()),td=sd(Date.now());
+  return h>=13&&!d.intervals.some(x=>sd(x.s)>td);}
 async function loadTibber(){
-  const now=Date.now();if(state.tp&&now-state.tp.at<(state.tp.d&&state.tp.d.error?60000:300000)&&state.tp.k===String(isDemo()))return state.tp.d;
+  const now=Date.now();if(state.tp&&now-state.tp.at<(state.tp.d&&state.tp.d.error?60000:(tpWaiting(state.tp.d)?90000:300000))&&state.tp.k===String(isDemo()))return state.tp.d;
   let d=null;
   if(isDemo()){const st=new Date();st.setHours(0,0,0,0);const iv=[],n=new Date().getHours()>=13?192:96;
     for(let i=0;i<n;i++){const t=new Date(st.getTime()+i*9e5),hh=t.getHours()+t.getMinutes()/60,dayOff=Math.floor(i/96);const e=0.35+0.30*Math.sin((hh-6)/24*2*Math.PI)+0.25*Math.exp(-Math.pow(hh-18,2)/4)-dayOff*0.12+((i*7)%5)*0.01;
@@ -982,7 +986,7 @@ async function tibberHtml(){
     ${tiles}
     <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Elpris per kvart, idag och imorgon">${g}</svg>
     <div class="note" id="tpr" style="min-height:19px;color:var(--ink)">Håll över en stapel eller tryck för exakt pris.</div>
-    <div class="note">Öre/kWh, svensk tid, ${N} intervall. Senast hämtat från Tibber: ${esc(fa)}${d.cached?" (från cache)":""}${d.error?` · <span style="color:var(--bad)">${esc(d.error)}</span>`:""}. Visar importpris = Tibber <code>total</code> + ${fmt(mk,3)} kr/kWh (Homeys formel), <b>preliminärt</b> tills det är verifierat att energiskatten (ingår i Tibbers <code>tax</code>) inte dubbelräknas; det är inte heller hela elkostnaden inkl. elnät.${diff!=null?` Kontroll mot Homey <code>measure_price_total</code>: ${fmt(hv,4)} kr mot Tibber ${fmt(cur.t,4)} kr (${diff>=0?"+":""}${fmt(diff*100,2)} öre${Math.abs(diff)>0.005?" – avvikelse, kontrollera uppdateringstid/avrundning i Tibber-appen i Homey":" – stämmer"}).`:""} Priserna sparas permanent i workerns KV (en post per startsAt, inga dubbletter). Morgondagens priser visas så snart Tibber har publicerat dem.</div></div>`};}
+    <div class="note">Öre/kWh, svensk tid, ${N} intervall. Senast hämtat från Tibber: ${esc(fa)}${tpWaiting(d)?" · väntar på morgondagens priser, kollar automatiskt varje minut":""}${d.cached?" (från cache)":""}${d.error?` · <span style="color:var(--bad)">${esc(d.error)}</span>`:""}. Visar importpris = Tibber <code>total</code> + ${fmt(mk,3)} kr/kWh (Homeys formel), <b>preliminärt</b> tills det är verifierat att energiskatten (ingår i Tibbers <code>tax</code>) inte dubbelräknas; det är inte heller hela elkostnaden inkl. elnät.${diff!=null?` Kontroll mot Homey <code>measure_price_total</code>: ${fmt(hv,4)} kr mot Tibber ${fmt(cur.t,4)} kr (${diff>=0?"+":""}${fmt(diff*100,2)} öre${Math.abs(diff)>0.005?" – avvikelse, kontrollera uppdateringstid/avrundning i Tibber-appen i Homey":" – stämmer"}).`:""} Priserna sparas permanent i workerns KV (en post per startsAt, inga dubbletter). Morgondagens priser visas så snart Tibber har publicerat dem.</div></div>`};}
 async function renderOversikt(){
   const e=liveEnergy();
   try{await loadCal();}catch(e){}

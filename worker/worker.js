@@ -102,10 +102,10 @@ async function tibberCurrent(env, fromCron) {
   const hasTomorrow = !!(cached && cached.intervals.some((x) => stockholmDay(x.s) > today));
   const wantTomorrow = stockholmHour() >= 13 && !hasTomorrow;
   const dayChanged = cached && cached.today !== today;
-  const stale = !cached || dayChanged || age > 6 * 3600e3 || (wantTomorrow && age > 10 * 60e3);
+  const stale = !cached || dayChanged || age > 6 * 3600e3 || (wantTomorrow && age > 60e3);
   if (!stale) return { ...cached, cached: true };
   const lastTry = +(await env.KV.get("tp:lastTry")) || 0;
-  if (now - lastTry < 5 * 60e3 && cached) return { ...cached, cached: true };
+  if (now - lastTry < (wantTomorrow ? 60e3 : 5 * 60e3) && cached) return { ...cached, cached: true };
   await env.KV.put("tp:lastTry", String(now), { expirationTtl: 3600 });
   try {
     if (!env.TIBBER_API_TOKEN) throw new Error("TIBBER_API_TOKEN saknas som secret i Cloudflare-workern dekarson-api.");
