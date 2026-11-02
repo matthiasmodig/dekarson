@@ -835,8 +835,8 @@ function statusBar(){
     ${chip("locks",!L.locks.length?"":(unl?"bad":"ok"),L.locks.length?(unl?`Lås: ${unl} olåst`:"Lås: alla låsta"):"Lås: –")}
     ${chip("alarms",al?"bad":"ok",`Larm/öppet: ${al}`)}
     ${chip("motion",L.motion.length?"on":"",`Rörelse: ${L.motion.length}`)}
-    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}<span class="grow"></span>${devSearchHtml()}</div>${tempBar()}
-    <div class="note" style="margin-top:6px">Klicka på en ruta för detaljer och för att ändra.</div></div>`;
+    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}</div>${tempBar()}
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px"><div class="note" style="margin:0">Klicka på en ruta för detaljer och för att ändra.</div>${devSearchHtml()}</div></div>`;
 }
 
 function lockTile(d){
