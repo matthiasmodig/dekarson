@@ -1177,8 +1177,10 @@ async function camSnap(id){
 let CAMALL=0;
 async function camSnapAll(force){
   if(isDemo()||(!force&&Date.now()-CAMALL<60000))return;CAMALL=Date.now();
-  const ds=camDevs();await Promise.all(ds.map(d=>camSnap(d.id).catch(e=>showErr("Kunde inte ta bild: "+e.message))));
-  setTimeout(()=>camHydrate(true),5000);}
+  /* en kamera i taget: samtidiga snapshots kan blanda ihop bilderna i Eufy-appen */
+  for(const d of camDevs()){try{await camSnap(d.id);}catch(e){showErr("Kunde inte ta bild: "+e.message);continue;}
+    await new Promise(r=>setTimeout(r,5000));
+    await camLoad(d,true);camHydrate();}}
 function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});document.querySelectorAll('[data-camstamp="'+d.id+'"]').forEach(x=>{x.textContent=camStamp(d)+(x.closest(".card")&&x.closest("dialog")&&CAMC[d.id].src?" · källa "+CAMC[d.id].src:"");});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
 function camEvents(d){const co=d.capabilitiesObj||{};return CAMEV.filter(([k])=>co[k]!=null).map(([k,l])=>({k,l,on:co[k].value===true,t:co[k].lastUpdated?new Date(co[k].lastUpdated).getTime():null}));}
 function camStamp(d){const c=CAMC[d.id];if(!(c&&c.seen))return "";const dup=camDevs().filter(o=>o.id!==d.id&&CAMC[o.id]&&CAMC[o.id].src&&CAMC[o.id].src===c.src).map(devName);
