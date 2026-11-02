@@ -773,7 +773,8 @@ function tempBar(){
   const dv=id=>state.devices[id],lk=dv(cfg.ids.ytterdorr);
   const sw=(id,n)=>{const d=dv(id);if(!d||!hasOnoff(d))return "";const on=!!capVal(d,"onoff");return `<span data-onoff="${esc(id)}" data-nm="${n}" tabindex="0" role="button" title="Visa och styr" style="cursor:pointer;white-space:nowrap"><span class="dot ${on?"on":""}"></span> ${n} <b>${on?"På":"Av"}</b></span>`;};
   const lkp=lk?(()=>{const ok=!!capVal(lk,"locked");return `<span data-status="locks" tabindex="0" role="button" title="Lås eller lås upp" style="cursor:pointer;white-space:nowrap"><span class="dot ${ok?"ok":"bad"}"></span> Ytterdörr <b style="color:var(--${ok?"good":"bad"})">${ok?"Låst":"OLÅST"}</b></span>`;})():"";
-  const rest=[lkp,sw(cfg.ids.ventilation,"Ventilation"),sw(cfg.ids.avlopp,"Avloppsbrunn")].filter(Boolean);
+  const tz=dv(cfg.ids.tesla),tzp=tz?(()=>{const ch=capVal(tz,"charging_on")===true,kw=capVal(tz,"measure_charge_power"),soc=capVal(tz,"measure_soc_level");return `<span data-goto="status" tabindex="0" role="button" title="${soc!=null?fmt(soc,0)+" % batteri":"Tesla"}" style="cursor:pointer;white-space:nowrap"><span class="dot ${ch?"on":""}"></span> Tesla <b>${ch?"Laddar"+(kw!=null?" "+fmt(kw,1)+" kW":""):"Laddar inte"}</b>${soc!=null?` <span style="color:var(--mut)">${fmt(soc,0)} %</span>`:""}</span>`;})():"";
+  const rest=[lkp,sw(cfg.ids.ventilation,"Ventilation"),sw(cfg.ids.avlopp,"Avloppsbrunn"),tzp].filter(Boolean);
   return parts.length||rest.length?`<div class="bar" style="margin:8px 0 0;gap:18px;font-size:14px">${parts.length?`<span style="color:var(--mut)">Temperatur</span>${parts.join("")}`:""}${rest.length?`<span style="width:1px;height:16px;background:var(--line,#ccc)"></span>${rest.join("")}`:""}</div>`:"";}
 function calModalHtml(){
   const c=state.cal,now=Date.now();
@@ -853,8 +854,10 @@ function heatCards(){
   const r1=t(state.devices[cfg.ids.entre]?cfg.ids.entre:cfg.ids.floor,"Entréplatta");
   const tz=dv(cfg.ids.tesla),teslaT=tz?(()=>{const ch=capVal(tz,"charging_on")===true,kw=capVal(tz,"measure_charge_power"),soc=capVal(tz,"measure_soc_level"),mn=capVal(tz,"measure_time_to_full_charge")??capVal(tz,"measure_charge_minutes_to_full");
     return tileA('data-goto="status"',"Tesla",ch?"Laddar":"Laddar inte","",(ch&&kw!=null?fmt(kw,1)+" kW · ":"")+(soc!=null?fmt(soc,0)+" % batteri":"")+(ch&&mn?" · "+fmt(mn,0)+" min kvar":""));})():"";
-  const rA=t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+teslaT,rB=tr_(cfg.ids.trLoad,"Traktor laddning","l")+tr_(cfg.ids.trHeat,"Traktor MV","m")+r1;
-  return `<section class="grp"><h3>Styrning och kontroll</h3>${rA?`<div class="rowN" style="--c:3;margin-bottom:12px">${rA}</div>`:""}${rB?`<div class="rowN" style="--c:3">${rB}</div>`:""}</section>`;
+  const gp=gPortList().map(p=>{const st=p.open===true?"Öppen":p.open===false?"Stängd":"Okänd",c=p.open===true?"var(--bad)":p.open===false?"var(--good)":"var(--mut)";
+    return `<div class="card tile" data-gport="${esc(p.d.id)}" data-nm="${esc("Garageport "+p.k)}" tabindex="0" role="button" title="Visa när porten aktiverats" style="cursor:pointer"><div class="l"><span class="dot" style="background:${c}"></span> ${ic("Garageport")}Garageport ${p.k}<button class="btn sm" data-act="garageport" data-dev="${esc(p.d.id)}" data-nm="${esc("Garageport "+p.k)}" style="float:right;padding:0 8px;min-height:24px;font-size:12px" title="Öppna eller stänga porten">Aktivera</button></div><div class="v" style="color:${c}">${st}</div><div class="s">Klicka för aktiveringshistorik</div></div>`;}).join("");
+  const all=t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+tr_(cfg.ids.trLoad,"Traktor laddning","l")+tr_(cfg.ids.trHeat,"Traktor MV","m")+r1+gp;
+  return `<section class="grp slim"><h3>Styrning och kontroll</h3>${all?`<div class="rowN" style="--c:4">${all}</div>`:""}</section>`;
 }
 const PWRON=5;
 async function onoffSegs(id,f,t,cap){
@@ -1116,6 +1119,18 @@ function fas236Html(){const I=cfg.ids;
   <div class="grid">${FAS236.map(([n,ls])=>{const d=state.devices[I["l236_"+n.slice(1)]],w=capVal(d,"measure_power"),a=capVal(d,"measure_current");
     return `<div class="card"><h2 style="margin:0 0 6px">${n} <span class="note" style="margin:0 0 0 8px">${w!=null?fmt(w,0)+" W":"–"}${a!=null?" · "+fmt(a,1)+" A":""}</span></h2>${ls.map(x=>`<div class="stat"><span>${esc(x)}</span></div>`).join("")}</div>`;}).join("")}</div>
   <div class="note" style="margin-top:10px">Spisen ligger på alla tre faserna. Frysvakten är inkopplad på L2 via Vägg hall.</div>`;}
+const tsFmt=ms=>{const d=new Date(ms);return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());};
+async function gportModalHtml(id){
+  const p=gPortList().find(x=>x.d.id===id);if(!p)return `<div class="warn">Porten hittades inte.</div>`;
+  const nm="Garageport "+p.k,st=p.open===true?"Öppen":p.open===false?"Stängd":"Okänd";
+  const load=async(devId,cap)=>{try{if(isDemo()){const now=Date.now();return Array.from({length:cap==="onoff"?9:14},(_,i)=>({t:now-(i*2.7+0.3)*36e5*(1+i%3),v:cap==="onoff"?true:i%2===0})).map(x=>({t:x.t,v:x.v}));}
+    return (await logEntries(devId,cap,"last31Days")).filter(e=>e.v!=null).map(e=>({t:new Date(e.t).getTime(),v:e.v}));}catch(err){return {err:err.message};}};
+  const act=await load(id,"onoff"),sen=p.sn?await load(p.sn.id,"alarm_contact"):null;
+  const list=(rows,txt)=>rows.err?`<div class="note">Kunde inte läsa historiken (${esc(rows.err)}).</div>`:(rows.length?`<div class="card" style="margin-top:8px">${rows.sort((a,b)=>b.t-a.t).slice(0,100).map(r=>`<div class="stat"><span style="font-variant-numeric:tabular-nums">${tsFmt(r.t)}</span><span>${txt(r)}</span></div>`).join("")}</div>`:`<div class="note">Inga händelser hittades de senaste 31 dagarna.</div>`);
+  return `<div class="mhead"><h2>${ic("Garageport")}${esc(nm)}</h2><span class="pill">${st}</span><span class="grow"></span><button class="btn pri" data-act="garageport" data-dev="${esc(id)}" data-nm="${esc(nm)}">Aktivera</button><button class="btn" data-close="1">Stäng</button></div>
+  <h3 style="margin-top:12px">Aktiveringar (reläet)</h3>${list(Array.isArray(act)?act.filter(r=>r.v===true||r.v===1):act,()=>"Aktiverad")}
+  ${sen?`<h3 style="margin-top:16px">Port öppen och stängd (sensor)</h3>${list(sen,r=>r.v===true||r.v===1?"Öppnad":"Stängd")}`:""}
+  <div class="note">Tidsstämplar i svensk tid, senaste 31 dagarna, så långt Homey har loggat.</div>`;}
 async function fasHistHtml(){
   const I=cfg.ids,[f,t]=sensRange(),cols=["var(--cur)","var(--on)","var(--good)"];
   const ph=[1,2,3].map(i=>({n:"L"+i,d:state.devices[I["l236_"+i]]})).filter(x=>x.d);
@@ -2037,6 +2052,7 @@ function modalHead0(title){
 }
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
+  if(m.t==="gport"){body.innerHTML=await gportModalHtml(m.k);return;}
   if(m.t==="fashist"){body.innerHTML=await fasHistHtml();return;}
   if(m.t==="fas236"){body.innerHTML=fas236Html();return;}
   if(m.t==="h236"){body.innerHTML=`<div class="mhead"><h2>Dekarsön 236 · timmar och effekt</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`+await hist236Html();return;}
@@ -2335,9 +2351,10 @@ function husLtr(d){const n=devName(d);return /spot/i.test(n)?"S":/lamp|belysning
 function husCeil(r){const rk=d=>{const n=devName(d);return /v(ä|a)nster/i.test(n)?0:/mitten/i.test(n)?1:/h(ö|o)ger/i.test(n)?2:1.5;};
   return husDevs(r).filter(d=>/\btak(spot|lampa)?/i.test(devName(d))&&!/f(ö|o)nster/i.test(devName(d))&&hasOnoff(d)).sort((a,b)=>rk(a)-rk(b)||devName(a).localeCompare(devName(b),"sv"));}
 /* Garageportar: styrs av relä (Garageport enkel/dubbel), läge från Portsensor enkel/dubbel (alarm_contact = öppen) */
-function husPorts(r){if(r.id!=="garage")return [];
+function gPortList(){
   const find=re=>Object.values(state.devices).find(d=>re.test(devName(d)));
-  return [["enkel","Port enkel"],["dubbel","Port dubbel"]].map(([k,l])=>{const d=find(new RegExp("^garageport\\s+"+k,"i")),sn=find(new RegExp("^portsensor\\s+"+k,"i")),open=sn?capVal(sn,"alarm_contact"):null;return d?{k,l,d,open}:null;}).filter(Boolean);}
+  return [["enkel","Port enkel"],["dubbel","Port dubbel"]].map(([k,l])=>{const d=find(new RegExp("^garageport\\s+"+k,"i")),sn=find(new RegExp("^portsensor\\s+"+k,"i")),open=sn?capVal(sn,"alarm_contact"):null;return d?{k,l,d,sn,open}:null;}).filter(Boolean);}
+function husPorts(r){return r.id==="garage"?gPortList():[];}
 function husPortG(r,mode,H){
   const ps=husPorts(r);let g="";
   for(const p of ps){const c=p.open===true?"var(--bad)":p.open===false?"var(--good)":"var(--soft)",st=p.open===true?"Öppen":p.open===false?"Stängd":"Okänd",att=`data-act="garageport" data-dev="${esc(p.d.id)}" data-nm="${esc(p.l)}" tabindex="0" role="button" aria-label="${p.l}: ${st}, tryck för att öppna/stänga" style="cursor:pointer"`;
@@ -2828,6 +2845,7 @@ document.addEventListener("click",async e=>{
    const cp=e.target.closest("[data-cmpper]");if(cp){state.sensPer=cp.dataset.cmpper;draw();return;}}
   const sp=e.target.closest("[data-sensper]");if(sp){state.sensPer=sp.dataset.sensper;renderModal();return;}
   {const dv=e.target.closest("[data-devopen]");if(dv){state.devQ="";const dr=$("#dres");if(dr)dr.innerHTML="";const qi=$("#dq");if(qi)qi.value="";openModal("dev",dv.dataset.devopen);return;}}
+  {const gp=e.target.closest("[data-gport]");if(gp&&!e.target.closest("[data-act]")){openModal("gport",gp.dataset.gport);return;}}
   const oo=e.target.closest("[data-onoff]"),oa=e.target.closest("[data-act]");if(oo&&!(oa&&oa!==oo&&oo.contains(oa))){openModal("onoff",oo.dataset.onoff);return;}
   const se=e.target.closest("[data-sens]");if(se){openModal("sens",se.dataset.sens);return;}
   const p=e.target.closest("[data-p]");
