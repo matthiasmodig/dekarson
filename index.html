@@ -1528,15 +1528,15 @@ async function renderEnergi(){
       const share=tot>0&&r.c[u].v!=null?r.c[u].v/tot*100:null,k=r.c.kwh.v>0&&r.c.kr.v!=null?r.c.kr.v/r.c.kwh.v:null;
       const d=prv&&r.p&&r.p[u].v?((r.c[u].v-r.p[u].v)/Math.abs(r.p[u].v)*100):null;
       h+=`<tr><td>${r.src.name}${r.s.derived?" ≈":""}</td><td>${fmt(r.c.kwh.v,0)}</td><td>${fmt(r.c.kr.v,0)}</td><td>${fmt(k,2)}</td><td>${r.src.total?"100 %":fmt(share,0)+" %"}</td>${prv?`<td class="${d>0?"up":"down"}">${d==null?"–":(d>0?"▲ ":"▼ ")+fmt(Math.abs(d),1)+" %"}</td>`:""}</tr>`;
-      if(r.src.k==="ovr"){
-        const subs=[...(Object.keys((S.trl&&S.trl.kwh)||{}).length||Object.keys((S.trm&&S.trm.kwh)||{}).length?[["trl","Traktor laddning (beräknad)"],["trm","Traktor MV (beräknad)"]]:[["traktor","Traktor"]]),["tvm","Tvättmaskin"],["tkt","Torktumlare"],["tsk","Torkskåp"],["golv","Golvvärme Uterum"],["entre","Entrévärme utomhus"],["tesla","Tesla"]];let sk=0,sr=0,any=false;
+      if(r.src.k==="ovr"||r.src.k==="hush"){
+        const subs=r.src.k==="hush"?[["tvm","Tvättmaskin"],["tkt","Torktumlare"],["tsk","Torkskåp"]]:[...(Object.keys((S.trl&&S.trl.kwh)||{}).length||Object.keys((S.trm&&S.trm.kwh)||{}).length?[["trl","Traktor laddning (beräknad)"],["trm","Traktor MV (beräknad)"]]:[["traktor","Traktor"]]),["golv","Golvvärme Uterum"],["entre","Entrévärme utomhus"],["tesla","Tesla"]];let sk=0,sr=0,any=false;
         const sc=(T,m)=>sumRange(T,m,R.s,R.e).v,sp=(T,m)=>R.ps?sumRange(T,m,R.ps,R.pe).v:null;
         for(const [k2,nm] of subs){const T2=S[k2];if(!T2)continue;any=true;
           const a=sc(T2,"kwh"),b=sc(T2,"kr"),a0=sp(T2,"kwh"),b0=sp(T2,"kr"),cu=u==="kr"?b:a,pu=u==="kr"?b0:a0;sk+=a||0;sr+=b||0;
           const d2=prv&&pu?((cu-pu)/Math.abs(pu)*100):null;
           h+=`<tr style="color:var(--mut)"><td style="padding-left:24px">↳ ${nm}${T2.est?" ≈":""}</td><td>${fmt(a,0)}</td><td>${T2.est?"≈ ":""}${fmt(b,0)}</td><td>${a>0&&b!=null?fmt(b/a,2):"–"}</td><td>${tot>0&&cu!=null?fmt(cu/tot*100,0)+" %":"–"}</td>${prv?`<td class="${d2>0?"up":"down"}">${d2==null?"–":(d2>0?"▲ ":"▼ ")+fmt(Math.abs(d2),1)+" %"}</td>`:""}</tr>`;}
         if(any&&r.c.kwh.v!=null){const rk=r.c.kwh.v-sk,rr=r.c.kr.v!=null?r.c.kr.v-sr:null,cu=u==="kr"?rr:rk;
-          h+=`<tr style="color:var(--mut)"><td style="padding-left:24px">↳ Övrigt, resterande ≈</td><td>${fmt(rk,0)}</td><td>${fmt(rr,0)}</td><td>${rk>0&&rr!=null?fmt(rr/rk,2):"–"}</td><td>${tot>0&&cu!=null?fmt(cu/tot*100,0)+" %":"–"}</td>${prv?"<td>–</td>":""}</tr>`;}
+          h+=`<tr style="color:var(--mut)"><td style="padding-left:24px">↳ ${r.src.k==="hush"?"Hushållsel":"Övrigt"}, resterande ≈</td><td>${fmt(rk,0)}</td><td>${fmt(rr,0)}</td><td>${rk>0&&rr!=null?fmt(rr/rk,2):"–"}</td><td>${tot>0&&cu!=null?fmt(cu/tot*100,0)+" %":"–"}</td>${prv?"<td>–</td>":""}</tr>`;}
       }
     }
     h+=`</table></div>`;
