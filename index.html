@@ -1109,13 +1109,13 @@ async function tibberHtml(){
     <div class="note">Öre/kWh, svensk tid, ${N} intervall. Senast hämtat från Tibber: ${esc(fa)}${tpWaiting(d)?" · väntar på morgondagens priser, kollar automatiskt varje minut":""}${d.cached?" (från cache)":""}${d.error?` · <span style="color:var(--bad)">${esc(d.error)}</span>`:""}. Visar importpris = Tibber <code>total</code> + ${fmt(mk,3)} kr/kWh (Homeys formel), <b>preliminärt</b> tills det är verifierat att energiskatten (ingår i Tibbers <code>tax</code>) inte dubbelräknas; det är inte heller hela elkostnaden inkl. elnät.${diff!=null?` Kontroll mot Homey <code>measure_price_total</code>: ${fmt(hv,4)} kr mot Tibber ${fmt(cur.t,4)} kr (${diff>=0?"+":""}${fmt(diff*100,2)} öre${Math.abs(diff)>0.005?" – avvikelse, kontrollera uppdateringstid/avrundning i Tibber-appen i Homey":" – stämmer"}).`:""} Priserna sparas permanent i workerns KV (en post per startsAt, inga dubbletter). Morgondagens priser visas så snart Tibber har publicerat dem.</div></div>`};}
 /* ---------- Översikt för Dekarsön 236: allt på en sida ---------- */
 const FAS236=[["L1",["Varmvattenberedare","Sovrum","Bakom soffan","Element i sovrum","Micro","Köket mot WC","Hallen","Belysning bro","Uttag bro"]],
- ["L2",["Diskmaskin","Spisfläkt","Uttag och belysning köksbänk","Tak kök","Tak WC","Vägg hall"]],
+ ["L2",["Diskmaskin","Spisfläkt","Uttag och belysning köksbänk","Tak kök","Tak WC","Golvvärme WC","Vägg hall"]],
  ["L3",["Inglasning","Allt utomhus utom bron","Vägg inne mot inglasning","Förråd","Kyl och frys"]]];
 function fas236Html(){const I=cfg.ids;
   return `<div class="mhead"><h2>Laster per fas · Dekarsön 236</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>
   <div class="grid">${FAS236.map(([n,ls])=>{const d=state.devices[I["l236_"+n.slice(1)]],w=capVal(d,"measure_power"),a=capVal(d,"measure_current");
     return `<div class="card"><h2 style="margin:0 0 6px">${n} <span class="note" style="margin:0 0 0 8px">${w!=null?fmt(w,0)+" W":"–"}${a!=null?" · "+fmt(a,1)+" A":""}</span></h2>${ls.map(x=>`<div class="stat"><span>${esc(x)}</span></div>`).join("")}</div>`;}).join("")}</div>
-  <div class="note" style="margin-top:10px">Spisen ligger på alla tre faserna.</div>`;}
+  <div class="note" style="margin-top:10px">Spisen ligger på alla tre faserna. Frysvakten är inkopplad på L2 via Vägg hall.</div>`;}
 async function render236(){
   const e=liveEnergy(),b=liveBoth(),I=cfg.ids,R=calcRange();
   const meters=new Set([I.l236_1,I.l236_2,I.l236_3,I.d236].filter(Boolean));
