@@ -733,6 +733,7 @@ function applyTheme(m){const r=document.documentElement;if(m==="light"||m==="dar
   document.querySelectorAll("#segTheme button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.theme===(m||"auto")));}
 function setPanel(on){document.body.classList.toggle("panel",on);}
 function drawProp(){
+  {const sp=$("#segProp");if(sp)sp.style.display=state.tab==="oversikt"?"":"none";}
   $("#segProp").innerHTML=PROPS.map(p=>`<button data-prop="${p.k}" aria-pressed="${state.prop===p.k}">${p.name}</button>`).join("");
 }
 
@@ -1106,7 +1107,36 @@ async function tibberHtml(){
     <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Elpris per kvart, idag och imorgon">${g}</svg>
     <div class="note" id="tpr" style="min-height:19px;color:var(--ink)">Håll över en stapel eller tryck för exakt pris.</div>
     <div class="note">Öre/kWh, svensk tid, ${N} intervall. Senast hämtat från Tibber: ${esc(fa)}${tpWaiting(d)?" · väntar på morgondagens priser, kollar automatiskt varje minut":""}${d.cached?" (från cache)":""}${d.error?` · <span style="color:var(--bad)">${esc(d.error)}</span>`:""}. Visar importpris = Tibber <code>total</code> + ${fmt(mk,3)} kr/kWh (Homeys formel), <b>preliminärt</b> tills det är verifierat att energiskatten (ingår i Tibbers <code>tax</code>) inte dubbelräknas; det är inte heller hela elkostnaden inkl. elnät.${diff!=null?` Kontroll mot Homey <code>measure_price_total</code>: ${fmt(hv,4)} kr mot Tibber ${fmt(cur.t,4)} kr (${diff>=0?"+":""}${fmt(diff*100,2)} öre${Math.abs(diff)>0.005?" – avvikelse, kontrollera uppdateringstid/avrundning i Tibber-appen i Homey":" – stämmer"}).`:""} Priserna sparas permanent i workerns KV (en post per startsAt, inga dubbletter). Morgondagens priser visas så snart Tibber har publicerat dem.</div></div>`};}
+/* ---------- Översikt för Dekarsön 236: allt på en sida ---------- */
+async function render236(){
+  const e=liveEnergy(),b=liveBoth(),I=cfg.ids,R=calcRange();
+  const meters=new Set([I.l236_1,I.l236_2,I.l236_3,I.d236].filter(Boolean));
+  let ds=propDevices().filter(d=>!meters.has(d.id));
+  const vp=state.devices[I.vp236];if(vp&&!ds.some(d=>d.id===vp.id))ds.push(vp);
+  const byName=(a,c)=>devName(a).localeCompare(devName(c),"sv");
+  const ctl=ds.filter(hasOnoff).sort(byName),sens=ds.filter(d=>!hasOnoff(d)&&(capVal(d,"measure_temperature")!=null||capVal(d,"measure_humidity")!=null||capVal(d,"measure_battery")!=null)).sort(byName),rest=ds.filter(d=>!ctl.includes(d)&&!sens.includes(d)&&capVal(d,"measure_power")!=null).sort(byName);
+  let h=`<div class="zonehead"><b>${ic("Effekt")}Dekarsön 236 just nu</b></div><div class="grid">`;
+  h+=tile("Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Hela fastigheten","hero");
+  const ph=[1,2,3].map(i=>[i,state.devices[I["l236_"+i]]]).filter(x=>x[1]);
+  if(ph.length)h+=`<div class="card tile"><div class="l">${ic("Fas")}Faser</div><div style="display:grid;grid-template-columns:repeat(${ph.length},1fr);gap:8px;margin-top:4px">${ph.map(([i,d])=>`<div><div class="note" style="margin:0">L${i}</div><div class="v" style="font-size:22px">${fmt(capVal(d,"measure_power"),0)} <small>W</small></div><div class="s">${capVal(d,"measure_current")!=null?fmt(capVal(d,"measure_current"),1)+" A":""}</div></div>`).join("")}</div></div>`;
+  h+=dualTile("","Denna månad",{v:b.kr.month,un:"kr"},{v:b.kw.month,un:"kWh"})+dualTile("","I år",{v:b.kr.year,un:"kr"},{v:b.kw.year,un:"kWh"});
+  h+=`</div>`;
+  h+=await medelEffektHtml();
+  if(ctl.length)h+=`<div class="zonehead"><b>${ic("Styrning")}Styr och kontroll</b></div><div class="grid">${ctl.map(devCard).join("")}</div>`;
+  if(sens.length)h+=`<div class="zonehead"><b>${ic("Temperatur")}Sensorer</b></div><div class="grid">${sens.map(d=>{const t=capVal(d,"measure_temperature"),hu=capVal(d,"measure_humidity"),bt=capVal(d,"measure_battery");
+    const sub=[hu!=null?"Luftfuktighet "+fmt(hu,0)+" %":"",bt!=null?"Batteri "+fmt(bt,0)+" %":""].filter(Boolean).join(" · ");
+    return t!=null?sensTile(d.id,"measure_temperature",esc(devName(d)),fmt(t,1),"°C",sub):tile(esc(devName(d)),hu!=null?fmt(hu,0):fmt(bt,0),hu!=null?"%":"% batteri",sub);}).join("")}</div>`;
+  if(rest.length)h+=`<div class="zonehead"><b>Övriga mätta enheter</b></div><div class="grid">${rest.map(d=>tileA(`data-onoff="${esc(d.id)}" data-nm="${esc(devName(d))}"`,esc(devName(d)),fmt(capVal(d,"measure_power"),0),"W",capVal(d,"meter_power")!=null?fmt(capVal(d,"meter_power"),1)+" kWh totalt":"")).join("")}</div>`;
+  if(!ds.length)h+=`<div class="note">Inga enheter hittades i Dekarsön 236. Välj zoner under Admin.</div>`;
+  try{h+=await dagbokHtml(false);}catch(err){}
+  try{const S=await loadSeries(R.ps&&R.ps<R.s?R.ps:R.s),T=S.d236;let body=presetBar(R);
+    if(T){for(const uu of ["kr","kwh"]){const c=chartBlock("Dekarsön 236",T,R,effU(T,uu));body+=c.html||c;}}else body+=`<div class="note">Ange energikälla för Dekarsön 236 under Admin.</div>`;
+    h+=detBox("o236e","Energi och kostnad över tid",body,false,"kr och kWh per dygn");}catch(err){h+=`<div class="note">Historik kunde inte läsas: ${esc(err.message)}</div>`;}
+  try{h+=detBox("o236h","Timmar och effekt (historik)",await hist236Html(),false,"medeleffekt per timme");}catch(err){h+=`<div class="note">Timhistorik kunde inte läsas: ${esc(err.message)}</div>`;}
+  $("#p-oversikt").innerHTML=h;const cm=$("#cmp");if(cm)cm.value=state.cmp;
+}
 async function renderOversikt(){
+  if(state.prop==="236"){await render236();return;}
   const e=liveEnergy();
   try{await loadCal();}catch(e){}
   const sb=statusBar();let h=sb+calBrick()+heatCards();
@@ -2732,7 +2762,7 @@ function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.q
 function showTab(t){
   if(t==="timpris")t="oversikt";
   if(t==="plan"){t="styr";state.styrView="hus";state.husRoom=null;}else if(t==="styr"&&state.styrView==="hus")state.styrView="styr";
-  state.tab=t;state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
+  state.tab=t;state.prop=t==="oversikt"?(state.ovProp||"235"):"235";drawProp();state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===(t==="styr"&&state.styrView==="hus"?"plan":t)));
   for(const k of ["oversikt","energi","klimat","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
@@ -2743,7 +2773,7 @@ function showTab(t){
    ===================================================================== */
 document.addEventListener("click",e=>{const b=e.target.closest("[data-goto]");if(b)showTab(b.dataset.goto);});
 $("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)showTab(b.dataset.tab);});
-$("#segProp").addEventListener("click",e=>{const b=e.target.closest("[data-prop]");if(!b)return;state.prop=b.dataset.prop;drawProp();draw();});
+$("#segProp").addEventListener("click",e=>{const b=e.target.closest("[data-prop]");if(!b)return;state.prop=state.ovProp=b.dataset.prop;drawProp();draw();});
 
 document.addEventListener("click",async e=>{
   const th=e.target.closest("#segTheme [data-theme]");if(th){setTheme(th.dataset.theme);return;}
