@@ -1165,6 +1165,11 @@ async function camLoad(d,force){
     throw new Error(err||"Ingen bild");}
   catch(e){CAMC[d.id]={url:c&&c.url||null,at:Date.now(),err:e.message};}
   return CAMC[d.id].url;}
+async function camSnap(id){
+  if(isDemo())return;
+  const uri="homey:device:"+id,paths=["/api/manager/flow/flowcardaction/"+uri+"/action_CMD_SNAPSHOT/run","/api/manager/flow/flowcardaction/"+uri+":action_CMD_SNAPSHOT/run"];
+  let last;for(const p of paths){try{await api(p,{method:"POST",body:JSON.stringify({args:{}})});return;}catch(e){last=e;}}
+  throw last;}
 function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
 function camEvents(d){const co=d.capabilitiesObj||{};return CAMEV.filter(([k])=>co[k]!=null).map(([k,l])=>({k,l,on:co[k].value===true,t:co[k].lastUpdated?new Date(co[k].lastUpdated).getTime():null}));}
 function camImg(d,big){const c=CAMC[d.id],u=c&&c.url;
@@ -2933,7 +2938,7 @@ document.addEventListener("click",async e=>{
     else if(act==="energiview"){state.energiView=b.dataset.v;state.search="";draw();}
     else if(act==="vvball"){const to=b.dataset.to==="true";for(const id of (cfg.ids.vvb||[])){const d=state.devices[id];if(d&&hasOnoff(d))await setCap(id,"onoff",to);}draw();}
     else if(act==="dimset"){const did=b.dataset.dev,dd=state.devices[did];await setCap(did,"dim",Number(b.dataset.v)/100);if(dd&&capVal(dd,"onoff")===false)await setCap(did,"onoff",true);draw();}
-    else if(act==="camsnap"){const d=state.devices[b.dataset.dev];if(!d)return;b.disabled=true;try{await setCap(d.id,"CMD_SNAPSHOT",true);}catch(err){showErr("Kunde inte ta bild: "+err.message);}setTimeout(()=>{b.disabled=false;camLoad(d,true).then(u=>{document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(u)i.src=u;});});},isDemo()?300:4000);}
+    else if(act==="camsnap"){const d=state.devices[b.dataset.dev];if(!d)return;b.disabled=true;try{await camSnap(d.id);}catch(err){showErr("Kunde inte ta bild: "+err.message);}setTimeout(()=>{b.disabled=false;camLoad(d,true).then(u=>{document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(u)i.src=u;});});},isDemo()?300:4000);}
     else if(act==="garageport"){const d=state.devices[b.dataset.dev];if(!d)return;if(!confirm((b.dataset.nm||"Garageporten")+": öppna eller stänga porten?"))return;await setCap(d.id,"onoff",true);draw();}
     else if(act==="roomwin"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husWin(r))await setCap(d.id,"onoff",to);draw();}
     else if(act==="roomlights"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husDevs(r).filter(d=>isLamp(d)&&hasOnoff(d)))await setCap(d.id,"onoff",to);draw();}
