@@ -1116,6 +1116,28 @@ function fas236Html(){const I=cfg.ids;
   <div class="grid">${FAS236.map(([n,ls])=>{const d=state.devices[I["l236_"+n.slice(1)]],w=capVal(d,"measure_power"),a=capVal(d,"measure_current");
     return `<div class="card"><h2 style="margin:0 0 6px">${n} <span class="note" style="margin:0 0 0 8px">${w!=null?fmt(w,0)+" W":"–"}${a!=null?" · "+fmt(a,1)+" A":""}</span></h2>${ls.map(x=>`<div class="stat"><span>${esc(x)}</span></div>`).join("")}</div>`;}).join("")}</div>
   <div class="note" style="margin-top:10px">Spisen ligger på alla tre faserna. Frysvakten är inkopplad på L2 via Vägg hall.</div>`;}
+async function fasHistHtml(){
+  const I=cfg.ids,[f,t]=sensRange(),cols=["var(--cur)","var(--on)","var(--good)"];
+  const ph=[1,2,3].map(i=>({n:"L"+i,d:state.devices[I["l236_"+i]]})).filter(x=>x.d);
+  let h=`<div class="mhead"><h2>Fasbelastning · Dekarsön 236</h2><button class="btn sm" data-fasinfo="1">Laster per fas</button><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>
+  <div class="bar">${SENSPER.map(([p,l])=>`<button class="chip" data-sensper="${p}" aria-pressed="${state.sensPer===p}">${l}</button>`).join("")}
+  ${state.sensPer==="custom"?`<label>Från <input type="date" id="sensfrom" value="${state.sensFrom||addDays(todayStr(),-7)}" max="${todayStr()}"></label><label>Till <input type="date" id="sensto" value="${state.sensTo||todayStr()}" max="${todayStr()}"></label>`:""}</div>`;
+  if(!ph.length)return h+`<div class="note">Inga fasmätare hittades.</div>`;
+  const data=[];for(const p of ph){let pts=[];try{pts=await sensHist(p.d.id,"measure_power",f,t);}catch(e){}data.push(pts);}
+  const keys=[...new Set(data.flatMap(p=>p.map(x=>x[0])))].sort((a,b)=>a-b);
+  const maps=data.map(p=>new Map(p.map(x=>[x[0],x[1]])));
+  const tot=keys.map(k=>maps.every(m=>m.has(k))?maps.reduce((a,m)=>a+m.get(k),0):null);
+  if(!keys.length)return h+`<div class="note">Ingen effekthistorik hittades för perioden. Kontrollera att Homey loggar fasmätarnas effekt (Insights).</div>`;
+  const long=(t-f)>2*864e5,lab=keys.map(k=>{const d=new Date(k);return long?d.getDate()+"/"+(d.getMonth()+1)+(t-f<=8*864e5?" "+pad(d.getHours())+":00":""):pad(d.getHours())+":"+pad(d.getMinutes());});
+  const ser=ph.map((p,i)=>({name:p.n,color:cols[i],vals:keys.map(k=>maps[i].has(k)?maps[i].get(k):null),unit:"W",dec:0,ax:0}));
+  ser.push({name:"Totalt",color:"var(--ink)",vals:tot,unit:"W",dec:0,ax:0});
+  const stat=(vals)=>{const v=vals.filter(x=>x!=null);if(!v.length)return null;const mx=Math.max(...v),avg=v.reduce((a,b)=>a+b,0)/v.length;return {min:Math.min(...v),avg,max:mx,at:keys[vals.indexOf(mx)],kwh:avg*(t-f)/36e5/1000};};
+  const rows=ser.map(s=>{const x=stat(s.vals);return x?[`<b>${esc(s.name)}</b>`,fmt(x.avg,0)+" W",fmt(x.min,0)+" W",fmt(x.max,0)+" W",(()=>{const d=new Date(x.at);return d.getDate()+"/"+(d.getMonth()+1)+" "+pad(d.getHours())+":"+pad(d.getMinutes());})(),fmt(x.kwh,1)+" kWh"]:[`<b>${esc(s.name)}</b>`,"–","–","–","–","–"];});
+  const ts=stat(tot);
+  h+=`<div class="grid" style="margin-top:12px">${tile("Totalt, medel",ts?fmt(ts.avg,0):"–","W",ts?"Högst "+fmt(ts.max,0)+" W":"","hero")}${tile("Totalt, energi",ts?fmt(ts.kwh,1):"–","kWh","Beräknad ur medeleffekt")}${ser.slice(0,-1).map(s=>{const x=stat(s.vals);return tile(s.name+", medel",x?fmt(x.avg,0):"–","W",x?"Högst "+fmt(x.max,0)+" W":"");}).join("")}</div>
+  <div class="card" style="margin-top:14px"><h2>Effekt per fas och totalt</h2>${dualLine(ser,lab,["W"])}</div>
+  <div class="card" style="margin-top:14px">${tableHtml({head:["Fas","Medel","Lägst","Högst","Högst när","Energi (beräknad)"],body:rows})}<div class="note">Totalt är summan av de tre faserna där alla tre har värde. Energin är medeleffekt gånger periodens längd, alltså en uppskattning.</div></div>`;
+  return h;}
 async function render236(){
   const e=liveEnergy(),b=liveBoth(),I=cfg.ids,R=calcRange();
   const meters=new Set([I.l236_1,I.l236_2,I.l236_3,I.d236].filter(Boolean));
@@ -1126,7 +1148,7 @@ async function render236(){
   let h=`<div class="zonehead"><b>${ic("Effekt")}Dekarsön 236 just nu</b></div><div class="grid">`;
   h+=tileA('data-nowmodal="1"',"Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Hela fastigheten · tryck för förbrukare","hero");
   const ph=[1,2,3].map(i=>[i,state.devices[I["l236_"+i]]]).filter(x=>x[1]);
-  if(ph.length)h+=`<div class="card tile" data-nowmodal="1" tabindex="0" role="button" style="cursor:pointer"><div class="l">${ic("Fas")}Faser<button type="button" class="btn sm" data-fasinfo="1" title="Vad som hänger på varje fas" aria-label="Info om faserna" style="margin-left:auto;padding:1px 9px;border-radius:50%;font-weight:700">i</button></div><div style="display:grid;grid-template-columns:repeat(${ph.length},1fr);gap:8px;margin-top:4px">${ph.map(([i,d])=>`<div><div class="note" style="margin:0">L${i}</div><div class="v" style="font-size:22px">${fmt(capVal(d,"measure_power"),0)} <small>W</small></div><div class="s">${capVal(d,"measure_current")!=null?fmt(capVal(d,"measure_current"),1)+" A":""}</div></div>`).join("")}</div></div>`;
+  if(ph.length)h+=`<div class="card tile" data-fashist="1" tabindex="0" role="button" title="Visa statistik" style="cursor:pointer"><div class="l">${ic("Fas")}Faser<button type="button" class="btn sm" data-fasinfo="1" title="Vad som hänger på varje fas" aria-label="Info om faserna" style="margin-left:auto;padding:1px 9px;border-radius:50%;font-weight:700">i</button></div><div style="display:grid;grid-template-columns:repeat(${ph.length},1fr);gap:8px;margin-top:4px">${ph.map(([i,d])=>`<div><div class="note" style="margin:0">L${i}</div><div class="v" style="font-size:22px">${fmt(capVal(d,"measure_power"),0)} <small>W</small></div><div class="s">${capVal(d,"measure_current")!=null?fmt(capVal(d,"measure_current"),1)+" A":""}</div></div>`).join("")}</div></div>`;
   h+=dualTile('data-card="d236"',"Denna månad",{v:b.kr.month,un:"kr"},{v:b.kw.month,un:"kWh"})+dualTile('data-card="d236"',"I år",{v:b.kr.year,un:"kr"},{v:b.kw.year,un:"kWh"});
   h+=`</div>`;
   h+=await medelEffektHtml();
@@ -2015,6 +2037,7 @@ function modalHead0(title){
 }
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
+  if(m.t==="fashist"){body.innerHTML=await fasHistHtml();return;}
   if(m.t==="fas236"){body.innerHTML=fas236Html();return;}
   if(m.t==="h236"){body.innerHTML=`<div class="mhead"><h2>Dekarsön 236 · timmar och effekt</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`+await hist236Html();return;}
   if(m.t==="dev"){body.innerHTML=await devModalHtml(m.k);return;}
@@ -2817,6 +2840,7 @@ document.addEventListener("click",async e=>{
   const rmo=e.target.closest("[data-room]");if(rmo&&!e.target.closest("[data-act]")){state.husRoom=rmo.dataset.room;draw();window.scrollTo(0,0);return;}
   const dg=e.target.closest("[data-dagbok]");if(dg){openModal("dagbok","");return;}
   if(e.target.closest("[data-fasinfo]")){openModal("fas236","");return;}
+  if(e.target.closest("[data-fashist]")){openModal("fashist","");return;}
   {const h2=e.target.closest("[data-h236]");if(h2){openModal("h236","");return;}}
   const nw=e.target.closest("[data-nowmodal]");if(nw){openModal("now","");return;}
   const tpa=e.target.closest("[data-tpavg]");if(tpa){openModal("tpavg","");return;}
