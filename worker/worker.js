@@ -1,5 +1,6 @@
 /* Dekarson energicentral: inloggning mot Homey via Athom-molnet och säker proxy.
-   Hemligheter (Cloudflare secrets): CLIENT_ID, CLIENT_SECRET, ALLOWED_EMAIL
+   Hemligheter (Cloudflare secrets): CLIENT_ID, CLIENT_SECRET, ALLOWED_EMAIL, USERS
+   USERS = JSON med användare till inloggningssidan: {"matthias":"pbkdf2$100000$salt$hash","anna":"..."}; skapa varje värde med: node worker/hash.js "lösenord"
    Variabel: SITE_ORIGIN (t.ex. https://dekarson.matthiasmodig.se)
    KV-bindning: KV */
 const ATHOM = "https://api.athom.com";
@@ -27,6 +28,7 @@ export default {
     };
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     try {
+      if (url.pathname === "/auth" && req.method === "POST") return await auth(req, env, cors);
       if (url.pathname === "/login") return await login(url, env);
       if (url.pathname === "/callback") return await callback(url, env, req);
       if (url.pathname === "/logout") {
@@ -152,6 +154,39 @@ const rand = () => [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.
 async function sessionOk(req, env) {
   const s = bearer(req);
   return !!(s && s.length === 64 && (await env.KV.get("sess:" + s)));
+}
+
+const hex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+const unhex = (s) => new Uint8Array((s.match(/../g) || []).map((h) => parseInt(h, 16)));
+async function verifyPw(pw, rec) {
+  const [kind, it, salt, hash] = String(rec).split("$");
+  if (kind !== "pbkdf2" || !salt || !hash) return false;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: unhex(salt), iterations: Math.min(100000, +it || 100000) }, key, 256);
+  const got = hex(bits);
+  let d = got.length ^ hash.length;
+  for (let i = 0; i < got.length; i++) d |= got.charCodeAt(i) ^ (hash.charCodeAt(i) || 0);
+  return d === 0;
+}
+/* Inloggningssidan: användarnamn + lösenord mot USERS. Max 8 felförsök per IP och 15 minuter. */
+async function auth(req, env, cors) {
+  const ip = req.headers.get("CF-Connecting-IP") || "x", rk = "rl:" + ip;
+  const n = +(await env.KV.get(rk)) || 0;
+  if (n >= 8) return json({ error: "För många försök. Vänta 15 minuter." }, 429, cors);
+  let b;
+  try { b = await req.json(); } catch (e) { return json({ error: "Ogiltig begäran" }, 400, cors); }
+  let users = {};
+  try { users = JSON.parse(env.USERS || "{}"); } catch (e) { return json({ error: "USERS är inte giltig JSON i Cloudflare." }, 500, cors); }
+  const name = String(b.user || "").trim().toLowerCase(), rec = Object.prototype.hasOwnProperty.call(users, name) ? users[name] : null;
+  const ok = rec ? await verifyPw(String(b.pass || ""), rec) : (await verifyPw("x", "pbkdf2$100000$00$00"), false);
+  if (!ok) {
+    await env.KV.put(rk, String(n + 1), { expirationTtl: 900 });
+    return json({ error: "Fel användarnamn eller lösenord." }, 401, cors);
+  }
+  await env.KV.delete(rk);
+  const sess = rand();
+  await env.KV.put("sess:" + sess, name, { expirationTtl: SESSION_TTL });
+  return json({ session: sess, user: name }, 200, cors);
 }
 
 function login(url, env) {

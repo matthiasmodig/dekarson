@@ -146,9 +146,20 @@ dialog{border:1px solid var(--line);border-radius:16px;background:var(--card);co
 dialog::backdrop{background:#0009}
 .adm-l{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut);margin:0 0 10px}.adm-l input[type=text],.adm-l input[type=password]{width:100%}
 .grp.slim{margin:0 0 10px}.grp.slim h3{margin:0 0 4px}.grp.slim .tile{padding:6px 12px;min-height:0}.grp.slim .tile .v{font-size:22px;line-height:1.1}.grp.slim .tile .l{font-size:12px}.grp.slim .tile .s{font-size:11px;margin-top:0}
+#gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}
+#gate[hidden]{display:none}
+#gate form{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;width:min(360px,100%);display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+#gate h1{margin:0;font-size:24px}#gate p{margin:0;color:var(--mut)}
+#gate label{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--mut)}
+#gate input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+#gate button{padding:11px;font-size:16px}#gMsg{min-height:18px;color:var(--bad,#c0392b);font-size:13px}
 </style>
 </head>
 <body>
+<div id="gate" hidden><form id="gateForm" autocomplete="on"><h1>Energicentral</h1><p>Logga in för att fortsätta</p>
+<label>Användarnamn<input id="gUser" name="username" autocomplete="username" autocapitalize="none" required></label>
+<label>Lösenord<input id="gPass" name="password" type="password" autocomplete="current-password" required></label>
+<div id="gMsg" role="alert"></div><button class="btn pri" type="submit">Logga in</button></form></div>
 <div class="app">
 <aside class="side">
   <div class="brand">Energicentral</div>
@@ -248,7 +259,7 @@ const unitName=u=>u==="kr"?"kr":"kWh";
 function base(){if(isCloud())return cfg.workerUrl.trim().replace(/\/$/,"");const ip=cfg.ip.trim();return /^https?:\/\//.test(ip)?ip.replace(/\/$/,""):"http://"+ip;}
 async function api(path,opt={}){
   const r=await fetch(base()+path,{...opt,headers:{"Authorization":"Bearer "+(isCloud()?cfg.session:cfg.key),"Content-Type":"application/json"}});
-  if(r.status===401&&isCloud()){cfg.session="";persist();throw new Error("Du är utloggad. Gå till Admin och logga in med Homey igen.");}
+  if(r.status===401&&isCloud()){cfg.session="";persist();if(typeof gateUpdate==="function")gateUpdate();throw new Error("Du är utloggad. Gå till Admin och logga in med Homey igen.");}
   if(!r.ok){let bt="";try{bt=(await r.text()).slice(0,160);}catch(e){}throw new Error("Homey svarade "+r.status+" på "+path+(bt?" – "+bt:""));}
   const t=await r.text();let j=null;try{j=t?JSON.parse(t):null;}catch(e){}
   return (j&&j.result!==undefined)?j.result:j;
@@ -2762,7 +2773,7 @@ document.addEventListener("click",async e=>{
       for(const d of propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d)&&d.capabilitiesObj.onoff.value))await setCap(d.id,"onoff",false);draw();}
     else if(act==="test"){await testConn();}
     else if(act==="login"){if(!cfg.workerUrl){showErr("Fyll i serveradressen först.");return;}location.href=cfg.workerUrl.replace(/\/$/,"")+"/login";}
-    else if(act==="logout"){try{await fetch(base()+"/logout",{method:"POST",headers:{"Authorization":"Bearer "+cfg.session}});}catch(e){}cfg.session="";persist();state.devices={};draw();refresh({force:true});}
+    else if(act==="logout"){try{await fetch(base()+"/logout",{method:"POST",headers:{"Authorization":"Bearer "+cfg.session}});}catch(e){}cfg.session="";persist();gateUpdate();state.devices={};draw();refresh({force:true});}
     else if(act==="pin"){if($("#pinIn").value===cfg.pin){state.adminOk=true;draw();}else{$("#pinIn").value="";$("#pinIn").placeholder="Fel PIN";}}
     else if(act==="export"){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(cfg,null,2)],{type:"application/json"}));a.download="energicentral-installningar.json";a.click();}
     else if(act==="reset"){if(confirm("Återställa alla inställningar i den här webbläsaren?")){localStorage.removeItem("homeyDash2");cfg=loadCfg();state.cache={};state.devices={};refresh({force:true});}}
@@ -2810,7 +2821,13 @@ document.addEventListener("mousemove",sensHover);document.addEventListener("touc
 $("#dlg").addEventListener("close",()=>{state.modal=null;});
 try{applyTheme(localStorage.getItem("homeyTheme")||"auto");}catch(e){applyTheme("auto");}
 navIcons();drawProp();
-refresh({force:true,flows:true});
+function gateUpdate(){const need=isCloud()&&!cfg.session;$("#gate").hidden=!need;document.querySelector(".app").style.visibility=need?"hidden":"";if(need)setTimeout(()=>{const u=$("#gUser");if(u&&!u.value)u.focus();},50);return need;}
+$("#gateForm").addEventListener("submit",async e=>{e.preventDefault();const m=$("#gMsg"),btn=e.target.querySelector("button");m.textContent="";btn.disabled=true;
+  try{const r=await fetch(cfg.workerUrl.replace(/\/$/,"")+"/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({user:$("#gUser").value,pass:$("#gPass").value})});
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||"Inloggningen misslyckades ("+r.status+")");
+    cfg.session=j.session;cfg.demo=false;cfg.mode="cloud";persist();$("#gPass").value="";gateUpdate();state.devices={};state.cache={};refresh({force:true,flows:true});}
+  catch(err){m.textContent=err.message==="Failed to fetch"?"Kunde inte nå servern.":err.message;}finally{btn.disabled=false;}});
+if(!gateUpdate())refresh({force:true,flows:true});
 setInterval(()=>{if(!document.hidden&&state.tab!=="admin")refresh({quiet:true});},REFRESH_MS);
 </script>
 </body>
