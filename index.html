@@ -1170,6 +1170,11 @@ async function camSnap(id){
   if(isDemo())return;
   const f=CAMFLOW[id];if(!f)throw new Error("Inget flöde \"Kamera: ta bild\" finns för kameran");
   await api("/api/manager/flow/flow/"+f+"/trigger",{method:"POST",body:"{}"});}
+let CAMALL=0;
+async function camSnapAll(force){
+  if(isDemo()||(!force&&Date.now()-CAMALL<60000))return;CAMALL=Date.now();
+  const ds=camDevs();await Promise.all(ds.map(d=>camSnap(d.id).catch(e=>showErr("Kunde inte ta bild: "+e.message))));
+  setTimeout(()=>camHydrate(true),5000);}
 function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
 function camEvents(d){const co=d.capabilitiesObj||{};return CAMEV.filter(([k])=>co[k]!=null).map(([k,l])=>({k,l,on:co[k].value===true,t:co[k].lastUpdated?new Date(co[k].lastUpdated).getTime():null}));}
 function camImg(d,big){const c=CAMC[d.id],u=c&&c.url;
@@ -1183,7 +1188,7 @@ function camModalHtml(id){const d=state.devices[id];if(!d)return `<div class="wa
   return `<div class="mhead"><h2>${ic("Kamera","camera")}${esc(devName(d))}</h2><span class="grow"></span>${(d.capabilitiesObj||{}).CMD_SNAPSHOT?`<button class="btn pri" data-act="camsnap" data-dev="${esc(d.id)}">Ta ny bild</button>`:""}<button class="btn" data-close="1">Stäng</button></div>
   ${camImg(d,true)}
   <div class="card" style="margin-top:12px"><h2>Händelser</h2>${tableHtml({head:["Händelse","Just nu","Senast ändrad"],body:ev.map(x=>[x.l,x.on?`<b style="color:var(--bad)">Ja</b>`:"Nej",x.t?tsFmt(x.t):"–"])})}<div class="note">Bilden är den senaste stillbilden Homey har från kameran, inte levande video. Tidsstämpel är när värdet senast ändrades i Homey.</div></div>`;}
-function renderKameror(){$("#p-kameror").innerHTML=`<h2 style="margin:0 0 10px">Kameror</h2>`+camHtml();camHydrate();}
+function renderKameror(){$("#p-kameror").innerHTML=`<div class="bar" style="margin:0 0 10px"><h2 style="margin:0">Kameror</h2><span class="grow"></span><button class="btn sm" data-act="camall">Ny bild från alla</button></div>`+camHtml();camHydrate();}
 async function fasHistHtml(){
   const I=cfg.ids,[f,t]=sensRange(),cols=["var(--cur)","var(--on)","var(--good)"];
   const ph=[1,2,3].map(i=>({n:"L"+i,d:state.devices[I["l236_"+i]]})).filter(x=>x.d);
@@ -2874,6 +2879,7 @@ function showTab(t){
   state.tab=t;state.prop=t==="oversikt"?(state.ovProp||"235"):"235";drawProp();state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===(t==="styr"&&state.styrView==="hus"?"plan":t)));
   for(const k of ["oversikt","energi","klimat","kameror","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  if(t==="kameror")camSnapAll();
   refresh({force:true});
 }
 
@@ -2938,6 +2944,7 @@ document.addEventListener("click",async e=>{
     else if(act==="energiview"){state.energiView=b.dataset.v;state.search="";draw();}
     else if(act==="vvball"){const to=b.dataset.to==="true";for(const id of (cfg.ids.vvb||[])){const d=state.devices[id];if(d&&hasOnoff(d))await setCap(id,"onoff",to);}draw();}
     else if(act==="dimset"){const did=b.dataset.dev,dd=state.devices[did];await setCap(did,"dim",Number(b.dataset.v)/100);if(dd&&capVal(dd,"onoff")===false)await setCap(did,"onoff",true);draw();}
+    else if(act==="camall"){b.disabled=true;await camSnapAll(true);setTimeout(()=>{b.disabled=false;},5000);}
     else if(act==="camsnap"){const d=state.devices[b.dataset.dev];if(!d)return;b.disabled=true;try{await camSnap(d.id);}catch(err){showErr("Kunde inte ta bild: "+err.message);}setTimeout(()=>{b.disabled=false;camLoad(d,true).then(u=>{document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(u)i.src=u;});});},isDemo()?300:4000);}
     else if(act==="garageport"){const d=state.devices[b.dataset.dev];if(!d)return;if(!confirm((b.dataset.nm||"Garageporten")+": öppna eller stänga porten?"))return;await setCap(d.id,"onoff",true);draw();}
     else if(act==="roomwin"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husWin(r))await setCap(d.id,"onoff",to);draw();}
