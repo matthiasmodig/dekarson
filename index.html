@@ -1113,19 +1113,21 @@ async function render236(){
   const meters=new Set([I.l236_1,I.l236_2,I.l236_3,I.d236].filter(Boolean));
   let ds=propDevices().filter(d=>!meters.has(d.id));
   const vp=state.devices[I.vp236];if(vp&&!ds.some(d=>d.id===vp.id))ds.push(vp);
-  const byName=(a,c)=>devName(a).localeCompare(devName(c),"sv");
+  const byName=(a,c)=>(/frysvakt/i.test(devName(c))-/frysvakt/i.test(devName(a)))||devName(a).localeCompare(devName(c),"sv");
   const ctl=ds.filter(hasOnoff).sort(byName),sens=ds.filter(d=>!hasOnoff(d)&&(capVal(d,"measure_temperature")!=null||capVal(d,"measure_humidity")!=null||capVal(d,"measure_battery")!=null)).sort(byName),rest=ds.filter(d=>!ctl.includes(d)&&!sens.includes(d)&&capVal(d,"measure_power")!=null).sort(byName);
   let h=`<div class="zonehead"><b>${ic("Effekt")}Dekarsön 236 just nu</b></div><div class="grid">`;
-  h+=tile("Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Hela fastigheten","hero");
+  h+=tileA('data-nowmodal="1"',"Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Hela fastigheten · tryck för förbrukare","hero");
   const ph=[1,2,3].map(i=>[i,state.devices[I["l236_"+i]]]).filter(x=>x[1]);
-  if(ph.length)h+=`<div class="card tile"><div class="l">${ic("Fas")}Faser</div><div style="display:grid;grid-template-columns:repeat(${ph.length},1fr);gap:8px;margin-top:4px">${ph.map(([i,d])=>`<div><div class="note" style="margin:0">L${i}</div><div class="v" style="font-size:22px">${fmt(capVal(d,"measure_power"),0)} <small>W</small></div><div class="s">${capVal(d,"measure_current")!=null?fmt(capVal(d,"measure_current"),1)+" A":""}</div></div>`).join("")}</div></div>`;
-  h+=dualTile("","Denna månad",{v:b.kr.month,un:"kr"},{v:b.kw.month,un:"kWh"})+dualTile("","I år",{v:b.kr.year,un:"kr"},{v:b.kw.year,un:"kWh"});
+  if(ph.length)h+=`<div class="card tile" data-nowmodal="1" tabindex="0" role="button" style="cursor:pointer"><div class="l">${ic("Fas")}Faser</div><div style="display:grid;grid-template-columns:repeat(${ph.length},1fr);gap:8px;margin-top:4px">${ph.map(([i,d])=>`<div><div class="note" style="margin:0">L${i}</div><div class="v" style="font-size:22px">${fmt(capVal(d,"measure_power"),0)} <small>W</small></div><div class="s">${capVal(d,"measure_current")!=null?fmt(capVal(d,"measure_current"),1)+" A":""}</div></div>`).join("")}</div></div>`;
+  h+=dualTile('data-card="d236"',"Denna månad",{v:b.kr.month,un:"kr"},{v:b.kw.month,un:"kWh"})+dualTile('data-card="d236"',"I år",{v:b.kr.year,un:"kr"},{v:b.kw.year,un:"kWh"});
   h+=`</div>`;
   h+=await medelEffektHtml();
   if(ctl.length)h+=`<div class="zonehead"><b>${ic("Styrning")}Styr och kontroll</b></div><div class="grid">${ctl.map(devCard).join("")}</div>`;
-  if(sens.length)h+=`<div class="zonehead"><b>${ic("Temperatur")}Sensorer</b></div><div class="grid">${sens.map(d=>{const t=capVal(d,"measure_temperature"),hu=capVal(d,"measure_humidity"),bt=capVal(d,"measure_battery");
-    const sub=[hu!=null?"Luftfuktighet "+fmt(hu,0)+" %":"",bt!=null?"Batteri "+fmt(bt,0)+" %":""].filter(Boolean).join(" · ");
-    return t!=null?sensTile(d.id,"measure_temperature",esc(devName(d)),fmt(t,1),"°C",sub):tile(esc(devName(d)),hu!=null?fmt(hu,0):fmt(bt,0),hu!=null?"%":"% batteri",sub);}).join("")}</div>`;
+  {const tl=[];
+    for(const d of [...ctl,...sens]){const t=capVal(d,"measure_temperature"),hu=capVal(d,"measure_humidity"),bt=capVal(d,"measure_battery"),src="Från enheten "+esc(devName(d));
+      if(t!=null)tl.push(sensTile(d.id,"measure_temperature","Temperatur",fmt(t,1),"°C",src+(hu!=null?" · luftfuktighet "+fmt(hu,0)+" %":"")+(bt!=null?" · batteri "+fmt(bt,0)+" %":"")));
+      else{if(hu!=null)tl.push(sensTile(d.id,"measure_humidity","Luftfuktighet",fmt(hu,0),"%",src));if(bt!=null)tl.push(sensTile(d.id,"measure_battery","Batteri",fmt(bt,0),"%",src));}}
+    if(tl.length)h+=`<div class="zonehead"><b>${ic("Temperatur")}Temperatur och sensorer</b></div><div class="grid">${tl.join("")}</div>`;}
   if(rest.length)h+=`<div class="zonehead"><b>Övriga mätta enheter</b></div><div class="grid">${rest.map(d=>tileA(`data-onoff="${esc(d.id)}" data-nm="${esc(devName(d))}"`,esc(devName(d)),fmt(capVal(d,"measure_power"),0),"W",capVal(d,"meter_power")!=null?fmt(capVal(d,"meter_power"),1)+" kWh totalt":"")).join("")}</div>`;
   if(!ds.length)h+=`<div class="note">Inga enheter hittades i Dekarsön 236. Välj zoner under Admin.</div>`;
   try{h+=await dagbokHtml(false);}catch(err){}
@@ -1592,9 +1594,9 @@ async function medelEffektHtml(){
   const inc=(m,done,lbl)=>{if(!m)return noV;const n=Math.round(m.n);
     return "Medel av "+n+" timmedeleffekter"+(n<done?" · <b style=\"color:var(--bad)\">ofullständigt: "+n+" av "+done+" "+lbl+"</b>":n>done+1?" · <b style=\"color:var(--bad)\">kontrollera: fler timmar än förväntat ("+done+")</b>":"")+(D.calc?" · beräknat ur logg":"");};
   const hh=D.now.toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-  const TA=(...a)=>is236?tile(...a):tileA('data-chart="hours"',...a);
-  return `<div class="rowN" style="--c:5;margin-bottom:6px">`
-   +TA("Aktuell effekt",f(D.power),"kW",D.power!=null?"Momentan effekt, inte timmedeleffekt":(D.p236?"Ingen data"+(D.powerWhy?" · "+D.powerWhy:""):wait("")),"hero")
+  const TA=(...a)=>is236?tileA('data-h236="1"',...a):tileA('data-chart="hours"',...a);
+  return `<div class="rowN" style="--c:${is236?4:5};margin-bottom:6px">`
+   +(is236?"":TA("Aktuell effekt",f(D.power),"kW",D.power!=null?"Momentan effekt, inte timmedeleffekt":(D.p236?"Ingen data"+(D.powerWhy?" · "+D.powerWhy:""):wait("")),"hero"))
    +TA("Pågående timmes medeleffekt",D.hour?f(D.hour.v):"–","kW",D.hour?"<b>Ofullständig timme</b> · "+fmt(D.hour.kwh,2)+" kWh på "+fmt(D.hour.min,0)+" min":(D.p236?"Inväntar mätdata"+(D.hourWhy?" · "+D.hourWhy:""):wait(D.hourWhy)))
    +TA("Föregående timmes medeleffekt",D.prev?f(D.prev.v):"–","kW",D.prev?(D.prev.alt?"Från Tibber-mätarens timenergi":"Homey "+(D.p236?"Logic-variabel":"TimSnitt")+(D.prev.kwh!=null?" · "+fmt(D.prev.kwh,2)+" kWh":""))+(D.prevWarn?" · <b style=\"color:var(--bad)\">"+D.prevWarn+"</b>":""):(D.p236?noV:wait("")))
    +TA("Dygnsmedeleffekt",D.day?f(D.day.v):"–","kW",inc(D.day,D.doneDay,"timmar hittills idag"))
@@ -2005,6 +2007,7 @@ function modalHead0(title){
 }
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
+  if(m.t==="h236"){body.innerHTML=`<div class="mhead"><h2>Dekarsön 236 · timmar och effekt</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`+await hist236Html();return;}
   if(m.t==="dev"){body.innerHTML=await devModalHtml(m.k);return;}
   if(m.t==="status"){body.innerHTML=statusModalHtml(m.k);return;}
   if(m.t==="cal"){body.innerHTML=calModalHtml();return;}
@@ -2022,7 +2025,7 @@ async function renderModal(){
     if(T){const days=[];for(let d=R.s;d<=R.e;d=addDays(d,1))days.push(d);
       h+=`<div class="card">${tableHtml({head:["Dygn","Veckodag","kWh","kr","kr/kWh"],body:days.map(d=>{const a=T.kwh[d],b=T.kr[d];return [d,WD[wdIdx(d)],fmt(a,1),fmt(b,0),a>0&&b!=null?fmt(b/a,2):"–"];}).reverse()})}</div>`;}
   }else if(m.t==="card"){
-    const name=(korts().find(x=>x[0]===m.k)||[0,m.k])[1],T=c.S[m.k];h=modalHead(name);
+    const name=(korts().find(x=>x[0]===m.k)||[0,m.k==="d236"?"Dekarsön 236":m.k])[1],T=c.S[m.k];h=modalHead(name);
     if(!T)h+=`<div class="card">Ingen källa är angiven. Lägg till enhets-ID i Admin.</div>`;
     else{
       const eu=effU(T,u),un=unitName(eu),cur=sumRange(T,eu,R.s,R.e),prv=R.ps?sumRange(T,eu,R.ps,R.pe):null,co=sumRange(T,eu==="kr"?"kwh":"kr",R.s,R.e),l=dayList(T,eu,R.s,R.e).sort((a,b)=>b[1]-a[1]),days=l.length||1;
@@ -2804,6 +2807,7 @@ document.addEventListener("click",async e=>{
   const rbk=e.target.closest("[data-roomback]");if(rbk){state.husRoom=null;draw();return;}
   const rmo=e.target.closest("[data-room]");if(rmo&&!e.target.closest("[data-act]")){state.husRoom=rmo.dataset.room;draw();window.scrollTo(0,0);return;}
   const dg=e.target.closest("[data-dagbok]");if(dg){openModal("dagbok","");return;}
+  {const h2=e.target.closest("[data-h236]");if(h2){openModal("h236","");return;}}
   const nw=e.target.closest("[data-nowmodal]");if(nw){openModal("now","");return;}
   const tpa=e.target.closest("[data-tpavg]");if(tpa){openModal("tpavg","");return;}
   const cmo=e.target.closest("[data-calmodal]");if(cmo){openModal("cal","");return;}
