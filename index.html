@@ -2059,6 +2059,9 @@ const KORT235=[["tibber","Hus"],["uppv","Uppvärmning"],["hush","Hushållsström
 const KORTCHARTS=["sources","hours"];
 const KORT236=[["d236","Dekarsön 236"]];
 const korts=()=>state.prop==="235"?KORT235:KORT236;
+/* kort sorterade efter kostnad (kr), högst först; saknas kr används kWh. Hela fastigheten (huvudposten) först. */
+const kortsByCost=c=>{const v=([k])=>{const T=c.S[k];if(!T)return -1;const kr=sumRange(T,"kr",c.R.s,c.R.e).v;return kr!=null&&Object.keys(T.kr||{}).length?kr:(sumRange(T,"kwh",c.R.s,c.R.e).v||0)*0.0001;};
+  return korts().slice().sort((a,b)=>(a[0]===mainKey()?-1:b[0]===mainKey()?1:0)||v(b)-v(a));};
 const mainKey=()=>state.prop==="235"?"tibber":"d236";
 const WD=["Mån","Tis","Ons","Tor","Fre","Lör","Sön"];
 const effU=(T,u)=>(T&&T.kr&&Object.keys(T.kr).length)?u:"kwh";
@@ -2142,15 +2145,15 @@ const CHARTS=[
      const cur=mk.map(f),prev=mk.map(m=>f(py(m)));
      return `<div class="card" style="margin-top:14px"><h2>Snittpris per månad (kr/kWh)</h2><div class="legend"><span><i style="background:var(--cur)"></i>Månad</span><span><i style="background:var(--prev)"></i>Samma månad året innan</span></div>${barChart(cur,prev.some(x=>x!=null)?prev:null,mk.map(m=>MON[+m.slice(5)-1]),"kr/kWh",mk.map(m=>py(m)))}</div>`;}},
  {k:"sources",title:"Förbrukare i jämförelse",async build(c){
-   const rows=korts().filter(x=>x[0]!==mainKey()).map(([k,n])=>({name:n,v:c.S[k]?sumRange(c.S[k],effU(c.S[k],c.u),c.R.s,c.R.e).v:null})).filter(r=>r.v!=null);
+   const rows=kortsByCost(c).filter(x=>x[0]!==mainKey()).map(([k,n])=>({name:n,v:c.S[k]?sumRange(c.S[k],effU(c.S[k],c.u),c.R.s,c.R.e).v:null})).filter(r=>r.v!=null);
    const T0=mainT(c);return rows.length?hbars(rows,unitName(effU(T0,c.u))):`<div class="note">Ingen data.</div>`;},
    async more(c){
-     const list=korts().filter(x=>x[0]!==mainKey()&&c.S[x[0]]),b=c.R.len<=45?1:(c.R.len<=200?7:30),cols=["var(--cur)","var(--on)","var(--good)","var(--bad)","#a56bd6","#2bb3c0"];
+     const list=kortsByCost(c).filter(x=>x[0]!==mainKey()&&c.S[x[0]]),b=c.R.len<=45?1:(c.R.len<=200?7:30),cols=["var(--cur)","var(--on)","var(--good)","var(--bad)","#a56bd6","#2bb3c0"];
      if(!list.length)return "";
      const ser=list.map(([k,n],i)=>{const T=c.S[k],eu=effU(T,c.u);return {name:n,color:cols[i%cols.length],vals:bucketize(dayArray(T,eu,c.R.s,c.R.len),b),unit:unitName(eu)};});
      const labels=ser[0].vals.map((_,i)=>labelDate(addDays(c.R.s,i*b)));
      return `<div class="card" style="margin-top:14px"><h2>Förbrukare över tid (per ${b===1?"dygn":b===7?"vecka":"30 dagar"})</h2>${multiLine(ser,labels)}</div>`;},
-   async rows(c){return {head:["Källa","kWh","kr","Andel av totalen (kWh)"],body:korts().map(([k,n])=>{const T=c.S[k];if(!T)return [n,"–","–","–"];const a=sumRange(T,"kwh",c.R.s,c.R.e).v,b=sumRange(T,"kr",c.R.s,c.R.e).v,t=c.S[mainKey()]?sumRange(c.S[mainKey()],"kwh",c.R.s,c.R.e).v:null;return [n,fmt(a,0),fmt(b,0),t>0&&a!=null?fmt(a/t*100,0)+" %":"–"];})};}},
+   async rows(c){return {head:["Källa","kWh","kr","Andel av totalen (kWh)"],body:kortsByCost(c).map(([k,n])=>{const T=c.S[k];if(!T)return [n,"–","–","–"];const a=sumRange(T,"kwh",c.R.s,c.R.e).v,b=sumRange(T,"kr",c.R.s,c.R.e).v,t=c.S[mainKey()]?sumRange(c.S[mainKey()],"kwh",c.R.s,c.R.e).v:null;return [n,fmt(a,0),fmt(b,0),t>0&&a!=null?fmt(a/t*100,0)+" %":"–"];})};}},
  {k:"share",title:"Fördelning av förbrukningen",async build(c){
    if(state.prop!=="235")return `<div class="note">Gäller Dekarsön 235.</div>`;
    const eu=effU(c.S.tibber,c.u),v=k=>c.S[k]?Math.max(0,sumRange(c.S[k],eu,c.R.s,c.R.e).v||0):0,parts=[["Hushållsel",v("hush"),"var(--cur)"],["Uppvärmning",v("uppv"),"var(--on)"],["Tesla",v("tesla"),"#8b5cf6"],["Traktor laddning",v("trl"),"#10b981"],["Traktor MV",v("trm"),"#f97316"],["Övrigt",v("ovr"),"var(--prev)"]],tot=parts.reduce((a,p)=>a+p[1],0);
