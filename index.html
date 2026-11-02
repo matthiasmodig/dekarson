@@ -815,13 +815,39 @@ function calBrick(){
   if(!list.length)return inner(`<div class="s">Inga kommande händelser</div>`);
   return inner(list.map(e=>`<div style="font-size:13.5px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--mut)">${esc(dl(e.start))} ${tm(e)}</span> ${esc(e.title)}</div>`).join(""));}
 /* ---- Sök enhet (Översikt, Just nu) ---- */
+/* Sökindex: enheter + alla mätvärden/egenskaper (framledning, returledning, BT-givare, effekt, temperatur …) + Homey-variabler */
+const CAPNAME={measure_temperature:"Temperatur",measure_humidity:"Luftfuktighet",measure_battery:"Batteri",measure_power:"Effekt",meter_power:"Energi totalt",measure_voltage:"Spänning",measure_current:"Ström",measure_luminance:"Ljusnivå",measure_co2:"CO₂",measure_pressure:"Lufttryck",target_temperature:"Måltemperatur",measure_soc_level:"Batterinivå",measure_soc_range_estimated:"Räckvidd",measure_charge_limit_soc:"Laddgräns",measure_charge_energy_added:"Tillförd energi",meter_car_odo:"Vägmätare",measure_climate_temperature_out:"Temperatur ute",measure_climate_temperature_in:"Temperatur inne",measure_charge_power:"Laddeffekt",alarm_contact:"Öppen/stängd",alarm_motion:"Rörelse",alarm_battery:"Svagt batteri",alarm_water:"Vattenläckage",alarm_smoke:"Rök",locked:"Låst",onoff:"På/av",dim:"Ljusstyrka"};
+const CAPSYN={measure_temperature:"temp grader",measure_power:"watt effekt",meter_power:"kwh energi förbrukning",measure_humidity:"fuktighet",measure_battery:"batteri",alarm_contact:"dörr port fönster öppen stängd",alarm_motion:"rörelse",locked:"lås"};
+const CAPUNIT={measure_temperature:"°C",measure_humidity:"%",measure_battery:"%",measure_power:"W",meter_power:"kWh",measure_voltage:"V",measure_current:"A",measure_luminance:"lux",measure_co2:"ppm",measure_pressure:"hPa",target_temperature:"°C",measure_soc_level:"%",measure_soc_range_estimated:"km",measure_charge_limit_soc:"%",measure_charge_energy_added:"kWh",meter_car_odo:"km",measure_climate_temperature_out:"°C",measure_climate_temperature_in:"°C",measure_charge_power:"kW"};
+function capLabel(d,c){
+  const co=(d.capabilitiesObj||{})[c]||{};
+  if(d.id===cfg.ids.floor){const m=/^measure_temperature\.(\d)$/.exec(c);if(m&&FLOORSENS[m[1]-1])return FLOORSENS[m[1]-1]+" (givare "+m[1]+")";}
+  if(d.id===cfg.ids.nibe&&/^capability_\d+$/.test(c)){const n=+c.split("_")[1]+1,t=co.title&&co.title!==c?co.title:"";return (t||"NIBE-värde")+" (BT"+n+")"+(n===2?" · framledning":n===3?" · returledning":n===1?" · utetemperatur":"");}
+  const base=c.replace(/\.\d+$/,""),sub=/\.(\d+)$/.exec(c);
+  const t=co.title&&co.title!==c&&!/^(measure_|meter_|alarm_)/.test(co.title)?co.title:(CAPNAME[base]||c);
+  return (t===c?c.replace(/_/g," "):t)+(sub?" "+sub[1]:"");}
+function searchIndex(){
+  const out=[],ds=propDevices(),SKIP=/^(onoff|dim|button|CMD_|NTFY_|speaker_|volume_|light_|sonos_|alarm_generic)/;
+  for(const d of ds){const nm=devName(d),zn=zoneName(d);
+    out.push({k:"dev",id:d.id,label:nm,sub:zn,text:(nm+" "+zn).toLowerCase(),d});
+    for(const [c,o] of Object.entries(d.capabilitiesObj||{})){if(!o||o.value==null||SKIP.test(c))continue;
+      const base=c.replace(/\.\d+$/,""),num=typeof o.value==="number";if(!num&&!/^(alarm_|locked)/.test(base))continue;
+      const lb=capLabel(d,c),val=num?fmt(o.value,Math.abs(o.value)>=100?0:1)+" "+(CAPUNIT[base]||(d.id===cfg.ids.nibe&&/^capability_[0-2]$/.test(base)?"°C":"")):(o.value===true?(base==="alarm_contact"?"Öppen":"Ja"):base==="locked"?"Låst":"Nej");
+      out.push({k:"cap",id:d.id,cap:c,num,label:lb+" · "+nm,sub:zn,val:val.trim(),own:(lb+" "+c+" "+(CAPSYN[base]||"")).toLowerCase(),text:(lb+" "+nm+" "+zn+" "+c+" "+(CAPSYN[base]||"")).toLowerCase(),d});}}
+  const V=state.vars&&state.vars.v;if(V)for(const x of Object.values(V)){if(x.value==null||x.value==="")continue;out.push({k:"var",label:x.name,sub:"Homey-variabel",val:String(x.value).slice(0,40),text:(x.name+" variabel homey").toLowerCase()});}
+  return out;}
 function devMatches(q){q=(q||"").trim().toLowerCase();if(!q)return [];const w=q.split(/\s+/);
-  return propDevices().filter(d=>{const t=(devName(d)+" "+zoneName(d)).toLowerCase();return w.every(x=>t.includes(x));}).sort((a,b)=>devName(a).localeCompare(devName(b),"sv")).slice(0,8);}
+  const hit=searchIndex().filter(i=>w.every(x=>i.text.includes(x))&&(i.k!=="cap"||w.some(x=>i.own.includes(x))));
+  const rk=i=>(i.k==="dev"?0:i.k==="cap"?1:2)+(i.text.startsWith(q)?-0.5:0);
+  return hit.sort((a,b)=>rk(a)-rk(b)||a.label.localeCompare(b.label,"sv")).slice(0,24);}
 function devResHtml(){const ms=devMatches(state.devQ);if(!(state.devQ||"").trim())return "";
-  if(!ms.length)return `<div class="dres"><div class="note" style="margin:6px 10px">Ingen enhet hittades</div></div>`;
-  return `<div class="dres">`+ms.map(d=>{const bits=[];if(hasOnoff(d))bits.push(capVal(d,"onoff")?"På":"Av");const p=capVal(d,"measure_power");if(p!=null)bits.push(fmt(p,0)+" W");const t=capVal(d,"measure_temperature");if(t!=null)bits.push(fmt(t,1)+" °C");
-    return `<button type="button" class="dri" data-devopen="${esc(d.id)}">${ic(devName(d))}<span><b>${esc(devName(d))}</b> <span class="note" style="margin:0">${esc(zoneName(d))}${bits.length?" · "+esc(bits.join(" · ")):""}</span></span></button>`;}).join("")+`</div>`;}
-function devSearchHtml(){return `<span class="dsw"><input type="search" id="dq" placeholder="Sök enhet…" value="${esc(state.devQ||"")}" autocomplete="off" aria-label="Sök enhet"><span id="dres">${devResHtml()}</span></span>`;}
+  if(!ms.length)return `<div class="dres"><div class="note" style="margin:6px 10px">Inget hittades</div></div>`;
+  return `<div class="dres">`+ms.map(i=>{
+    if(i.k==="dev"){const d=i.d,bits=[];if(hasOnoff(d))bits.push(capVal(d,"onoff")?"På":"Av");const p=capVal(d,"measure_power");if(p!=null)bits.push(fmt(p,0)+" W");const t=capVal(d,"measure_temperature");if(t!=null)bits.push(fmt(t,1)+" °C");
+      return `<button type="button" class="dri" data-devopen="${esc(d.id)}">${ic(devName(d))}<span><b>${esc(devName(d))}</b> <span class="note" style="margin:0">${esc(zoneName(d))}${bits.length?" · "+esc(bits.join(" · ")):""}</span></span></button>`;}
+    if(i.k==="cap")return `<button type="button" class="dri" ${i.num?`data-sens="${esc(i.id)}|${esc(i.cap)}"`:`data-devopen="${esc(i.id)}"`}>${ic(i.d?devName(i.d):i.label)}<span><b>${esc(i.label)}</b> <span class="note" style="margin:0">${esc(i.val)} · ${esc(i.sub)}</span></span></button>`;
+    return `<div class="dri" style="cursor:default">${ic("variabel")}<span><b>${esc(i.label)}</b> <span class="note" style="margin:0">${esc(i.val)} · ${esc(i.sub)}</span></span></div>`;}).join("")+`</div>`;}
+function devSearchHtml(){return `<span class="dsw"><input type="search" id="dq" placeholder="Sök enhet, givare, värde…" value="${esc(state.devQ||"")}" autocomplete="off" aria-label="Sök enhet"><span id="dres">${devResHtml()}</span></span>`;}
 async function devModalHtml(id){
   const d=state.devices[id];if(!d)return `<div class="warn">Enheten hittades inte.</div>`;
   const cap=d.capabilitiesObj||{},hasP=cap.measure_power!=null,on=hasOnoff(d);
