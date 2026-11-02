@@ -12,6 +12,8 @@ const ALLOWED = [
   ["GET", /^\/api\/manager\/insights\/log\/.*$/],
   ["GET", /^\/api\/manager\/logic\/variable\/?$/],
   ["GET", /^\/api\/manager\/flow\/(flow|advancedflow)\/?$/],
+  ["GET", /^\/api\/image\/[0-9a-zA-Z-]{8,64}$/],
+  ["GET", /^\/api\/manager\/images\/image\/?$/],
   ["PUT", /^\/api\/manager\/devices\/device\/[0-9a-f-]{36}\/capability\/[A-Za-z0-9_.]+$/],
   ["POST", /^\/api\/manager\/flow\/(flow|advancedflow)\/[0-9a-f-]{36}\/trigger$/],
 ];

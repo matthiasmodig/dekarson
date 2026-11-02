@@ -156,6 +156,8 @@ dialog::backdrop{background:#0009}
 .dsw{position:relative;display:inline-block;margin-left:auto}.dsw input{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);width:210px;max-width:60vw}
 .dres{position:absolute;right:0;top:100%;margin-top:4px;z-index:50;min-width:300px;max-width:90vw;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:4px;display:flex;flex-direction:column}
 .dri{display:flex;align-items:center;gap:4px;text-align:left;background:none;border:0;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--ink);font:inherit;font-size:14px}.dri:hover,.dri:focus{background:var(--soft)}
+.camimg{position:relative;aspect-ratio:16/9;background:var(--soft);border-radius:10px;overflow:hidden}.camimg.big{max-width:900px}.camimg img{width:100%;height:100%;object-fit:cover;display:block}.camph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px;text-align:center;padding:8px;background:repeating-linear-gradient(135deg,var(--soft),var(--soft) 10px,var(--line) 10px,var(--line) 11px)}
+.camcard{padding:8px}.camrow{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -695,6 +697,7 @@ bath:'<path d="M4 12h16v3a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M6 12V6a2 2 
 toilet:'<path d="M7 3h10v6M4 10h16a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6zM10 16v4h4v-4"/>',
 sofa:'<path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M3 14a2 2 0 0 1 4 0v1h10v-1a2 2 0 0 1 4 0v5H3z"/><path d="M5 19v1.5M19 19v1.5"/>',
 table:'<path d="M3 9h18M6 9v11M18 9v11M8 9V5h8v4"/>',
+camera:'<path d="M3 8h4l1.6-2.4h6.8L17 8h4v11H3z"/><circle cx="12" cy="13.3" r="3.6"/>',
 garage:'<path d="M3 21V9l9-6 9 6v12"/><path d="M7 21v-8h10v8M7 15.5h10M7 18.3h10"/>',
 door:'<path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M4 21h16"/><circle cx="15" cy="13" r=".9"/>',
 sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/>',
@@ -710,7 +713,7 @@ meter:'<circle cx="12" cy="12" r="9"/><path d="M12 12l3.5-3.5M7 16h.01M17 16h.01
 radiator:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M8 6v12M12 6v12M16 6v12"/>',
 snow:'<path d="M12 2v20M4.5 7l15 10M19.5 7l-15 10"/>',
 screen:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'};
-const ICON_RULES=[[/ytterdörr|lås\b|olåst/,"lock"],[/motorvärm|traktor mv/,"flame"],[/traktor/,"tractor"],[/ventilation|fläkt/,"fan"],
+const ICON_RULES=[[/kamera|camera|parkering/,"camera"],[/ytterdörr|lås\b|olåst/,"lock"],[/motorvärm|traktor mv/,"flame"],[/traktor/,"tractor"],[/ventilation|fläkt/,"fan"],
 [/torktumlare/,"dryer"],[/torkskåp|skotork/,"wardrobe"],[/tvättmaskin/,"washer"],[/diskmaskin/,"dish"],[/dörrklocka|larm|siren/,"bell"],[/rörelse/,"motion"],
 [/avlopp/,"manhole"],[/varmvatten|vvb|vv-ber/,"drop"],[/batteri/,"battery"],[/räckvidd|vägmätare/,"gauge"],[/tesla|laddgräns|laddning|tillförd energi/,"car"],
 [/värmepump|nibe/,"wind"],[/radiator|element/,"radiator"],[/entré|golvvärme|betong/,"waves"],[/spot|lampa|lampor|belysning|julstjärna/,"bulb"],
@@ -720,7 +723,7 @@ const ICON_RULES=[[/ytterdörr|lås\b|olåst/,"lock"],[/motorvärm|traktor mv/,"
 [/garage|\bport\b|portsensor/,"garage"],[/\bdörr|passage|\bhall\b/,"door"],[/sovrum|måns|klara/,"bed"],[/badrum/,"bath"],[/\bwc\b/,"toilet"],[/vardagsrum|allrum/,"sofa"],
 [/matplats/,"table"],[/\bkök/,"stove"],[/\bwic\b/,"wardrobe"],[/uterum/,"sun"],[/tvätt/,"washer"],
 [/kalender/,"calendar"],[/jämför/,"sliders"],[/väder|smhi|moln/,"cloud"],[/sonos|musik|högtalare/,"speaker"],[/zigbee|repeater|wifi/,"wifi"],[/elmätare|fastighet/,"meter"]];
-const ICON_HUE={house:215,bolt:42,flame:16,thermo:355,drop:200,fan:188,lock:268,bulb:46,car:218,tractor:28,plug:285,coin:40,battery:140,gauge:258,waves:172,speaker:300,wind:205,map:158,toggles:235,play:140,pulse:340,cog:220,chart:215,clock:230,washer:208,dryer:18,wardrobe:30,dish:194,stove:8,bed:262,bath:192,toilet:222,sofa:20,table:32,garage:225,door:24,sun:40,cloud:208,manhole:220,motion:305,bell:44,calendar:352,sliders:245,wifi:210,humid:198,meter:215,radiator:10,snow:192,screen:220};
+const ICON_HUE={camera:200,house:215,bolt:42,flame:16,thermo:355,drop:200,fan:188,lock:268,bulb:46,car:218,tractor:28,plug:285,coin:40,battery:140,gauge:258,waves:172,speaker:300,wind:205,map:158,toggles:235,play:140,pulse:340,cog:220,chart:215,clock:230,washer:208,dryer:18,wardrobe:30,dish:194,stove:8,bed:262,bath:192,toilet:222,sofa:20,table:32,garage:225,door:24,sun:40,cloud:208,manhole:220,motion:305,bell:44,calendar:352,sliders:245,wifi:210,humid:198,meter:215,radiator:10,snow:192,screen:220};
 function iconSvg(n){return ICONS[n]?`<svg class="ico" style="--ih:${ICON_HUE[n]!=null?ICON_HUE[n]:215}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`:"";}
 function ic(label,def){const t=String(label||"").replace(/<[^>]*>/g,"").toLowerCase();for(const [r,n] of ICON_RULES)if(r.test(t))return iconSvg(n);return def?iconSvg(def):"";}
 function dualTile(attrs,label,a,b,cls){
@@ -864,7 +867,7 @@ function heatCards(){
   const gp=gPortList().map(p=>{const st=p.open===true?"Öppen":p.open===false?"Stängd":"Okänd",c=p.open===true?"var(--bad)":p.open===false?"var(--good)":"var(--mut)";
     return `<div class="card tile" data-gport="${esc(p.d.id)}" data-nm="${esc("Garageport "+p.k)}" tabindex="0" role="button" title="Visa när porten aktiverats" style="cursor:pointer"><div class="l"><span class="dot" style="background:${c}"></span> ${ic("Garageport")}Garageport ${p.k}<button class="btn sm" data-act="garageport" data-dev="${esc(p.d.id)}" data-nm="${esc("Garageport "+p.k)}" style="float:right;padding:0 8px;min-height:24px;font-size:12px" title="Öppna eller stänga porten">Aktivera</button></div><div class="v" style="color:${c}">${st}</div><div class="s">Klicka för aktiveringshistorik</div></div>`;}).join("");
   const all=t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+tr_(cfg.ids.trLoad,"Traktor laddning","l")+tr_(cfg.ids.trHeat,"Traktor MV","m")+r1+gp;
-  return `<section class="grp slim"><h3>Styrning och kontroll</h3>${all?`<div class="rowN" style="--c:4">${all}</div>`:""}</section>`;
+  return camHtml()+`<section class="grp slim"><h3>Styrning och kontroll</h3>${all?`<div class="rowN" style="--c:4">${all}</div>`:""}</section>`;
 }
 const PWRON=5;
 async function onoffSegs(id,f,t,cap){
@@ -1138,6 +1141,38 @@ async function gportModalHtml(id){
   <h3 style="margin-top:12px">Aktiveringar (reläet)</h3>${list(Array.isArray(act)?act.filter(r=>r.v===true||r.v===1):act,()=>"Aktiverad")}
   ${sen?`<h3 style="margin-top:16px">Port öppen och stängd (sensor)</h3>${list(sen,r=>r.v===true||r.v===1?"Öppnad":"Stängd")}`:""}
   <div class="note">Tidsstämplar i svensk tid, senaste 31 dagarna, så långt Homey har loggat.</div>`;}
+/* ---------- Kameror (Eufy via Homey): stillbild, rörelse/person/husdjur/fordon ---------- */
+const CAMC={};let CAMLIST=null,CAMLISTAT=0;
+const CAMEV=[["NTFY_MOTION_DETECTION","Rörelse"],["NTFY_FACE_DETECTION","Ansikte"],["NTFY_KNOWN_FACE_DETECTION","Känt ansikte"],["NTFY_PET_DETECTED","Husdjur"],["NTFY_VEHICLE_DETECTED","Fordon"]];
+const camDevs=()=>propDevices().filter(d=>d.class==="camera").sort((a,b)=>devName(a).localeCompare(devName(b),"sv"));
+async function camImgPath(d){
+  const im=(d.images||[]).find(x=>x&&(x.url||x.id));
+  if(im)return im.url||("/api/image/"+im.id);
+  if(!CAMLIST||Date.now()-CAMLISTAT>6e4){try{const r=await api("/api/manager/images/image/");CAMLIST=Array.isArray(r)?r:Object.values(r||{});}catch(e){CAMLIST=[];}CAMLISTAT=Date.now();}
+  const x=CAMLIST.find(i=>i&&String(i.ownerUri||"")==="homey:device:"+d.id);return x?(x.url||"/api/image/"+x.id):null;}
+async function camLoad(d,force){
+  if(isDemo())return null;
+  const c=CAMC[d.id];if(c&&!force&&Date.now()-c.at<6e4)return c.url;
+  if(c&&c.busy)return c.url;CAMC[d.id]={...(c||{}),busy:true,at:c?c.at:0};
+  try{let p=await camImgPath(d);if(!p)throw new Error("Ingen bild hos Homey");if(/^https?:/.test(p))p=new URL(p).pathname;
+    const r=await fetch(base()+p+"?t="+Date.now(),{headers:{Authorization:"Bearer "+(isCloud()?cfg.session:cfg.key)}});
+    if(!r.ok)throw new Error("Bild "+r.status);const b=await r.blob();if(c&&c.url)URL.revokeObjectURL(c.url);
+    CAMC[d.id]={url:URL.createObjectURL(b),at:Date.now()};}
+  catch(e){CAMC[d.id]={url:c&&c.url||null,at:Date.now(),err:e.message};}
+  return CAMC[d.id].url;}
+function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
+function camEvents(d){const co=d.capabilitiesObj||{};return CAMEV.filter(([k])=>co[k]!=null).map(([k,l])=>({k,l,on:co[k].value===true,t:co[k].lastUpdated?new Date(co[k].lastUpdated).getTime():null}));}
+function camImg(d,big){const c=CAMC[d.id],u=c&&c.url;
+  return `<div class="camimg ${big?"big":""}"><img data-cam="${esc(d.id)}" alt="${esc(devName(d))}" ${u?`src="${u}"`:""}><div class="camph" data-camph="${esc(d.id)}" style="${u?"display:none":""}">${isDemo()?"Demobild":(c&&c.err?esc(c.err):"Hämtar bild…")}</div></div>`;}
+function camHtml(){const ds=camDevs();if(!ds.length)return "";
+  return `<section class="grp slim"><h3>${ic("Kamera","camera")}Kameror</h3><div class="rowN" style="--c:4">${ds.map(d=>{const ev=camEvents(d),act=ev.filter(x=>x.on),last=ev.map(x=>x.t).filter(Boolean).sort((a,b)=>b-a)[0];
+    return `<div class="card camcard" data-cam="${esc(d.id)}" data-camopen="${esc(d.id)}" tabindex="0" role="button" title="Visa större bild och händelser" style="cursor:pointer">${camImg(d)}
+      <div class="camrow"><b>${esc(devName(d))}</b>${act.length?`<span class="pill" style="background:var(--bad);color:#fff">${act.map(x=>x.l).join(", ")}</span>`:`<span class="note" style="margin:0">Lugnt</span>`}<span class="grow"></span>${capVal(d,"measure_battery")!=null?`<span class="note" style="margin:0">${fmt(capVal(d,"measure_battery"),0)} %</span>`:""}${(d.capabilitiesObj||{}).CMD_SNAPSHOT?`<button class="btn sm" data-act="camsnap" data-dev="${esc(d.id)}" style="padding:0 8px;min-height:24px;font-size:12px">Ny bild</button>`:""}</div>
+      ${last?`<div class="note" style="margin:2px 0 0">Senaste händelse ${tsFmt(last)}</div>`:""}</div>`;}).join("")}</div></section>`;}
+function camModalHtml(id){const d=state.devices[id];if(!d)return `<div class="warn">Kameran hittades inte.</div>`;const ev=camEvents(d);
+  return `<div class="mhead"><h2>${ic("Kamera","camera")}${esc(devName(d))}</h2><span class="grow"></span>${(d.capabilitiesObj||{}).CMD_SNAPSHOT?`<button class="btn pri" data-act="camsnap" data-dev="${esc(d.id)}">Ta ny bild</button>`:""}<button class="btn" data-close="1">Stäng</button></div>
+  ${camImg(d,true)}
+  <div class="card" style="margin-top:12px"><h2>Händelser</h2>${tableHtml({head:["Händelse","Just nu","Senast ändrad"],body:ev.map(x=>[x.l,x.on?`<b style="color:var(--bad)">Ja</b>`:"Nej",x.t?tsFmt(x.t):"–"])})}<div class="note">Bilden är den senaste stillbilden Homey har från kameran, inte levande video. Tidsstämpel är när värdet senast ändrades i Homey.</div></div>`;}
 async function fasHistHtml(){
   const I=cfg.ids,[f,t]=sensRange(),cols=["var(--cur)","var(--on)","var(--good)"];
   const ph=[1,2,3].map(i=>({n:"L"+i,d:state.devices[I["l236_"+i]]})).filter(x=>x.d);
@@ -1225,7 +1260,7 @@ async function renderOversikt(){
     if(favs.length)h+=`<div class="grid">${favs.map(devCard).join("")}</div>`;
     if(ff.length)h+=`<div class="grid wide" style="margin-top:12px">${ff.map(flowCard).join("")}</div>`;
   }
-  $("#p-oversikt").innerHTML=h;
+  $("#p-oversikt").innerHTML=h;camHydrate();
 }
 
 /* ---------- Energi ---------- */
@@ -2059,6 +2094,7 @@ function modalHead0(title){
 }
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
+  if(m.t==="cam"){body.innerHTML=camModalHtml(m.k);camHydrate(true);return;}
   if(m.t==="gport"){body.innerHTML=await gportModalHtml(m.k);return;}
   if(m.t==="fashist"){body.innerHTML=await fasHistHtml();return;}
   if(m.t==="fas236"){body.innerHTML=fas236Html();return;}
@@ -2607,7 +2643,7 @@ function nowModalHtml(){
 function consumersNow(){
   const skip=new Set([...SUMMARY_IDS(),cfg.ids.nibe,cfg.ids.fastighet,cfg.ids.tibber,cfg.ids.live235,cfg.ids.d236,cfg.ids.price,cfg.ids.elpris,cfg.ids.l236_1,cfg.ids.l236_2,cfg.ids.l236_3]);
     const agg=/^(Energi|Energiöversikt|Elmätare|Uppvärmning Hela|Hushållsel Hela|Fastighet)\b/i;["uppv","hush","vp","ovr","teslaE","trRep","golvRep"].forEach(k=>cfg.ids[k]&&skip.add(cfg.ids[k]));
-    const on=propDevices().filter(d=>!skip.has(d.id)&&!agg.test(d.name)&&(capVal(d,"onoff")===true||(capVal(d,"measure_power")||0)>5)).map(d=>({d,w:capVal(d,"measure_power")}));
+    const on=propDevices().filter(d=>d.class!=="camera"&&!skip.has(d.id)&&!agg.test(d.name)&&(capVal(d,"onoff")===true||(capVal(d,"measure_power")||0)>5)).map(d=>({d,w:capVal(d,"measure_power")}));
     {const t=state.devices[cfg.ids.tesla],cw=t&&capVal(t,"measure_charge_power");if(t&&state.prop==="235"&&capVal(t,"charging_on")===true&&cw>0)on.push({d:t,w:cw*1000});}
     on.sort((a,b)=>(b.w||0)-(a.w||0));
     const tot=on.reduce((a,x)=>a+(x.w||0),0);
@@ -2767,6 +2803,7 @@ function demoSetup(){
     mk(cfg.ids.tibber,"Energi Tibber","other","zh",{meter_kwh_this_day:14.9,meter_kwh_last_day:48.2,meter_kwh_this_month:1460,meter_kwh_last_month:1367,meter_kwh_this_year:14345,meter_kwh_last_year:17662,meter_money_this_day:24.1,meter_money_last_day:56.5,meter_money_this_month:1818,meter_money_last_month:1990,meter_money_this_year:21770,meter_money_last_year:17704,meter_kwh_this_hour:0.65,meter_kwh_last_hour:1.63,measure_watt_avg:1385,measure_watt_max:4186}),
     mk(cfg.ids.ventilation,"Ventilation Tvättstuga","socket","zh",{onoff:true,measure_power:65,meter_power:51.9}),mk(cfg.ids.koksfläkt,"Köksfläkt Kök","socket","z2",{onoff:false,measure_power:0,meter_power:12.3}),mk(cfg.ids.spotKok,"Spot köksbänk Kök","light","z2",{onoff:true,dim:0.6,measure_power:14,meter_power:30.2}),mk(cfg.ids.ytterdorr,"Ytterdörr Hall","lock","zhl",{locked:true}),mk("demo-gp1","Garageport enkel Garage","other","zg",{onoff:false}),mk("demo-gp2","Garageport dubbel Garage","other","zg",{onoff:false}),mk("demo-ps1","Portsensor enkel Garage","sensor","zg",{alarm_contact:false}),mk("demo-ps2","Portsensor dubbel Garage","sensor","zg",{alarm_contact:true}),mk("demo-hall-1","Fönsterspot Hall","light","zhl",{onoff:true,dim:0.7,measure_power:6}),mk("demo-hall-2","Fönsterlampa Hall","light","zhl",{onoff:false,dim:1,measure_power:0}),mk("demo-hall-3","Takspot hall","light","zhl",{onoff:false,dim:1,measure_power:0}),mk(cfg.ids.avlopp,"Avloppspump Utomhus","socket","zh",{onoff:true,measure_power:0,meter_power:0}),mk(cfg.ids.vvb[0],"VV-beredare Värmepump","socket","zh",{onoff:true,measure_power:0,meter_power:6.6,measure_current:0.01}),mk(cfg.ids.vvb[1],"VVB L1 Värmepump","socket","zh",{onoff:true,measure_power:0,meter_power:0.9}),mk(cfg.ids.vvb[2],"VVB L2 Värmepump","socket","zh",{measure_power:0,meter_power:5.8}),mk(cfg.ids.tesla,"Tesla Model Y","other","zh",{charging_on:false,measure_soc_level:75,measure_battery:75,measure_soc_range_estimated:319.9,measure_charge_limit_soc:80,measure_charge_energy_added:12.6,measure_climate_temperature_in:3.4,measure_climate_temperature_out:3.5,meter_car_odo:102580}),mk(cfg.ids.teslaE,"Energiöversikt Tesla","other","zh",{"devicecapabilities_number.number2":293,"devicecapabilities_number.number3":277,"devicecapabilities_number.number5":293,"devicecapabilities_number.number6":277}),mk(cfg.ids.nibe,"NIBE","thermostat","zh",{measure_power:751,capability_0:5.5,capability_1:24.6,capability_2:24.5}),mk(cfg.ids.vp,"Energi VP","other","zh",{meter_kwh_this_day:8.3,meter_kwh_last_day:11,meter_kwh_this_month:434,meter_kwh_last_month:504,meter_kwh_this_year:5459,meter_kwh_last_year:6287,meter_money_this_day:12.6,meter_money_last_day:11.3,meter_money_this_month:465,meter_money_last_month:641,meter_money_this_year:8161,meter_money_last_year:7719,meter_money_this_month_avg:1.07,measure_watt_avg:849}),mk(cfg.ids.trLoad,"Traktor Laddning","socket","zg",{onoff:false,measure_power:0,meter_power:5.9}),mk(cfg.ids.trHeat,"Traktor Motorvärmare","socket","zg",{onoff:false}),mk(cfg.ids.floor,"Golvvärme Uterum","socket","z4",{onoff:false,measure_power:0,meter_power:173,measure_temperature:53.1,"measure_temperature.1":28.1,"measure_temperature.2":24.4,"measure_temperature.3":22.8,"measure_temperature.4":24.2}),mk(cfg.ids.slab,"Betongplatta Uterum","sensor","z4",{measure_temperature:11.7,measure_humidity:60}),
     mk(cfg.ids.live235,"Elmätare","other","zh",{measure_power:2299,"measure_current.l1":9.2,"measure_current.l2":6.1,"measure_current.l3":11.8}),mk(cfg.ids.price,"Elpris","other","zh",{measure_price_total:0.57}),mk(cfg.ids.ute,"Utetemperatur Utomhus","sensor","zh",{measure_temperature:5.5}),mk(cfg.ids.smhi,"Väder SMHI","other","zh",{air_temperature_feels_like_cp:3.6}),mk(cfg.ids.elpris,"Elpris SE2","other","zh",Object.fromEntries(Array.from({length:36},(_,i)=>["meter_price_h"+i,0.55+0.4*Math.cos(((new Date().getHours()+i-8)%24)/24*2*Math.PI)+((new Date().getHours()+i)%24>=17&&(new Date().getHours()+i)%24<=20?0.5:0)]))),
+    ...["Garage","Parkering","Nedre parkering","Kamera 4"].map((n,i)=>({...mk("cam"+i,n,"camera","zh",{onoff:true,CMD_SNAPSHOT:null,NTFY_MOTION_DETECTION:i===1,NTFY_FACE_DETECTION:false,NTFY_PET_DETECTED:false,NTFY_VEHICLE_DETECTED:i===1,measure_battery:i===3?64:null}),})).map(d=>{Object.values(d.capabilitiesObj).forEach((o,j)=>{o.lastUpdated=new Date(Date.now()-(j+1)*47*60000).toISOString();});return d;}),
     ...[1,2,3].map(i=>mk(cfg.ids["l236_"+i],"Elmätare 236 L"+i,"other","z236",{measure_power:170+i*20,meter_power:1000*i+Math.round(Date.now()/36e5)%50})),
     mk(cfg.ids.fastighet,"Fastighet","sensor","zh",{measure_power:3733,"measure_power.a":2924,"measure_power.b":438,"measure_power.c":371,measure_current:18.7,"measure_current.a":13.2,"measure_current.b":2.9,"measure_current.c":2.6,"measure_voltage.a":226,"measure_voltage.b":231.8,"measure_voltage.c":232.3}),
     mk(cfg.ids.floor,"Golvvärme","socket","zh",{onoff:true,measure_power:420,meter_power:812,"measure_temperature.1":32.4,"measure_temperature.2":27.9,"measure_temperature.3":29.1,"measure_temperature.4":25.6}),mk(cfg.ids.slab,"Betongplatta Uterum","sensor","z4",{measure_temperature:18.7,measure_humidity:52}),mk(cfg.ids.avlopp,"Avloppsbrunn","socket","zh",{onoff:true,measure_power:0}),
@@ -2853,6 +2890,7 @@ document.addEventListener("click",async e=>{
    const cp=e.target.closest("[data-cmpper]");if(cp){state.sensPer=cp.dataset.cmpper;draw();return;}}
   const sp=e.target.closest("[data-sensper]");if(sp){state.sensPer=sp.dataset.sensper;renderModal();return;}
   {const dv=e.target.closest("[data-devopen]");if(dv){state.devQ="";const dr=$("#dres");if(dr)dr.innerHTML="";const qi=$("#dq");if(qi)qi.value="";openModal("dev",dv.dataset.devopen);return;}}
+  {const co=e.target.closest("[data-camopen]");if(co&&!e.target.closest("[data-act]")){openModal("cam",co.dataset.camopen);return;}}
   {const gp=e.target.closest("[data-gport]");if(gp&&!e.target.closest("[data-act]")){openModal("gport",gp.dataset.gport);return;}}
   const oo=e.target.closest("[data-onoff]"),oa=e.target.closest("[data-act]");if(oo&&!(oa&&oa!==oo&&oo.contains(oa))){openModal("onoff",oo.dataset.onoff);return;}
   const se=e.target.closest("[data-sens]");if(se){openModal("sens",se.dataset.sens);return;}
@@ -2888,6 +2926,7 @@ document.addEventListener("click",async e=>{
     else if(act==="energiview"){state.energiView=b.dataset.v;state.search="";draw();}
     else if(act==="vvball"){const to=b.dataset.to==="true";for(const id of (cfg.ids.vvb||[])){const d=state.devices[id];if(d&&hasOnoff(d))await setCap(id,"onoff",to);}draw();}
     else if(act==="dimset"){const did=b.dataset.dev,dd=state.devices[did];await setCap(did,"dim",Number(b.dataset.v)/100);if(dd&&capVal(dd,"onoff")===false)await setCap(did,"onoff",true);draw();}
+    else if(act==="camsnap"){const d=state.devices[b.dataset.dev];if(!d)return;b.disabled=true;try{await setCap(d.id,"CMD_SNAPSHOT",true);}catch(err){showErr("Kunde inte ta bild: "+err.message);}setTimeout(()=>{b.disabled=false;camLoad(d,true).then(u=>{document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(u)i.src=u;});});},isDemo()?300:4000);}
     else if(act==="garageport"){const d=state.devices[b.dataset.dev];if(!d)return;if(!confirm((b.dataset.nm||"Garageporten")+": öppna eller stänga porten?"))return;await setCap(d.id,"onoff",true);draw();}
     else if(act==="roomwin"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husWin(r))await setCap(d.id,"onoff",to);draw();}
     else if(act==="roomlights"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husDevs(r).filter(d=>isLamp(d)&&hasOnoff(d)))await setCap(d.id,"onoff",to);draw();}
