@@ -1167,9 +1167,10 @@ async function camLoad(d,force){
   return CAMC[d.id].url;}
 async function camSnap(id){
   if(isDemo())return;
-  const uri="homey:device:"+id,paths=["/api/manager/flow/flowcardaction/"+uri+"/action_CMD_SNAPSHOT/run","/api/manager/flow/flowcardaction/"+uri+":action_CMD_SNAPSHOT/run"];
-  let last;for(const p of paths){try{await api(p,{method:"POST",body:JSON.stringify({args:{}})});return;}catch(e){last=e;}}
-  throw last;}
+  const uri="homey:device:"+id,cid=uri+":action_CMD_SNAPSHOT",B="/api/manager/flow/flowcardaction/";
+  const paths=[B+uri+"/"+cid+"/run",B+uri+"/action_CMD_SNAPSHOT/run",B+encodeURIComponent(uri)+"/"+encodeURIComponent(cid)+"/run"];
+  const errs=[];for(const p of paths){try{await api(p,{method:"POST",body:JSON.stringify({args:{}})});return;}catch(e){errs.push(String(e.message).slice(0,160));}}
+  throw new Error(errs.join(" | "));}
 function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
 function camEvents(d){const co=d.capabilitiesObj||{};return CAMEV.filter(([k])=>co[k]!=null).map(([k,l])=>({k,l,on:co[k].value===true,t:co[k].lastUpdated?new Date(co[k].lastUpdated).getTime():null}));}
 function camImg(d,big){const c=CAMC[d.id],u=c&&c.url;
