@@ -153,6 +153,9 @@ dialog::backdrop{background:#0009}
 #gate label{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--mut)}
 #gate input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
 #gate button{padding:11px;font-size:16px}#gMsg{min-height:18px;color:var(--bad,#c0392b);font-size:13px}
+.dsw{position:relative;display:inline-block;margin-left:auto}.dsw input{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);width:210px;max-width:60vw}
+.dres{position:absolute;right:0;top:100%;margin-top:4px;z-index:50;min-width:300px;max-width:90vw;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:4px;display:flex;flex-direction:column}
+.dri{display:flex;align-items:center;gap:4px;text-align:left;background:none;border:0;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--ink);font:inherit;font-size:14px}.dri:hover,.dri:focus{background:var(--soft)}
 </style>
 </head>
 <body>
@@ -795,6 +798,34 @@ function calBrick(){
   const tm=e=>e.allDay?"heldag":new Date(e.start).toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit"});
   if(!list.length)return inner(`<div class="s">Inga kommande händelser</div>`);
   return inner(list.map(e=>`<div style="font-size:13.5px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--mut)">${esc(dl(e.start))} ${tm(e)}</span> ${esc(e.title)}</div>`).join(""));}
+/* ---- Sök enhet (Översikt, Just nu) ---- */
+function devMatches(q){q=(q||"").trim().toLowerCase();if(!q)return [];const w=q.split(/\s+/);
+  return propDevices().filter(d=>{const t=(devName(d)+" "+zoneName(d)).toLowerCase();return w.every(x=>t.includes(x));}).sort((a,b)=>devName(a).localeCompare(devName(b),"sv")).slice(0,8);}
+function devResHtml(){const ms=devMatches(state.devQ);if(!(state.devQ||"").trim())return "";
+  if(!ms.length)return `<div class="dres"><div class="note" style="margin:6px 10px">Ingen enhet hittades</div></div>`;
+  return `<div class="dres">`+ms.map(d=>{const bits=[];if(hasOnoff(d))bits.push(capVal(d,"onoff")?"På":"Av");const p=capVal(d,"measure_power");if(p!=null)bits.push(fmt(p,0)+" W");const t=capVal(d,"measure_temperature");if(t!=null)bits.push(fmt(t,1)+" °C");
+    return `<button type="button" class="dri" data-devopen="${esc(d.id)}">${ic(devName(d))}<span><b>${esc(devName(d))}</b> <span class="note" style="margin:0">${esc(zoneName(d))}${bits.length?" · "+esc(bits.join(" · ")):""}</span></span></button>`;}).join("")+`</div>`;}
+function devSearchHtml(){return `<span class="dsw"><input type="search" id="dq" placeholder="Sök enhet…" value="${esc(state.devQ||"")}" autocomplete="off" aria-label="Sök enhet"><span id="dres">${devResHtml()}</span></span>`;}
+async function devModalHtml(id){
+  const d=state.devices[id];if(!d)return `<div class="warn">Enheten hittades inte.</div>`;
+  const cap=d.capabilitiesObj||{},hasP=cap.measure_power!=null,on=hasOnoff(d);
+  let h=`<div class="mhead"><h2>${ic(devName(d))}${esc(devName(d))}</h2><span class="pill">${esc(zoneName(d))}</span><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div><div class="grid" style="margin-top:8px">`;
+  const skip=(hasP||on)?/^(onoff|dim|measure_power|meter_power)$/:/^(onoff|dim)$/;let n=0;
+  const SV={measure_temperature:["Temperatur","°C"],measure_humidity:["Luftfuktighet","%"],measure_battery:["Batteri","%"],measure_voltage:["Spänning","V"],measure_current:["Ström","A"],measure_power:["Effekt","W"],meter_power:["Energi totalt","kWh"],measure_luminance:["Ljusnivå","lux"],measure_co2:["CO₂","ppm"],measure_pressure:["Lufttryck","hPa"],alarm_contact:["Öppen","" ],alarm_motion:["Rörelse",""],alarm_battery:["Svagt batteri",""],alarm_water:["Vattenläckage",""],alarm_smoke:["Rökalarm",""],locked:["Låst",""]};
+  if(on)h+=tile("Läge",capVal(d,"onoff")?"På":"Av","",hasP&&capVal(d,"measure_power")!=null?fmt(capVal(d,"measure_power"),0)+" W just nu":"");
+  for(const [c,o] of Object.entries(cap)){if(skip.test(c)||o==null||o.value==null||n>=16)continue;
+    const v=o.value,bc=c.replace(/\.\d+$/,""),ix=(c.match(/\.(\d+)$/)||[])[1],sv=SV[bc],title=(sv?sv[0]:(o.title&&o.title!==c?o.title:c.replace(/_/g," ")))+(ix?" ("+ix+")":"");const un=o.units||(sv?sv[1]:"");n++;
+    if(typeof v==="number")h+=/^(measure_|meter_)/.test(c)?sensTile(id,c,esc(title),fmt(v,Math.abs(v)<10?1:0),esc(un),""):tile(esc(title),fmt(v,Math.abs(v)<10?1:0),esc(un),"");
+    else if(typeof v==="boolean")h+=tile(esc(title),v?"Ja":"Nej","","");
+    else h+=tile(esc(title),esc(String(v)).slice(0,30),"","");}
+  if(capVal(d,"dim")!=null)h+=tile("Ljusstyrka",fmt(capVal(d,"dim")*100,0),"%","");
+  h+=`</div>`;
+  if(cap.meter_power!=null){try{const days=Array.from({length:14},(_,i)=>addDays(todayStr(),i-13)),kw=await fetchMerged(id,"meter_power",days[0],dailyFromCumulativeLive(capVal(d,"meter_power")));
+    const vals=days.map(x=>kw&&kw[x]!=null?kw[x]:null);
+    if(vals.some(x=>x!=null))h+=`<div class="card" style="margin-top:14px"><h2>Energi per dygn, 14 dygn (kWh)</h2>${barChart(vals,null,days.map(labelDate),"kWh")}<div class="note">Skillnaden i Homeys ackumulerade mätare per dygn.</div></div>`;}catch(e){}}
+  if(hasP||on){const x=await onoffModalHtml(id);h+=x.replace(/^<div class="mhead">[\s\S]*?<\/div>/,"");}
+  else h+=`<div class="note" style="margin-top:12px">Klicka på ett värde för att se diagram över tid.</div>`;
+  return h;}
 function statusBar(){
   const L=statusLists(),unl=L.locks.filter(x=>!x.ok).length,al=L.alarms.length+L.open.length;
   const chip=(k,dot,txt)=>`<button class="chip" data-status="${k}"><span class="dot ${dot}"></span>${txt}</button>`;
@@ -804,7 +835,7 @@ function statusBar(){
     ${chip("locks",!L.locks.length?"":(unl?"bad":"ok"),L.locks.length?(unl?`Lås: ${unl} olåst`:"Lås: alla låsta"):"Lås: –")}
     ${chip("alarms",al?"bad":"ok",`Larm/öppet: ${al}`)}
     ${chip("motion",L.motion.length?"on":"",`Rörelse: ${L.motion.length}`)}
-    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}</div>${tempBar()}
+    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}<span class="grow"></span>${devSearchHtml()}</div>${tempBar()}
     <div class="note" style="margin-top:6px">Klicka på en ruta för detaljer och för att ändra.</div></div>`;
 }
 
@@ -1944,6 +1975,7 @@ function modalHead0(title){
 }
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
+  if(m.t==="dev"){body.innerHTML=await devModalHtml(m.k);return;}
   if(m.t==="status"){body.innerHTML=statusModalHtml(m.k);return;}
   if(m.t==="cal"){body.innerHTML=calModalHtml();return;}
   if(m.t==="room"){body.innerHTML=roomModalHtml(m.k);return;}
@@ -2686,7 +2718,8 @@ async function refresh(opts={}){
 }
 async function draw(){
   state.keepFocus=document.activeElement&&["q","aq"].includes(document.activeElement.id);
-  if(state.tab==="oversikt")await renderOversikt();
+  const dqf=document.activeElement&&document.activeElement.id==="dq";
+  if(state.tab==="oversikt"){await renderOversikt();if(dqf){const q=$("#dq");if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length);}}}
   else if(state.tab==="energi")await renderEnergi();
   else if(state.tab==="klimat")await renderKlimat();
   else if(state.tab==="styr")await renderStyr();
@@ -2729,6 +2762,7 @@ document.addEventListener("click",async e=>{
    const cc=e.target.closest("[data-cmpclear]");if(cc){state.cmpSel=[];state.cmpWarn="";cmpSave();draw();return;}
    const cp=e.target.closest("[data-cmpper]");if(cp){state.sensPer=cp.dataset.cmpper;draw();return;}}
   const sp=e.target.closest("[data-sensper]");if(sp){state.sensPer=sp.dataset.sensper;renderModal();return;}
+  {const dv=e.target.closest("[data-devopen]");if(dv){state.devQ="";const dr=$("#dres");if(dr)dr.innerHTML="";const qi=$("#dq");if(qi)qi.value="";openModal("dev",dv.dataset.devopen);return;}}
   const oo=e.target.closest("[data-onoff]"),oa=e.target.closest("[data-act]");if(oo&&!(oa&&oa!==oo&&oo.contains(oa))){openModal("onoff",oo.dataset.onoff);return;}
   const se=e.target.closest("[data-sens]");if(se){openModal("sens",se.dataset.sens);return;}
   const p=e.target.closest("[data-p]");
@@ -2781,6 +2815,7 @@ document.addEventListener("click",async e=>{
 });
 document.addEventListener("input",e=>{
   const t=e.target;
+  if(t.id==="dq"){state.devQ=t.value;$("#dres").innerHTML=devResHtml();return;}
   if(t.id==="q"){state.search=t.value;state.keepFocus=true;draw();}
   else if(t.id==="aq"){state.adminSearch=t.value;state.keepFocus=true;renderAdmin();}
 });
