@@ -1179,7 +1179,9 @@ async function camPoll(d){/* vänta tills kamerans bild faktiskt ändrats (max ~
   if(isDemo())return;const before=(CAMC[d.id]||{}).sig;
   for(let i=0;i<8;i++){await new Promise(r=>setTimeout(r,5000));await camLoad(d,true);camHydrate();if((CAMC[d.id]||{}).sig&&(CAMC[d.id].sig!==before))return;}}
 async function camSnapAll(force){
-  if(isDemo()||(!force&&Date.now()-CAMALL<60000))return;CAMALL=Date.now();
+  if(isDemo()||CAMRUN||(!force&&Date.now()-CAMALL<60000))return;CAMALL=Date.now();CAMRUN=true;try{await camSnapAll2();}finally{CAMRUN=false;}}
+let CAMRUN=false;
+async function camSnapAll2(){
   /* starta en kamera i taget med mellanrum (samtidiga snapshots kan blanda ihop bilderna), vänta på dem parallellt */
   const ps=[];for(const d of camDevs()){try{await camSnap(d.id);}catch(e){showErr("Kunde inte ta bild: "+e.message);continue;}
     ps.push(camPoll(d));await new Promise(r=>setTimeout(r,4000));}
@@ -2890,8 +2892,8 @@ function showTab(t){
   state.tab=t;state.prop=t==="oversikt"?(state.ovProp||"235"):"235";drawProp();state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===(t==="styr"&&state.styrView==="hus"?"plan":t)));
   for(const k of ["oversikt","energi","klimat","kameror","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
-  if(t==="kameror")camSnapAll();
-  refresh({force:true});
+  const p=refresh({force:true});
+  if(t==="kameror")Promise.resolve(p).catch(()=>{}).then(()=>setTimeout(()=>camSnapAll(true),500));
 }
 
 /* =====================================================================
