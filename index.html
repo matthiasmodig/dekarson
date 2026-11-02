@@ -1108,6 +1108,14 @@ async function tibberHtml(){
     <div class="note" id="tpr" style="min-height:19px;color:var(--ink)">Håll över en stapel eller tryck för exakt pris.</div>
     <div class="note">Öre/kWh, svensk tid, ${N} intervall. Senast hämtat från Tibber: ${esc(fa)}${tpWaiting(d)?" · väntar på morgondagens priser, kollar automatiskt varje minut":""}${d.cached?" (från cache)":""}${d.error?` · <span style="color:var(--bad)">${esc(d.error)}</span>`:""}. Visar importpris = Tibber <code>total</code> + ${fmt(mk,3)} kr/kWh (Homeys formel), <b>preliminärt</b> tills det är verifierat att energiskatten (ingår i Tibbers <code>tax</code>) inte dubbelräknas; det är inte heller hela elkostnaden inkl. elnät.${diff!=null?` Kontroll mot Homey <code>measure_price_total</code>: ${fmt(hv,4)} kr mot Tibber ${fmt(cur.t,4)} kr (${diff>=0?"+":""}${fmt(diff*100,2)} öre${Math.abs(diff)>0.005?" – avvikelse, kontrollera uppdateringstid/avrundning i Tibber-appen i Homey":" – stämmer"}).`:""} Priserna sparas permanent i workerns KV (en post per startsAt, inga dubbletter). Morgondagens priser visas så snart Tibber har publicerat dem.</div></div>`};}
 /* ---------- Översikt för Dekarsön 236: allt på en sida ---------- */
+const FAS236=[["L1",["Varmvattenberedare","Sovrum","Bakom soffan","Element i sovrum","Micro","Köket mot WC","Hallen","Belysning bro","Uttag bro"]],
+ ["L2",["Diskmaskin","Spisfläkt","Uttag och belysning köksbänk","Tak kök","Tak WC","Vägg hall"]],
+ ["L3",["Inglasning","Allt utomhus utom bron","Vägg inne mot inglasning","Förråd","Kyl och frys"]]];
+function fas236Html(){const I=cfg.ids;
+  return `<div class="mhead"><h2>Laster per fas · Dekarsön 236</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>
+  <div class="grid">${FAS236.map(([n,ls])=>{const d=state.devices[I["l236_"+n.slice(1)]],w=capVal(d,"measure_power"),a=capVal(d,"measure_current");
+    return `<div class="card"><h2 style="margin:0 0 6px">${n} <span class="note" style="margin:0 0 0 8px">${w!=null?fmt(w,0)+" W":"–"}${a!=null?" · "+fmt(a,1)+" A":""}</span></h2>${ls.map(x=>`<div class="stat"><span>${esc(x)}</span></div>`).join("")}</div>`;}).join("")}</div>
+  <div class="note" style="margin-top:10px">Spisen ligger på alla tre faserna.</div>`;}
 async function render236(){
   const e=liveEnergy(),b=liveBoth(),I=cfg.ids,R=calcRange();
   const meters=new Set([I.l236_1,I.l236_2,I.l236_3,I.d236].filter(Boolean));
@@ -1118,7 +1126,7 @@ async function render236(){
   let h=`<div class="zonehead"><b>${ic("Effekt")}Dekarsön 236 just nu</b></div><div class="grid">`;
   h+=tileA('data-nowmodal="1"',"Effekt just nu",e.w!=null?fmt(e.w>=1000?e.w/1000:e.w,e.w>=1000?2:0):"–",e.w!=null&&e.w>=1000?"kW":"W","Hela fastigheten · tryck för förbrukare","hero");
   const ph=[1,2,3].map(i=>[i,state.devices[I["l236_"+i]]]).filter(x=>x[1]);
-  if(ph.length)h+=`<div class="card tile" data-nowmodal="1" tabindex="0" role="button" style="cursor:pointer"><div class="l">${ic("Fas")}Faser</div><div style="display:grid;grid-template-columns:repeat(${ph.length},1fr);gap:8px;margin-top:4px">${ph.map(([i,d])=>`<div><div class="note" style="margin:0">L${i}</div><div class="v" style="font-size:22px">${fmt(capVal(d,"measure_power"),0)} <small>W</small></div><div class="s">${capVal(d,"measure_current")!=null?fmt(capVal(d,"measure_current"),1)+" A":""}</div></div>`).join("")}</div></div>`;
+  if(ph.length)h+=`<div class="card tile" data-nowmodal="1" tabindex="0" role="button" style="cursor:pointer"><div class="l">${ic("Fas")}Faser<button type="button" class="btn sm" data-fasinfo="1" title="Vad som hänger på varje fas" aria-label="Info om faserna" style="margin-left:auto;padding:1px 9px;border-radius:50%;font-weight:700">i</button></div><div style="display:grid;grid-template-columns:repeat(${ph.length},1fr);gap:8px;margin-top:4px">${ph.map(([i,d])=>`<div><div class="note" style="margin:0">L${i}</div><div class="v" style="font-size:22px">${fmt(capVal(d,"measure_power"),0)} <small>W</small></div><div class="s">${capVal(d,"measure_current")!=null?fmt(capVal(d,"measure_current"),1)+" A":""}</div></div>`).join("")}</div></div>`;
   h+=dualTile('data-card="d236"',"Denna månad",{v:b.kr.month,un:"kr"},{v:b.kw.month,un:"kWh"})+dualTile('data-card="d236"',"I år",{v:b.kr.year,un:"kr"},{v:b.kw.year,un:"kWh"});
   h+=`</div>`;
   h+=await medelEffektHtml();
@@ -2007,6 +2015,7 @@ function modalHead0(title){
 }
 async function renderModal(){
   const m=state.modal,body=$("#dlgBody");let h="";
+  if(m.t==="fas236"){body.innerHTML=fas236Html();return;}
   if(m.t==="h236"){body.innerHTML=`<div class="mhead"><h2>Dekarsön 236 · timmar och effekt</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`+await hist236Html();return;}
   if(m.t==="dev"){body.innerHTML=await devModalHtml(m.k);return;}
   if(m.t==="status"){body.innerHTML=statusModalHtml(m.k);return;}
@@ -2807,6 +2816,7 @@ document.addEventListener("click",async e=>{
   const rbk=e.target.closest("[data-roomback]");if(rbk){state.husRoom=null;draw();return;}
   const rmo=e.target.closest("[data-room]");if(rmo&&!e.target.closest("[data-act]")){state.husRoom=rmo.dataset.room;draw();window.scrollTo(0,0);return;}
   const dg=e.target.closest("[data-dagbok]");if(dg){openModal("dagbok","");return;}
+  if(e.target.closest("[data-fasinfo]")){openModal("fas236","");return;}
   {const h2=e.target.closest("[data-h236]");if(h2){openModal("h236","");return;}}
   const nw=e.target.closest("[data-nowmodal]");if(nw){openModal("now","");return;}
   const tpa=e.target.closest("[data-tpavg]");if(tpa){openModal("tpavg","");return;}
