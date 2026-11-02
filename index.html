@@ -613,7 +613,9 @@ function golvGroup(f,sensors){
   if(!f)return "";const v=i=>capVal(f,"measure_temperature."+i);let h="";
   if(sensors){h+=v(1)!=null?sensTile(f.id,"measure_temperature.1","Framledning golvvärme",fmt(v(1),1),"°C","Givare 1"+btTxt(v(1),2,"framledning")):"";
     h+=v(2)!=null?sensTile(f.id,"measure_temperature.2","Returledning golvvärme",fmt(v(2),1),"°C","Givare 2"+btTxt(v(2),3,"returledning")):"";}
-  if(sensors)h+=homeyVar(cfg.ids.dtGolv)!=null?dtTile("ΔT golvvärme",cfg.ids.dtGolv,0,"Fram − retur"):(v(1)!=null&&v(2)!=null?tile("ΔT golvvärme",fmt(v(1)-v(2),1),"°C","Fram − retur"):"");
+  if(sensors){const gv=homeyVar(cfg.ids.dtGolv)??(v(1)!=null&&v(2)!=null?v(1)-v(2):null);
+    if(gv!=null){const b2=nibeBT(2),b3=nibeBT(3),nv=homeyVar(cfg.ids.dtVP)??(b2!=null&&b3!=null?b2-b3:null);
+      h+=tile("ΔT golvvärme",fmt(gv,1),"°C","Fram − retur (givare 1 − 2)"+(nv!=null?" · NIBE hade visat "+fmt(nv,1)+" °C (BT2 − BT3), skillnad "+(gv-nv>0?"+":gv-nv<0?"−":"±")+fmt(Math.abs(gv-nv),1)+" °C":""));}}
   h+=capVal(f,"meter_power")!=null?tileA('data-card="golv"',"Energi totalt",fmt(capVal(f,"meter_power"),0),"kWh","Ackumulerat"):"";
   return grp("Golvvärme",h,4);
 }
