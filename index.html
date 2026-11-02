@@ -2037,7 +2037,7 @@ async function renderKlimat(){
   const list=all.filter(d=>!hideK(d)&&(!state.climZone||zn(d)===state.climZone)).sort((a,b)=>zn(a).localeCompare(zn(b),"sv")||tsFirst(a)-tsFirst(b)||a.name.localeCompare(b.name,"sv"));
   let h="";
   if(state.prop==="235"){
-    h+=nibeGroup()+ventGroup()+golvGroup(state.devices[cfg.ids.floor],true)+uterumGroup(state.devices[cfg.ids.slab],state.devices[cfg.ids.floor],false,true);
+    h+=nibeGroup()+golvGroup(state.devices[cfg.ids.floor],true)+uterumGroup(state.devices[cfg.ids.slab],state.devices[cfg.ids.floor],false,true);
   }
   h+=`<div class="bar"><b>Rum för rum</b><label>Visa <select id="climzone"><option value="">Alla rum</option>${zones.map(z=>`<option ${z===state.climZone?"selected":""}>${esc(z)}</option>`).join("")}</select></label></div>`;
   if(!list.length)h+=`<div class="card">Inga temperaturgivare hittades för ${PROPS.find(p=>p.k===state.prop).name}.</div>`;
