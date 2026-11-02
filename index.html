@@ -1156,7 +1156,7 @@ async function camPaths(d){
 async function camLoad(d,force){
   if(isDemo())return null;
   const c=CAMC[d.id];if(c&&!force&&Date.now()-c.at<6e4)return c.url;
-  if(c&&c.busy)return c.url;CAMC[d.id]={...(c||{}),busy:true,at:c?c.at:0};
+  if(c&&c.busy&&!force)return c.url;CAMC[d.id]={...(c||{}),busy:true,at:c?c.at:0};
   let err="";
   try{const ps=await camPaths(d);if(!ps.length)throw new Error("Homey har ingen bild för kameran ännu (tryck Ny bild)");
     for(const p of ps){try{const r=await fetch(base()+p+(p.includes("?")?"&":"?")+"t="+Date.now(),{headers:{Authorization:"Bearer "+(isCloud()?cfg.session:cfg.key)}});
@@ -1175,12 +1175,15 @@ async function camSnap(id){
   const f=CAMFLOW[id];if(!f)throw new Error("Inget flöde \"Kamera: ta bild\" finns för kameran");
   await api("/api/manager/flow/flow/"+f+"/trigger",{method:"POST",body:"{}"});}
 let CAMALL=0;
+async function camPoll(d){/* vänta tills kamerans bild faktiskt ändrats (max ~40 s) */
+  if(isDemo())return;const before=(CAMC[d.id]||{}).sig;
+  for(let i=0;i<8;i++){await new Promise(r=>setTimeout(r,5000));await camLoad(d,true);camHydrate();if((CAMC[d.id]||{}).sig&&(CAMC[d.id].sig!==before))return;}}
 async function camSnapAll(force){
   if(isDemo()||(!force&&Date.now()-CAMALL<60000))return;CAMALL=Date.now();
-  /* en kamera i taget: samtidiga snapshots kan blanda ihop bilderna i Eufy-appen */
-  for(const d of camDevs()){try{await camSnap(d.id);}catch(e){showErr("Kunde inte ta bild: "+e.message);continue;}
-    await new Promise(r=>setTimeout(r,5000));
-    await camLoad(d,true);camHydrate();}}
+  /* starta en kamera i taget med mellanrum (samtidiga snapshots kan blanda ihop bilderna), vänta på dem parallellt */
+  const ps=[];for(const d of camDevs()){try{await camSnap(d.id);}catch(e){showErr("Kunde inte ta bild: "+e.message);continue;}
+    ps.push(camPoll(d));await new Promise(r=>setTimeout(r,4000));}
+  await Promise.all(ps);}
 function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});document.querySelectorAll('[data-camstamp="'+d.id+'"]').forEach(x=>{x.textContent=camStamp(d)+(x.closest(".card")&&x.closest("dialog")&&CAMC[d.id].src?" · källa "+CAMC[d.id].src:"");});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
 function camEvents(d){const co=d.capabilitiesObj||{};return CAMEV.filter(([k])=>co[k]!=null).map(([k,l])=>({k,l,on:co[k].value===true,t:co[k].lastUpdated?new Date(co[k].lastUpdated).getTime():null}));}
 function camStamp(d){const c=CAMC[d.id];if(!(c&&c.seen))return "";const dup=camDevs().filter(o=>o.id!==d.id&&CAMC[o.id]&&CAMC[o.id].src&&CAMC[o.id].src===c.src).map(devName);
@@ -2953,7 +2956,7 @@ document.addEventListener("click",async e=>{
     else if(act==="vvball"){const to=b.dataset.to==="true";for(const id of (cfg.ids.vvb||[])){const d=state.devices[id];if(d&&hasOnoff(d))await setCap(id,"onoff",to);}draw();}
     else if(act==="dimset"){const did=b.dataset.dev,dd=state.devices[did];await setCap(did,"dim",Number(b.dataset.v)/100);if(dd&&capVal(dd,"onoff")===false)await setCap(did,"onoff",true);draw();}
     else if(act==="camall"){b.disabled=true;await camSnapAll(true);setTimeout(()=>{b.disabled=false;},5000);}
-    else if(act==="camsnap"){const d=state.devices[b.dataset.dev];if(!d)return;b.disabled=true;try{await camSnap(d.id);}catch(err){showErr("Kunde inte ta bild: "+err.message);}setTimeout(()=>{b.disabled=false;camLoad(d,true).then(u=>{document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(u)i.src=u;});});},isDemo()?300:4000);}
+    else if(act==="camsnap"){const d=state.devices[b.dataset.dev];if(!d)return;b.disabled=true;try{await camSnap(d.id);}catch(err){showErr("Kunde inte ta bild: "+err.message);}camPoll(d).finally(()=>{b.disabled=false;});}
     else if(act==="garageport"){const d=state.devices[b.dataset.dev];if(!d)return;if(!confirm((b.dataset.nm||"Garageporten")+": öppna eller stänga porten?"))return;await setCap(d.id,"onoff",true);draw();}
     else if(act==="roomwin"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husWin(r))await setCap(d.id,"onoff",to);draw();}
     else if(act==="roomlights"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husDevs(r).filter(d=>isLamp(d)&&hasOnoff(d)))await setCap(d.id,"onoff",to);draw();}
