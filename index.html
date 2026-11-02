@@ -1084,11 +1084,13 @@ async function tpAvgModalHtml(){
 async function tibberHtml(){
   if(state.prop!=="235")return {html:"",ok:true};
   let d;try{d=await loadTibber();}catch(e){return {html:"",ok:false};}
-  const iv=((d&&d.intervals)||[]).map(x=>({...x,st:new Date(x.s).getTime()}));
+  /* kvartspriser → timsnitt (snitt av de fyra kvartarna i timmen) för en lugnare graf */
+  const iv=(()=>{const H=36e5,m=new Map();for(const x of ((d&&d.intervals)||[])){const st=new Date(x.s).getTime(),h=Math.floor(st/H)*H;(m.get(h)||m.set(h,[]).get(h)).push(x);}
+    return [...m.entries()].sort((a,b)=>a[0]-b[0]).map(([h,a])=>{const av=k=>a.reduce((q,x)=>q+(x[k]||0),0)/a.length;return {s:new Date(h).toISOString(),st:h,e:av("e"),x:av("x"),t:av("t"),n:a.length,l:a[0].l,c:a[0].c};});})();
   if(!iv.length)return {ok:false,html:`<div class="card" style="margin:12px 0"><h2 style="margin:0 0 6px">${ic("Elpris","coin")}Elpriscentral · Tibber</h2><div class="warn">${esc((d&&d.error)||"Inga priser från Tibber ännu.")}</div><div class="note">Inga priser visas utan data från Tibber. Konfiguration i Cloudflare-workern <b>dekarson-api</b> (Settings → Variables and Secrets): secret <b>TIBBER_API_TOKEN</b> (från developer.tibber.com, lägg aldrig token i GitHub eller webbläsaren) och vid flera hem även <b>TIBBER_HOME_ID</b>. Distribuera sedan om <code>worker/worker.js</code> och <code>wrangler.toml</code>.</div></div>`};
   const mk=Number(cfg.markup||0.448);
   const val=x=>(x.t+mk)*100,ore=v=>v==null?"–":fmt(v,2);
-  const dur=(x,i)=>(iv[i+1]?iv[i+1].st-x.st:9e5);
+  const dur=(x,i)=>(iv[i+1]?iv[i+1].st-x.st:36e5);
   const now=Date.now();const ci=iv.findIndex((x,i)=>x.st<=now&&now<x.st+dur(x,i));
   const cur=ci>=0?iv[ci]:null,fut=iv.filter((x,i)=>x.st+dur(x,i)>now);
   const dayOf=t=>new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Stockholm"}).format(new Date(t));
@@ -1105,12 +1107,12 @@ async function tibberHtml(){
     if(nd){if(i>0)g+=`<line x1="${L+i*bw}" x2="${L+i*bw}" y1="${T}" y2="${H-B+16}" stroke="var(--mut)" stroke-dasharray="3 4" opacity=".7"/>`;g+=`<text x="${L+i*bw+4}" y="${H-6}" style="font-weight:700;fill:var(--ink);font-size:12px">${dayOf(x.st)===td?"Idag":dayOf(x.st)===tm?"Imorgon":dd(x.st)}</text>`;}
     const v=vals[i],past=x.st+dur(x,i)<=now,iw=Math.max(1,bw*.86),xx=L+i*bw+(bw-iw)/2,top=y(v),hg=Math.max(1,y(0)-top);
     g+=`<g class="pb" data-t="${esc(lab(x))} – ${fmt(v,2)} öre/kWh" onmouseover="document.getElementById('tpr').textContent=this.dataset.t" ontouchstart="document.getElementById('tpr').textContent=this.dataset.t"><rect x="${L+i*bw}" y="${T}" width="${bw}" height="${H-T-B}" fill="transparent"/><rect x="${xx}" y="${top}" width="${iw}" height="${hg}" fill="${col(v)}" opacity="${past?.45:1}"${i===ci?` stroke="var(--ink)" stroke-width="2"`:""}/></g>`;
-    const dt=new Date(x.st);if(+new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Stockholm",minute:"numeric"}).format(dt)===0&&(+new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Stockholm",hour:"numeric",hourCycle:"h23"}).format(dt))%(N>110?3:2)===0)g+=`<text x="${L+i*bw}" y="${H-B+14}" text-anchor="middle">${tt(x.st).slice(0,2)}</text>`;});
+    const dt=new Date(x.st);if(+new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Stockholm",minute:"numeric"}).format(dt)===0&&(+new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Stockholm",hour:"numeric",hourCycle:"h23"}).format(dt))%(N>30?(N>60?3:2):1)===0)g+=`<text x="${L+i*bw}" y="${H-B+14}" text-anchor="middle">${tt(x.st).slice(0,2)}</text>`;});
   if(ci>=0){const cx=L+ci*bw+bw/2;g+=`<line x1="${cx}" x2="${cx}" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-width="2"/><text x="${cx}" y="${T-6}" text-anchor="middle" style="font-weight:700;fill:var(--ink)">Nu</text>`;}
   const mark=(x,l)=>{if(!x)return"";const i=iv.indexOf(x);return `<text x="${L+i*bw+bw/2}" y="${y(val(x))-5}" text-anchor="middle" style="font-weight:700;fill:var(--ink)">${l}</text>`;};
   g+=mark(mn,mn?fmt(val(mn),0)+" ▼":"")+mark(mx,mx?fmt(val(mx),0)+" ▲":"");
   const fa=d.fetchedAt?new Date(d.fetchedAt).toLocaleString("sv-SE",{timeZone:"Europe/Stockholm",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"–";
-  const hv=capVal(state.devices[cfg.ids.price],"measure_price_total"),diff=cur&&hv!=null?hv-cur.t:null;
+  const hv=capVal(state.devices[cfg.ids.price],"measure_price_total"),curQ=((d&&d.intervals)||[]).find(x=>{const a=new Date(x.s).getTime();return a<=now&&now<a+9e5;}),diff=curQ&&hv!=null?hv-curQ.t:null;
   const tl=(a,b,c,s,cls)=>tile(a,b,c,s,cls||"");
   const tiles=`<div class="grid" style="margin:10px 0;grid-template-columns:repeat(3,minmax(0,1fr))">`+
     tl("Nu",ore(cur&&val(cur)),"öre/kWh","Importpris, preliminärt","hero")+
@@ -1119,9 +1121,9 @@ async function tibberHtml(){
     tl("Snitt idag",ore(aT),"öre/kWh","Viktat efter tid · tryck för historik").replace('<div class="card tile','<div data-tpavg="1" tabindex="0" role="button" title="Visa snittpris per dag" style="cursor:pointer" class="card tile')+tl("Snitt imorgon",aM!=null?ore(aM):"–","öre/kWh",aM!=null?"Viktat efter tid · tryck för historik":"Publiceras ca 13:00").replace('<div class="card tile','<div data-tpavg="1" tabindex="0" role="button" title="Visa snittpris per dag" style="cursor:pointer" class="card tile')+`</div>`;
   return {ok:true,html:`<div class="card" style="margin:12px 0"><h2 style="margin:0 0 6px">${ic("Elpris","coin")}Elpriscentral · Importpris Dekarsön 235 ${d.demo?`<span class="pill">demo</span>`:""}</h2>
     ${tiles}
-    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Elpris per kvart, idag och imorgon">${g}</svg>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Elpris per timme, idag och imorgon">${g}</svg>
     <div class="note" id="tpr" style="min-height:19px;color:var(--ink)">Håll över en stapel eller tryck för exakt pris.</div>
-    <div class="note">Öre/kWh, svensk tid, ${N} intervall. Senast hämtat från Tibber: ${esc(fa)}${tpWaiting(d)?" · väntar på morgondagens priser, kollar automatiskt varje minut":""}${d.cached?" (från cache)":""}${d.error?` · <span style="color:var(--bad)">${esc(d.error)}</span>`:""}. Visar importpris = Tibber <code>total</code> + ${fmt(mk,3)} kr/kWh (Homeys formel), <b>preliminärt</b> tills det är verifierat att energiskatten (ingår i Tibbers <code>tax</code>) inte dubbelräknas; det är inte heller hela elkostnaden inkl. elnät.${diff!=null?` Kontroll mot Homey <code>measure_price_total</code>: ${fmt(hv,4)} kr mot Tibber ${fmt(cur.t,4)} kr (${diff>=0?"+":""}${fmt(diff*100,2)} öre${Math.abs(diff)>0.005?" – avvikelse, kontrollera uppdateringstid/avrundning i Tibber-appen i Homey":" – stämmer"}).`:""} Priserna sparas permanent i workerns KV (en post per startsAt, inga dubbletter). Morgondagens priser visas så snart Tibber har publicerat dem.</div></div>`};}
+    <div class="note">Öre/kWh, svensk tid, timsnitt (medelvärde av kvartspriserna), ${N} timmar. Senast hämtat från Tibber: ${esc(fa)}${tpWaiting(d)?" · väntar på morgondagens priser, kollar automatiskt varje minut":""}${d.cached?" (från cache)":""}${d.error?` · <span style="color:var(--bad)">${esc(d.error)}</span>`:""}. Visar importpris = Tibber <code>total</code> + ${fmt(mk,3)} kr/kWh (Homeys formel), <b>preliminärt</b> tills det är verifierat att energiskatten (ingår i Tibbers <code>tax</code>) inte dubbelräknas; det är inte heller hela elkostnaden inkl. elnät.${diff!=null?` Kontroll mot Homey <code>measure_price_total</code>: ${fmt(hv,4)} kr mot Tibber ${fmt(curQ.t,4)} kr (nuvarande kvart) (${diff>=0?"+":""}${fmt(diff*100,2)} öre${Math.abs(diff)>0.005?" – avvikelse, kontrollera uppdateringstid/avrundning i Tibber-appen i Homey":" – stämmer"}).`:""} Priserna sparas permanent i workerns KV (en post per startsAt, inga dubbletter). Morgondagens priser visas så snart Tibber har publicerat dem.</div></div>`};}
 /* ---------- Översikt för Dekarsön 236: allt på en sida ---------- */
 const FAS236=[["L1",["Varmvattenberedare","Sovrum","Bakom soffan","Element i sovrum","Micro","Köket mot WC","Hallen","Belysning bro","Uttag bro"]],
  ["L2",["Diskmaskin","Spisfläkt","Uttag och belysning köksbänk","Tak kök","Tak WC","Golvvärme WC","Vägg hall"]],
