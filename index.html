@@ -1165,12 +1165,11 @@ async function camLoad(d,force){
     throw new Error(err||"Ingen bild");}
   catch(e){CAMC[d.id]={url:c&&c.url||null,at:Date.now(),err:e.message};}
   return CAMC[d.id].url;}
+const CAMFLOW={"f779f1f4-9b99-4cf3-87c3-81c17113c667":"d036d649-8f0d-4e46-b79b-b9b2b998e4d9","d34fd8ce-5065-4551-a06a-62aefccbc3b5":"3a445a36-3fd0-4f53-8dbe-908a34019699","bf058c63-7deb-4aa8-a0a9-f81b29d4387a":"9e7338d4-c782-4512-92fc-1ddac688535e","888209b0-d17f-45c1-b160-b29fe4305105":"8c37f63d-9e24-4911-924f-1ded99317bfa"};
 async function camSnap(id){
   if(isDemo())return;
-  const uri="homey:device:"+id,cid=uri+":action_CMD_SNAPSHOT",B="/api/manager/flow/flowcardaction/";
-  const paths=[B+uri+"/"+cid+"/run",B+uri+"/action_CMD_SNAPSHOT/run",B+encodeURIComponent(uri)+"/"+encodeURIComponent(cid)+"/run"];
-  const errs=[];for(const p of paths){try{await api(p,{method:"POST",body:JSON.stringify({args:{}})});return;}catch(e){errs.push(String(e.message).slice(0,160));}}
-  throw new Error(errs.join(" | "));}
+  const f=CAMFLOW[id];if(!f)throw new Error("Inget flöde \"Kamera: ta bild\" finns för kameran");
+  await api("/api/manager/flow/flow/"+f+"/trigger",{method:"POST",body:"{}"});}
 function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
 function camEvents(d){const co=d.capabilitiesObj||{};return CAMEV.filter(([k])=>co[k]!=null).map(([k,l])=>({k,l,on:co[k].value===true,t:co[k].lastUpdated?new Date(co[k].lastUpdated).getTime():null}));}
 function camImg(d,big){const c=CAMC[d.id],u=c&&c.url;
