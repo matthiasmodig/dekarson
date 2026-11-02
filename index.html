@@ -1161,7 +1161,11 @@ async function camLoad(d,force){
   try{const ps=await camPaths(d);if(!ps.length)throw new Error("Homey har ingen bild för kameran ännu (tryck Ny bild)");
     for(const p of ps){try{const r=await fetch(base()+p+(p.includes("?")?"&":"?")+"t="+Date.now(),{headers:{Authorization:"Bearer "+(isCloud()?cfg.session:cfg.key)}});
       if(!r.ok){err="Bild "+r.status+" ("+p+")";continue;}const b=await r.blob();if(!/^image\//.test(b.type)&&b.size<500){err="Tomt svar ("+p+")";continue;}
-      if(c&&c.url)URL.revokeObjectURL(c.url);CAMC[d.id]={url:URL.createObjectURL(b),at:Date.now()};return CAMC[d.id].url;}catch(e){err=e.message+" ("+p+")";}}
+      const buf=new Uint8Array(await b.arrayBuffer()),sig=b.size+":"+Array.from(buf.slice(0,64)).join(",")+":"+Array.from(buf.slice(-64)).join(",");
+      let hist={};try{hist=JSON.parse(localStorage.getItem("camsig")||"{}");}catch(e){}
+      const h=hist[d.id];let seen=h&&h.sig===sig?h.t:Date.now();hist[d.id]={sig,t:seen};try{localStorage.setItem("camsig",JSON.stringify(hist));}catch(e){}
+      const lm=r.headers.get("last-modified");const lmt=lm?Date.parse(lm):null;
+      if(c&&c.url)URL.revokeObjectURL(c.url);CAMC[d.id]={url:URL.createObjectURL(b),at:Date.now(),src:p,seen:lmt||seen,exact:!!lmt,sig};return CAMC[d.id].url;}catch(e){err=e.message+" ("+p+")";}}
     throw new Error(err||"Ingen bild");}
   catch(e){CAMC[d.id]={url:c&&c.url||null,at:Date.now(),err:e.message};}
   return CAMC[d.id].url;}
@@ -1175,19 +1179,21 @@ async function camSnapAll(force){
   if(isDemo()||(!force&&Date.now()-CAMALL<60000))return;CAMALL=Date.now();
   const ds=camDevs();await Promise.all(ds.map(d=>camSnap(d.id).catch(e=>showErr("Kunde inte ta bild: "+e.message))));
   setTimeout(()=>camHydrate(true),5000);}
-function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
+function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});document.querySelectorAll('[data-camstamp="'+d.id+'"]').forEach(x=>{x.textContent=camStamp(d)+(x.closest(".card")&&x.closest("dialog")&&CAMC[d.id].src?" · källa "+CAMC[d.id].src:"");});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
 function camEvents(d){const co=d.capabilitiesObj||{};return CAMEV.filter(([k])=>co[k]!=null).map(([k,l])=>({k,l,on:co[k].value===true,t:co[k].lastUpdated?new Date(co[k].lastUpdated).getTime():null}));}
+function camStamp(d){const c=CAMC[d.id];if(!(c&&c.seen))return "";const dup=camDevs().filter(o=>o.id!==d.id&&CAMC[o.id]&&CAMC[o.id].src&&CAMC[o.id].src===c.src).map(devName);
+  return `Bild ${c.exact?"tagen":"först sedd"} ${tsFmt(c.seen)}`+(dup.length?` · samma bildkälla som ${dup.join(", ")}`:"");}
 function camImg(d,big){const c=CAMC[d.id],u=c&&c.url;
   return `<div class="camimg ${big?"big":""}"><img data-cam="${esc(d.id)}" alt="${esc(devName(d))}" ${u?`src="${u}"`:""}><div class="camph" data-camph="${esc(d.id)}" style="${u?"display:none":""}">${isDemo()?"Demobild":(c&&c.err?esc(c.err):"Hämtar bild…")}</div></div>`;}
 function camHtml(){const ds=camDevs();if(!ds.length)return `<div class="note">Inga kameror hittades i Homey.</div>`;
   return `<section class="grp slim"><div class="rowN" style="--c:2">${ds.map(d=>{const ev=camEvents(d),act=ev.filter(x=>x.on),last=ev.map(x=>x.t).filter(Boolean).sort((a,b)=>b-a)[0];
     return `<div class="card camcard" data-cam="${esc(d.id)}" data-camopen="${esc(d.id)}" tabindex="0" role="button" title="Visa större bild och händelser" style="cursor:pointer">${camImg(d)}
       <div class="camrow"><b>${esc(devName(d))}</b>${act.length?`<span class="pill" style="background:var(--bad);color:#fff">${act.map(x=>x.l).join(", ")}</span>`:`<span class="note" style="margin:0">Lugnt</span>`}<span class="grow"></span>${capVal(d,"measure_battery")!=null?`<span class="note" style="margin:0">${fmt(capVal(d,"measure_battery"),0)} %</span>`:""}${(d.capabilitiesObj||{}).CMD_SNAPSHOT?`<button class="btn sm" data-act="camsnap" data-dev="${esc(d.id)}" style="padding:0 8px;min-height:24px;font-size:12px">Ny bild</button>`:""}</div>
-      ${last?`<div class="note" style="margin:2px 0 0">Senaste händelse ${tsFmt(last)}</div>`:""}</div>`;}).join("")}</div></section>`;}
+      <div class="note" style="margin:2px 0 0" data-camstamp="${esc(d.id)}">${camStamp(d)}</div>${last?`<div class="note" style="margin:2px 0 0">Senaste händelse ${tsFmt(last)}</div>`:""}</div>`;}).join("")}</div></section>`;}
 function camModalHtml(id){const d=state.devices[id];if(!d)return `<div class="warn">Kameran hittades inte.</div>`;const ev=camEvents(d);
   return `<div class="mhead"><h2>${ic("Kamera","camera")}${esc(devName(d))}</h2><span class="grow"></span>${(d.capabilitiesObj||{}).CMD_SNAPSHOT?`<button class="btn pri" data-act="camsnap" data-dev="${esc(d.id)}">Ta ny bild</button>`:""}<button class="btn" data-close="1">Stäng</button></div>
   ${camImg(d,true)}
-  <div class="card" style="margin-top:12px"><h2>Händelser</h2>${tableHtml({head:["Händelse","Just nu","Senast ändrad"],body:ev.map(x=>[x.l,x.on?`<b style="color:var(--bad)">Ja</b>`:"Nej",x.t?tsFmt(x.t):"–"])})}<div class="note">Bilden är den senaste stillbilden Homey har från kameran, inte levande video. Tidsstämpel är när värdet senast ändrades i Homey.</div></div>`;}
+  <div class="card" style="margin-top:12px"><h2>Händelser</h2>${tableHtml({head:["Händelse","Just nu","Senast ändrad"],body:ev.map(x=>[x.l,x.on?`<b style="color:var(--bad)">Ja</b>`:"Nej",x.t?tsFmt(x.t):"–"])})}<div class="note" data-camstamp="${esc(d.id)}">${camStamp(d)}${CAMC[d.id]&&CAMC[d.id].src?" · källa "+esc(CAMC[d.id].src):""}</div><div class="note">Bilden är den senaste stillbilden Homey har från kameran, inte levande video. Tidsstämpel är när värdet senast ändrades i Homey.</div></div>`;}
 function renderKameror(){$("#p-kameror").innerHTML=`<div class="bar" style="margin:0 0 10px"><h2 style="margin:0">Kameror</h2><span class="grow"></span><button class="btn sm" data-act="camall">Ny bild från alla</button></div>`+camHtml();camHydrate();}
 async function fasHistHtml(){
   const I=cfg.ids,[f,t]=sensRange(),cols=["var(--cur)","var(--on)","var(--good)"];
