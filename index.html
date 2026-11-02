@@ -62,7 +62,7 @@ body.panel #panelX{display:block}
 main{max-width:1280px;margin:0 auto;padding:18px 18px 70px}
 h2{font-size:17px;margin:0 0 10px;font-weight:700}
 h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 16px}
 .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
 .det{margin:0 0 26px;scroll-margin-top:120px}.det>summary{cursor:pointer;padding:10px 0;border-bottom:2px solid var(--line);margin-bottom:14px;list-style:none}.det>summary::before{content:"▾ ";color:var(--mut)}.det:not([open])>summary::before{content:"▸ "}
 .rowN{display:grid;gap:12px;grid-template-columns:repeat(var(--c,4),minmax(0,1fr))}
@@ -94,11 +94,11 @@ input[type=date],input[type=text],input[type=password],input[type=search],select
 
 /* ---------- tiles ---------- */
 .tile .l{color:var(--mut);font-size:14px}
-.tile .v{font-size:38px;font-weight:750;letter-spacing:-1px;margin:2px 0 0;line-height:1.1}
+.tile .v{font-size:34px;font-weight:750;letter-spacing:-1px;margin:2px 0 0;line-height:1.1}
 .tile .v small{font-size:17px;font-weight:600;color:var(--mut);letter-spacing:0}
-.tile .s{font-size:13.5px;color:var(--mut);margin-top:4px;min-height:19px}
+.tile .s{font-size:13.5px;color:var(--mut);margin-top:3px;min-height:0}
 .up{color:var(--bad)}.down{color:var(--good)}
-.tile.hero .v{font-size:48px}
+.tile.hero .v{font-size:42px}
 
 /* ---------- chart / tables ---------- */
 .legend{display:flex;gap:16px;color:var(--mut);font-size:13px;margin:2px 0 6px}
@@ -115,7 +115,7 @@ tr:last-child td{border-bottom:0}
 /* ---------- devices ---------- */
 .zonehead{display:flex;align-items:center;gap:10px;margin:22px 0 8px}
 .zonehead b{font-size:17px}
-.dev{display:flex;flex-direction:column;gap:10px;padding:14px 16px}
+.dev{display:flex;flex-direction:column;gap:6px;padding:11px 14px;position:relative}.dev.nodim{padding-bottom:34px}.dev.nodim .hidebtn{position:absolute;right:12px;bottom:8px}.dev .dbot{display:flex;align-items:center;gap:10px}.dev .dbot input[type=range]{flex:1;min-width:0}.kgrid{align-items:start}
 .dev .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .dev .nm{font-weight:650;line-height:1.2}
 .dev .sub{color:var(--mut);font-size:13px;margin-top:2px}
@@ -1317,7 +1317,7 @@ async function dagbokHtml(full){
 }
 async function kortSections(R){
   const c=await kortCtx(addDays(todayStr(),-400));
-  let h=`<section class="grp" style="margin-top:18px"><h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div></section><section class="grp"><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
+  let h=`<section class="grp" style="margin-top:18px"><h3>Energikort</h3><div class="grid kgrid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div></section><section class="grp"><h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
   for(const d of KORTCHARTS.map(k=>CHARTS.find(x=>x.k===k))){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
     h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
   return h+`</div></section>`;
@@ -2035,7 +2035,7 @@ async function renderKort(){
   const t=todayStr(),R=calcRange();
   const c=await kortCtx(addDays(t,-400));
   let h=presetBar(R)+`<div class="note" style="margin:-2px 0 14px">${R.s===R.e?R.s:R.s+" till "+R.e}${R.ps?" · jämförelse "+(R.ps===R.pe?R.ps:R.ps+" till "+R.pe):""} · ${PROPS.find(p=>p.k===state.prop).name} · klicka på ett kort eller diagram för mer information</div>`;
-  h+=`<h3>Energikort</h3><div class="grid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div>${await medelEffektHtml().then(x=>x?`<section class="grp" style="margin-top:18px"><h3>Hela huset · Tibber</h3>`+x+`</section>`:"").catch(()=>"")}<h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
+  h+=`<h3>Energikort</h3><div class="grid kgrid">${korts().map(([k,n])=>kCard(k,n,c.S,R,state.unit)).join("")}</div>${await medelEffektHtml().then(x=>x?`<section class="grp" style="margin-top:18px"><h3>Hela huset · Tibber</h3>`+x+`</section>`:"").catch(()=>"")}<h3>Diagram</h3><div class="grid wide" style="grid-template-columns:repeat(auto-fill,minmax(420px,1fr))">`;
   for(const d of KORTCHARTS.map(k=>CHARTS.find(x=>x.k===k))){let b="";try{b=await d.build(c);}catch(e){b=`<div class="note err">${esc(e.message)}</div>`;}
     h+=`<div class="card chartcard" data-chart="${d.k}" tabindex="0" role="button"><h2>${d.title}</h2>${b}</div>`;}
   h+=`</div>`;
@@ -2301,12 +2301,13 @@ async function renderDetalj(){
 function devCard(d){
   const c=d.capabilitiesObj,on=!!(c.onoff&&c.onoff.value);
   const pw=c.measure_power&&c.measure_power.value!=null?fmt(c.measure_power.value,0)+" W":"";
-  let h=`<div class="card dev ${on?"on":""}" data-id="${d.id}" data-onoff="${d.id}" data-nm="${esc(devName(d))}" ${/taklampa h[öo]ger/i.test(devName(d))&&/uterum/i.test(zoneName(d))?'data-row2="1"':""} tabindex="0" role="button" title="Visa historik" style="cursor:pointer"><div class="row"><div><div class="nm">${ic(devName(d))}${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${c.dim&&c.dim.value!=null?` · <b class="dimv">${Math.round(c.dim.value*100)} %</b>`:""}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
+  let h=`<div class="card dev ${on?"on":""} ${c.dim&&c.dim.value!=null?"":"nodim"}" data-id="${d.id}" data-onoff="${d.id}" data-nm="${esc(devName(d))}" ${/taklampa h[öo]ger/i.test(devName(d))&&/uterum/i.test(zoneName(d))?'data-row2="1"':""} tabindex="0" role="button" title="Visa historik" style="cursor:pointer"><div class="row"><div><div class="nm">${ic(devName(d))}${esc(devName(d))}</div><div class="sub">${on?"På":"Av"}${c.dim&&c.dim.value!=null?` · <b class="dimv">${Math.round(c.dim.value*100)} %</b>`:""}${pw?" · "+pw:""} · ${esc(zoneName(d))}</div></div>
     <button class="sw" role="switch" aria-checked="${on}" data-act="toggle" aria-label="Av/på ${esc(devName(d))}"></button></div>`;
   if(d.id===cfg.ids.floor){const sl=state.devices[cfg.ids.slab],tv=sl&&capVal(sl,"measure_temperature");
     if(tv!=null)h+=`<div data-sens="${esc(sl.id)}|measure_temperature" style="margin-top:6px;cursor:pointer;font-size:14px">Betongplatta <b style="font-size:20px">${fmt(tv,1)} °C</b></div>`;}
-  h+=`<div style="text-align:right;margin-top:4px"><button class="btn sm" data-act="hide" style="padding:0 8px;min-height:22px;font-size:12px">Dölj</button></div>`;
-  if(c.dim&&c.dim.value!=null)h+=`<input type="range" oninput="var b=this.closest('.dev').querySelector('.dimv');if(b)b.textContent=this.value+' %'" min="1" max="100" value="${Math.round(c.dim.value*100)}" data-act="dim" aria-label="Ljusstyrka">`;
+  const hb=`<button class="btn sm hidebtn" data-act="hide" style="padding:0 8px;min-height:22px;font-size:12px">Dölj</button>`;
+  if(c.dim&&c.dim.value!=null)h+=`<div class="dbot"><input type="range" oninput="var b=this.closest('.dev').querySelector('.dimv');if(b)b.textContent=this.value+' %'" min="1" max="100" value="${Math.round(c.dim.value*100)}" data-act="dim" aria-label="Ljusstyrka">${hb}</div>`;
+  else h+=hb;
   return h+`</div>`;
 }
 function viewSw(act,cur,opts){return `<div class="seg" role="tablist" style="margin-bottom:12px">${opts.map(([k,l])=>`<button data-act="${act}" data-v="${k}" role="tab" aria-pressed="${cur===k}">${l}</button>`).join("")}</div>`;}
