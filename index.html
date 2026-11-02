@@ -174,6 +174,7 @@ dialog::backdrop{background:#0009}
     <button data-tab="plan" aria-selected="false">Planritning</button>
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
+    <button data-tab="kameror" aria-selected="false">Kameror</button>
     <div class="sp"></div>
     <button data-tab="status" aria-selected="false">Status</button>
     <button data-tab="admin" aria-selected="false">Admin</button>
@@ -197,6 +198,7 @@ dialog::backdrop{background:#0009}
   <section id="p-kort" class="hide"></section>
   <section id="p-energi" class="hide"></section>
   <section id="p-klimat" class="hide"></section>
+  <section id="p-kameror" class="hide"></section>
   <section id="p-styr" class="hide"></section>
   <section id="p-status" class="hide"></section>
   <section id="p-admin" class="hide"></section>
@@ -867,7 +869,7 @@ function heatCards(){
   const gp=gPortList().map(p=>{const st=p.open===true?"Öppen":p.open===false?"Stängd":"Okänd",c=p.open===true?"var(--bad)":p.open===false?"var(--good)":"var(--mut)";
     return `<div class="card tile" data-gport="${esc(p.d.id)}" data-nm="${esc("Garageport "+p.k)}" tabindex="0" role="button" title="Visa när porten aktiverats" style="cursor:pointer"><div class="l"><span class="dot" style="background:${c}"></span> ${ic("Garageport")}Garageport ${p.k}<button class="btn sm" data-act="garageport" data-dev="${esc(p.d.id)}" data-nm="${esc("Garageport "+p.k)}" style="float:right;padding:0 8px;min-height:24px;font-size:12px" title="Öppna eller stänga porten">Aktivera</button></div><div class="v" style="color:${c}">${st}</div><div class="s">Klicka för aktiveringshistorik</div></div>`;}).join("");
   const all=t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+tr_(cfg.ids.trLoad,"Traktor laddning","l")+tr_(cfg.ids.trHeat,"Traktor MV","m")+r1+gp;
-  return camHtml()+`<section class="grp slim"><h3>Styrning och kontroll</h3>${all?`<div class="rowN" style="--c:4">${all}</div>`:""}</section>`;
+  return `<section class="grp slim"><h3>Styrning och kontroll</h3>${all?`<div class="rowN" style="--c:4">${all}</div>`:""}</section>`;
 }
 const PWRON=5;
 async function onoffSegs(id,f,t,cap){
@@ -1144,28 +1146,31 @@ async function gportModalHtml(id){
 /* ---------- Kameror (Eufy via Homey): stillbild, rörelse/person/husdjur/fordon ---------- */
 const CAMC={};let CAMLIST=null,CAMLISTAT=0;
 const CAMEV=[["NTFY_MOTION_DETECTION","Rörelse"],["NTFY_FACE_DETECTION","Ansikte"],["NTFY_KNOWN_FACE_DETECTION","Känt ansikte"],["NTFY_PET_DETECTED","Husdjur"],["NTFY_VEHICLE_DETECTED","Fordon"]];
-const camDevs=()=>propDevices().filter(d=>d.class==="camera").sort((a,b)=>devName(a).localeCompare(devName(b),"sv"));
-async function camImgPath(d){
-  const im=(d.images||[]).find(x=>x&&(x.url||x.id));
-  if(im)return im.url||("/api/image/"+im.id);
+const camDevs=()=>Object.values(state.devices||{}).filter(d=>d.class==="camera").sort((a,b)=>devName(a).localeCompare(devName(b),"sv"));
+async function camPaths(d){
+  const out=[];const add=p=>{if(!p)return;if(/^https?:/.test(p)){try{p=new URL(p).pathname;}catch(e){return;}}if(!out.includes(p))out.push(p);};
+  for(const im of (Array.isArray(d.images)?d.images:Object.values(d.images||{}))){if(!im)continue;const o=im.imageObj||im;add(o.url||im.url);const id=o.id||im.id;if(id)add("/api/image/"+id);}
   if(!CAMLIST||Date.now()-CAMLISTAT>6e4){try{const r=await api("/api/manager/images/image/");CAMLIST=Array.isArray(r)?r:Object.values(r||{});}catch(e){CAMLIST=[];}CAMLISTAT=Date.now();}
-  const x=CAMLIST.find(i=>i&&String(i.ownerUri||"")==="homey:device:"+d.id);return x?(x.url||"/api/image/"+x.id):null;}
+  for(const i of CAMLIST){if(i&&String(i.ownerUri||"")==="homey:device:"+d.id){add(i.url);if(i.id)add("/api/image/"+i.id);}}
+  return out;}
 async function camLoad(d,force){
   if(isDemo())return null;
   const c=CAMC[d.id];if(c&&!force&&Date.now()-c.at<6e4)return c.url;
   if(c&&c.busy)return c.url;CAMC[d.id]={...(c||{}),busy:true,at:c?c.at:0};
-  try{let p=await camImgPath(d);if(!p)throw new Error("Ingen bild hos Homey");if(/^https?:/.test(p))p=new URL(p).pathname;
-    const r=await fetch(base()+p+"?t="+Date.now(),{headers:{Authorization:"Bearer "+(isCloud()?cfg.session:cfg.key)}});
-    if(!r.ok)throw new Error("Bild "+r.status);const b=await r.blob();if(c&&c.url)URL.revokeObjectURL(c.url);
-    CAMC[d.id]={url:URL.createObjectURL(b),at:Date.now()};}
+  let err="";
+  try{const ps=await camPaths(d);if(!ps.length)throw new Error("Homey har ingen bild för kameran ännu (tryck Ny bild)");
+    for(const p of ps){try{const r=await fetch(base()+p+(p.includes("?")?"&":"?")+"t="+Date.now(),{headers:{Authorization:"Bearer "+(isCloud()?cfg.session:cfg.key)}});
+      if(!r.ok){err="Bild "+r.status+" ("+p+")";continue;}const b=await r.blob();if(!/^image\//.test(b.type)&&b.size<500){err="Tomt svar ("+p+")";continue;}
+      if(c&&c.url)URL.revokeObjectURL(c.url);CAMC[d.id]={url:URL.createObjectURL(b),at:Date.now()};return CAMC[d.id].url;}catch(e){err=e.message+" ("+p+")";}}
+    throw new Error(err||"Ingen bild");}
   catch(e){CAMC[d.id]={url:c&&c.url||null,at:Date.now(),err:e.message};}
   return CAMC[d.id].url;}
 function camHydrate(force){for(const d of camDevs())camLoad(d,force).then(u=>{if(!u)return;document.querySelectorAll('img[data-cam="'+d.id+'"]').forEach(i=>{if(i.src!==u)i.src=u;});const ph=document.querySelectorAll('[data-camph="'+d.id+'"]');ph.forEach(x=>x.style.display="none");});}
 function camEvents(d){const co=d.capabilitiesObj||{};return CAMEV.filter(([k])=>co[k]!=null).map(([k,l])=>({k,l,on:co[k].value===true,t:co[k].lastUpdated?new Date(co[k].lastUpdated).getTime():null}));}
 function camImg(d,big){const c=CAMC[d.id],u=c&&c.url;
   return `<div class="camimg ${big?"big":""}"><img data-cam="${esc(d.id)}" alt="${esc(devName(d))}" ${u?`src="${u}"`:""}><div class="camph" data-camph="${esc(d.id)}" style="${u?"display:none":""}">${isDemo()?"Demobild":(c&&c.err?esc(c.err):"Hämtar bild…")}</div></div>`;}
-function camHtml(){const ds=camDevs();if(!ds.length)return "";
-  return `<section class="grp slim"><h3>${ic("Kamera","camera")}Kameror</h3><div class="rowN" style="--c:4">${ds.map(d=>{const ev=camEvents(d),act=ev.filter(x=>x.on),last=ev.map(x=>x.t).filter(Boolean).sort((a,b)=>b-a)[0];
+function camHtml(){const ds=camDevs();if(!ds.length)return `<div class="note">Inga kameror hittades i Homey.</div>`;
+  return `<section class="grp slim"><div class="rowN" style="--c:2">${ds.map(d=>{const ev=camEvents(d),act=ev.filter(x=>x.on),last=ev.map(x=>x.t).filter(Boolean).sort((a,b)=>b-a)[0];
     return `<div class="card camcard" data-cam="${esc(d.id)}" data-camopen="${esc(d.id)}" tabindex="0" role="button" title="Visa större bild och händelser" style="cursor:pointer">${camImg(d)}
       <div class="camrow"><b>${esc(devName(d))}</b>${act.length?`<span class="pill" style="background:var(--bad);color:#fff">${act.map(x=>x.l).join(", ")}</span>`:`<span class="note" style="margin:0">Lugnt</span>`}<span class="grow"></span>${capVal(d,"measure_battery")!=null?`<span class="note" style="margin:0">${fmt(capVal(d,"measure_battery"),0)} %</span>`:""}${(d.capabilitiesObj||{}).CMD_SNAPSHOT?`<button class="btn sm" data-act="camsnap" data-dev="${esc(d.id)}" style="padding:0 8px;min-height:24px;font-size:12px">Ny bild</button>`:""}</div>
       ${last?`<div class="note" style="margin:2px 0 0">Senaste händelse ${tsFmt(last)}</div>`:""}</div>`;}).join("")}</div></section>`;}
@@ -1173,6 +1178,7 @@ function camModalHtml(id){const d=state.devices[id];if(!d)return `<div class="wa
   return `<div class="mhead"><h2>${ic("Kamera","camera")}${esc(devName(d))}</h2><span class="grow"></span>${(d.capabilitiesObj||{}).CMD_SNAPSHOT?`<button class="btn pri" data-act="camsnap" data-dev="${esc(d.id)}">Ta ny bild</button>`:""}<button class="btn" data-close="1">Stäng</button></div>
   ${camImg(d,true)}
   <div class="card" style="margin-top:12px"><h2>Händelser</h2>${tableHtml({head:["Händelse","Just nu","Senast ändrad"],body:ev.map(x=>[x.l,x.on?`<b style="color:var(--bad)">Ja</b>`:"Nej",x.t?tsFmt(x.t):"–"])})}<div class="note">Bilden är den senaste stillbilden Homey har från kameran, inte levande video. Tidsstämpel är när värdet senast ändrades i Homey.</div></div>`;}
+function renderKameror(){$("#p-kameror").innerHTML=`<h2 style="margin:0 0 10px">Kameror</h2>`+camHtml();camHydrate();}
 async function fasHistHtml(){
   const I=cfg.ids,[f,t]=sensRange(),cols=["var(--cur)","var(--on)","var(--good)"];
   const ph=[1,2,3].map(i=>({n:"L"+i,d:state.devices[I["l236_"+i]]})).filter(x=>x.d);
@@ -1260,7 +1266,7 @@ async function renderOversikt(){
     if(favs.length)h+=`<div class="grid">${favs.map(devCard).join("")}</div>`;
     if(ff.length)h+=`<div class="grid wide" style="margin-top:12px">${ff.map(flowCard).join("")}</div>`;
   }
-  $("#p-oversikt").innerHTML=h;camHydrate();
+  $("#p-oversikt").innerHTML=h;
 }
 
 /* ---------- Energi ---------- */
@@ -2849,19 +2855,20 @@ async function draw(){
   if(state.tab==="oversikt"){await renderOversikt();if(dqf){const q=$("#dq");if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length);}}}
   else if(state.tab==="energi")await renderEnergi();
   else if(state.tab==="klimat")await renderKlimat();
+  else if(state.tab==="kameror")renderKameror();
   else if(state.tab==="styr")await renderStyr();
   else if(state.tab==="status")renderStatus();
   else renderAdmin();
   if(state.modal&&$("#dlg").open)await renderModal();
 }
-const NAV_ICONS={oversikt:"house",styr:"toggles",plan:"map",flows:"play",sonos:"speaker",energi:"bolt",timpris:"coin",detalj:"chart",klimat:"thermo",status:"pulse",admin:"cog"};
+const NAV_ICONS={oversikt:"house",styr:"toggles",plan:"map",flows:"play",sonos:"speaker",energi:"bolt",timpris:"coin",detalj:"chart",klimat:"thermo",kameror:"camera",status:"pulse",admin:"cog"};
 function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.querySelector(".ico"))b.insertAdjacentHTML("afterbegin",iconSvg(NAV_ICONS[b.dataset.tab]));});}
 function showTab(t){
   if(t==="timpris")t="oversikt";
   if(t==="plan"){t="styr";state.styrView="hus";state.husRoom=null;}else if(t==="styr"&&state.styrView==="hus")state.styrView="styr";
   state.tab=t;state.prop=t==="oversikt"?(state.ovProp||"235"):"235";drawProp();state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===(t==="styr"&&state.styrView==="hus"?"plan":t)));
-  for(const k of ["oversikt","energi","klimat","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  for(const k of ["oversikt","energi","klimat","kameror","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
   refresh({force:true});
 }
 
