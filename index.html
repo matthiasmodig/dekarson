@@ -231,7 +231,7 @@ const DEFAULTS={
   ui:{devices:{},flows:{},status:{lights:true,sockets:true,locks:true,open:true,alarms:true,motion:true,battery:true,temps:true}}
 };
 const SRC=[{k:"tibber",name:"Tibber, hela huset",total:true},{k:"hush",name:"Hushållsel"},{k:"uppv",name:"Uppvärmning"},{k:"vp",name:"Värmepump"},{k:"ovr",name:"Övrigt"}];
-const REFRESH_MS=20000;
+const REFRESH_MS=60000; /* var 60:e sekund (var 20:e kostade 3x fler anrop mot Cloudflare) */
 
 function clone(o){return JSON.parse(JSON.stringify(o));}
 function loadCfg(){
@@ -2937,11 +2937,12 @@ async function refresh(opts={}){
   try{
     if(!opts.quiet)setStatus("Hämtar…");
     if(isDemo())demoSetup();
-    else{const [dv,zn]=await Promise.all([api("/api/manager/devices/device/"),api("/api/manager/zones/zone/")]);state.devices=dv||{};state.zones=zn||{};}
+    else{const needZ=opts.force||!Object.keys(state.zones||{}).length||Date.now()-(state.zonesAt||0)>6e5;
+      const [dv,zn]=await Promise.all([api("/api/manager/devices/device/"),needZ?api("/api/manager/zones/zone/"):null]);state.devices=dv||{};if(zn){state.zones=zn||{};state.zonesAt=Date.now();}}
     if(["flows","styr","oversikt","energi","admin"].includes(state.tab)||opts.flows)await loadFlows(opts.flows);
     drawProp();showErr(null);
     await draw();
-    setStatus((isDemo()?"Demo · ":"")+"Uppdaterad "+new Date().toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
+    state.lastRefresh=Date.now();setStatus((isDemo()?"Demo · ":"")+"Uppdaterad "+new Date().toLocaleTimeString("sv-SE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}));
   }catch(e){
     showErr("Kunde inte hämta från Homey: "+e.message+". Kontrollera IP, API-nyckel och att sidan öppnas via http på samma nät.");
     setStatus("Fel",true);
@@ -3104,6 +3105,7 @@ $("#gateForm").addEventListener("submit",async e=>{e.preventDefault();const m=$(
   catch(err){m.textContent=err.message==="Failed to fetch"?"Kunde inte nå servern.":err.message;}finally{btn.disabled=false;}});
 if(!gateUpdate())refresh({force:true,flows:true});
 setInterval(()=>{if(!document.hidden&&state.tab!=="admin")refresh({quiet:true});},REFRESH_MS);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.tab!=="admin"&&Date.now()-(state.lastRefresh||0)>30000)refresh({quiet:true});});
 </script>
 </body>
 </html>

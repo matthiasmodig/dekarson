@@ -36,7 +36,7 @@ export default {
       if (url.pathname === "/callback") return await callback(url, env, req);
       if (url.pathname === "/logout") {
         const s = bearer(req);
-        if (s) await env.KV.delete("sess:" + s);
+        if (s) { SESS.delete(s); await env.KV.delete("sess:" + s); }
         return json({ ok: true }, 200, cors);
       }
       if (url.pathname === "/me") {
@@ -154,9 +154,17 @@ const json = (o, status = 200, headers = {}) =>
 const bearer = (req) => (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "") || null;
 const rand = () => [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
 
+/* Minnescache i workern (per instans) så varje anrop inte kostar KV-läsningar: sessioner 5 min, Homey-inloggning till dess den går ut. */
+const SESS = new Map();
+let HS = null;
 async function sessionOk(req, env) {
   const s = bearer(req);
-  return !!(s && s.length === 64 && (await env.KV.get("sess:" + s)));
+  if (!(s && s.length === 64)) return false;
+  const c = SESS.get(s);
+  if (c && c > Date.now()) return true;
+  const ok = !!(await env.KV.get("sess:" + s));
+  if (ok) SESS.set(s, Date.now() + 5 * 60 * 1000);
+  return ok;
 }
 
 const hex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
@@ -250,8 +258,9 @@ async function athomAccess(env) {
 
 async function homeySession(env, force) {
   if (!force) {
+    if (HS && Date.now() < HS.exp) return HS;
     const c = JSON.parse((await env.KV.get("homey")) || "null");
-    if (c && Date.now() < c.exp) return c;
+    if (c && Date.now() < c.exp) { HS = c; return c; }
   }
   const access = await athomAccess(env);
   const me = await (await fetch(ATHOM + "/user/me", { headers: { Authorization: "Bearer " + access } })).json();
@@ -266,6 +275,7 @@ async function homeySession(env, force) {
   if (!lr.ok) throw new Error("Homey-inloggning " + lr.status);
   const s = { remote: h.remoteUrl, token: await lr.json(), exp: Date.now() + 50 * 60 * 1000 };
   await env.KV.put("homey", JSON.stringify(s));
+  HS = s;
   return s;
 }
 
