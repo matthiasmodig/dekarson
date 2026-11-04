@@ -191,6 +191,7 @@ dialog::backdrop{background:#0009}
 <div class="top">
   <div class="seg" id="segProp" role="group" aria-label="Fastighet"></div>
   <span class="grow"></span>
+  <button class="btn sm" id="refreshBtn" title="Hämta ny data från Homey nu">Uppdatera</button>
   <span class="status" id="status"></span>
 </div>
 <button class="btn sm" id="panelX">Avsluta panel-läge</button>
@@ -231,7 +232,7 @@ const DEFAULTS={
   ui:{devices:{},flows:{},status:{lights:true,sockets:true,locks:true,open:true,alarms:true,motion:true,battery:true,temps:true}}
 };
 const SRC=[{k:"tibber",name:"Tibber, hela huset",total:true},{k:"hush",name:"Hushållsel"},{k:"uppv",name:"Uppvärmning"},{k:"vp",name:"Värmepump"},{k:"ovr",name:"Övrigt"}];
-const REFRESH_MS=60000; /* var 60:e sekund (var 20:e kostade 3x fler anrop mot Cloudflare) */
+const REFRESH_MS=300000; /* var 5:e minut; "Uppdatera" i toppen hämtar direkt (var 20:e sekund kostade 15x fler anrop mot Cloudflare) */
 
 function clone(o){return JSON.parse(JSON.stringify(o));}
 function loadCfg(){
@@ -645,7 +646,7 @@ function ventGroup(){
 /* ΔT kommer från Homeys Logic-variabler (Delta T VP / Golvvärme / Uterum). Homey är sanningen; dashboarden räknar inte själv. */
 async function loadVars(){
   if(isDemo())return null;
-  try{if(!state.vars||Date.now()-state.vars.t>20000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};}catch(e){return null;}
+  try{if(!state.vars||Date.now()-state.vars.t>120000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};}catch(e){return null;}
   return state.vars.v;
 }
 /* Fördelning av traktorns uppmätta effekt: Homey-variablerna är källa, annars samma regel räknad här (MV på: högst 15 W laddning, resten MV; MV av: allt laddning) */
@@ -1641,7 +1642,7 @@ async function timmedelNu(){
 async function homeyMedel(){
   if(isDemo())return null;
   try{
-    if(!state.vars||Date.now()-state.vars.t>20000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};
+    if(!state.vars||Date.now()-state.vars.t>120000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};
     const V=state.vars.v||{},g=id=>{const x=Object.values(V).find(y=>y.id===id);return x?Number(x.value):null;};
     const day=g(cfg.ids.medDay),dn=g(cfg.ids.medDayN),mo=g(cfg.ids.medMonth),mn=g(cfg.ids.medMonthN);
     return {day:dn>0?{v:day,n:dn}:null,month:mn>0?{v:mo,n:mn}:null,snitt:g(cfg.ids.timSnitt),t:state.vars.t};
@@ -1705,7 +1706,7 @@ async function medelData236(){
   let V=null;
   if(demo){D.varT=Date.now();V={prevE:1.48,prev:1480,day:1.62,month:1.48,dayN:Math.max(D.doneDay,0),monthN:Math.max(D.doneMonth,0)};}
   else try{
-    if(!state.vars||Date.now()-state.vars.t>20000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};
+    if(!state.vars||Date.now()-state.vars.t>120000)state.vars={t:Date.now(),v:await api("/api/manager/logic/variable/")};
     const all=state.vars.v||{},g=id=>{const x=Object.values(all).find(y=>y.id===id);return x&&x.value!=null&&x.value!==""?Number(x.value):null;};
     V={prevE:g(cfg.ids.m236prevE),prev:g(cfg.ids.m236prev),day:g(cfg.ids.m236day),month:g(cfg.ids.m236month),dayN:g(cfg.ids.m236dayN),monthN:g(cfg.ids.m236monthN)};
     D.varT=state.vars.t;
@@ -2968,7 +2969,7 @@ function showTab(t){
   state.tab=t;state.prop=t==="oversikt"?(state.ovProp||"235"):"235";drawProp();state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===(t==="styr"&&state.styrView==="hus"?"plan":t)));
   for(const k of ["oversikt","energi","klimat","kameror","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
-  const p=refresh({force:true});
+  const stale=Date.now()-(state.lastRefresh||0)>120000,p=stale?refresh({force:true}):draw();
   if(t==="kameror")Promise.resolve(p).catch(()=>{}).then(()=>setTimeout(()=>camSnapAll(true),500));
 }
 
@@ -3105,7 +3106,8 @@ $("#gateForm").addEventListener("submit",async e=>{e.preventDefault();const m=$(
   catch(err){m.textContent=err.message==="Failed to fetch"?"Kunde inte nå servern.":err.message;}finally{btn.disabled=false;}});
 if(!gateUpdate())refresh({force:true,flows:true});
 setInterval(()=>{if(!document.hidden&&state.tab!=="admin")refresh({quiet:true});},REFRESH_MS);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.tab!=="admin"&&Date.now()-(state.lastRefresh||0)>30000)refresh({quiet:true});});
+$("#refreshBtn").addEventListener("click",async()=>{const b=$("#refreshBtn");b.disabled=true;state.vars=null;state.tp=null;state.zonesAt=0;CAMLIST=null;state.flowsAt=0;try{await refresh({force:true,flows:true});if(state.tab==="kameror")camHydrate(true);}finally{b.disabled=false;}});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.tab!=="admin"&&Date.now()-(state.lastRefresh||0)>REFRESH_MS)refresh({quiet:true});});
 </script>
 </body>
 </html>
