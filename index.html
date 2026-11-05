@@ -177,7 +177,7 @@ dialog::backdrop{background:#0009}
     <button data-tab="plan" aria-selected="false">Planritning</button>
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
-    <button data-tab="kameror" aria-selected="false">Kameror</button>
+    <button data-tab="kameror" aria-selected="false" hidden>Kameror</button>
     <div class="sp"></div>
     <button data-tab="status" aria-selected="false">Status</button>
     <button data-tab="admin" aria-selected="false">Admin</button>
@@ -1178,6 +1178,7 @@ async function gportModalHtml(id){
   ${sen?`<h3 style="margin-top:16px">Port öppen och stängd (sensor)</h3>${list(sen,r=>r.v===true||r.v===1?"Öppnad":"Stängd")}`:""}
   <div class="note">Tidsstämplar i svensk tid, senaste 31 dagarna, så långt Homey har loggat.</div>`;}
 /* ---------- Kameror (Eufy via Homey): stillbild, rörelse/person/husdjur/fordon ---------- */
+const CAMERAS_ON=false; /* Kameravyn är avstängd tills vidare (sätt true för att slå på igen, ta även bort hidden på menyknappen) */
 const CAMC={};let CAMLIST=null,CAMLISTAT=0;
 const CAMEV=[["NTFY_MOTION_DETECTION","Rörelse"],["NTFY_FACE_DETECTION","Ansikte"],["NTFY_KNOWN_FACE_DETECTION","Känt ansikte"],["NTFY_PET_DETECTED","Husdjur"],["NTFY_VEHICLE_DETECTED","Fordon"]];
 const camDevs=()=>Object.values(state.devices||{}).filter(d=>d.class==="camera").sort((a,b)=>devName(a).localeCompare(devName(b),"sv"));
@@ -1188,7 +1189,7 @@ async function camPaths(d){
   for(const i of CAMLIST){if(i&&String(i.ownerUri||"")==="homey:device:"+d.id){add(i.url);if(i.id)add("/api/image/"+i.id);}}
   return out;}
 async function camLoad(d,force){
-  if(isDemo())return null;
+  if(!CAMERAS_ON||isDemo())return null;
   const c=CAMC[d.id];if(c&&!force&&Date.now()-c.at<6e4)return c.url;
   if(c&&c.busy&&!force)return c.url;CAMC[d.id]={...(c||{}),busy:true,at:c?c.at:0};
   let err="";
@@ -1213,7 +1214,7 @@ async function camPoll(d){/* vänta tills kamerans bild faktiskt ändrats (max ~
   if(isDemo())return;const before=(CAMC[d.id]||{}).sig;
   for(let i=0;i<8;i++){await new Promise(r=>setTimeout(r,5000));await camLoad(d,true);camHydrate();if((CAMC[d.id]||{}).sig&&(CAMC[d.id].sig!==before))return;}}
 async function camSnapAll(force){
-  if(isDemo()||CAMRUN||(!force&&Date.now()-CAMALL<60000))return;CAMALL=Date.now();CAMRUN=true;try{await camSnapAll2();}finally{CAMRUN=false;}}
+  if(!CAMERAS_ON||isDemo()||CAMRUN||(!force&&Date.now()-CAMALL<60000))return;CAMALL=Date.now();CAMRUN=true;try{await camSnapAll2();}finally{CAMRUN=false;}}
 let CAMRUN=false;
 async function camSnapAll2(){
   /* starta en kamera i taget med mellanrum (samtidiga snapshots kan blanda ihop bilderna), vänta på dem parallellt */
@@ -2964,6 +2965,7 @@ async function draw(){
 const NAV_ICONS={oversikt:"house",styr:"toggles",plan:"map",flows:"play",sonos:"speaker",energi:"bolt",timpris:"coin",detalj:"chart",klimat:"thermo",kameror:"camera",status:"pulse",admin:"cog"};
 function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.querySelector(".ico"))b.insertAdjacentHTML("afterbegin",iconSvg(NAV_ICONS[b.dataset.tab]));});}
 function showTab(t){
+  if(t==="kameror"&&!CAMERAS_ON)t="oversikt";
   if(t==="timpris")t="oversikt";
   if(t==="plan"){t="styr";state.styrView="hus";state.husRoom=null;}else if(t==="styr"&&state.styrView==="hus")state.styrView="styr";
   state.tab=t;state.prop=t==="oversikt"?(state.ovProp||"235"):"235";drawProp();state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
