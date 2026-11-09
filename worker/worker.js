@@ -341,7 +341,15 @@ async function sportData(env, k) {
     let out;
     if (cfg.hockey) {
       const st = await apis(env, cfg.host, "/standings?league=" + lg.id + "&season=" + season);
-      const rows = (st[0] || []).flat ? st.flat() : st;
+      /* En serie kan ha flera steg/grupper (grundserie, slutspel ...): ta första gruppen i grundserien och inga dubbletter. */
+      let rows = st.flat();
+      const stages = [...new Set(rows.map((r) => r.stage || ""))];
+      const stg = stages.find((x) => /regular|grund|season/i.test(x)) ?? stages[0];
+      rows = rows.filter((r) => (r.stage || "") === stg);
+      const g0 = rows[0] && rows[0].group && rows[0].group.name;
+      rows = rows.filter((r) => !g0 || (r.group && r.group.name) === g0);
+      const seen = new Set();
+      rows = rows.filter((r) => (seen.has(r.team.id) ? false : seen.add(r.team.id)));
       const table = rows.map((r) => ({
         pos: r.position, id: r.team.id, team: r.team.name, p: r.games.played,
         w: (r.games.win && r.games.win.total) || 0, otw: (r.games.win_overtime && r.games.win_overtime.total) || 0,

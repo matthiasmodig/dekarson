@@ -2979,7 +2979,7 @@ async function draw(){
 const SPORT_LIGOR=[["allsvenskan","Allsvenskan"],["superettan","Superettan"],["ettan-norra","Ettan norra"],["ettan-sodra","Ettan södra"],["damallsvenskan","OBOS Damallsvenskan"],["elitettan","Elitettan"]];
 /* Sändare per serie. Datakällan saknar sändningstider, så korten länkar till sändarens tablå. */
 const SPORT_TV={allsvenskan:["TV4 Play","https://www.tv4play.se/sport"],superettan:["TV4 Play","https://www.tv4play.se/sport"],"ettan-norra":["Expressen Play","https://www.expressen.se/play/"],"ettan-sodra":["Expressen Play","https://www.expressen.se/play/"],damallsvenskan:["Expressen Play","https://www.expressen.se/play/"],elitettan:["Expressen Play","https://www.expressen.se/play/"]};
-const SP_DONE=/^(FT|AET|PEN|AOT|AP|FIN|AWD|WO)$/,SP_LIVE=/^(1H|HT|2H|ET|BT|P|LIVE|P1|P2|P3|OT|SUSP|INT)$/;
+const SP_DONE=/^(FT|AET|PEN|AOT|AP|FIN|AWD|WO)$/,SP_LIVE=/^(1H|HT|2H|ET|BT|P|LIVE|P1|P2|P3|OT|PT|SUSP|INT|INTR)$/,SP_OFF=/^(CANC|ABD)$/;
 (function(){try{const s=JSON.parse(localStorage.getItem("sportSel")||"{}");state.sp={sport:s.sport||"ishockey",liga:s.liga||"allsvenskan",view:"matcher",d:{}};}catch(e){state.sp={sport:"ishockey",liga:"allsvenskan",view:"matcher",d:{}};}})();
 function spSave(){try{localStorage.setItem("sportSel",JSON.stringify({sport:state.sp.sport,liga:state.sp.liga}));}catch(e){}}
 function spDemo(k){
@@ -3015,7 +3015,7 @@ function spMatch(g,o){
   const nm=n=>me&&me.test(n)?`<b>${esc(n)}</b>`:esc(n);
   const sc=(done||live)&&g.hs!=null?`<span class="sp-sc">${g.hs} – ${g.as}</span>`:`<span class="sp-sc mut">${new Date(g.ts).toLocaleTimeString("sv-SE",{timeZone:"Europe/Stockholm",hour:"2-digit",minute:"2-digit"})}</span>`;
   const tv=!done&&o.tv?`<a class="pill" href="${esc(o.tv[1])}" target="_blank" rel="noopener" title="Sändningstid finns inte i datakällan – öppnar tablån">TV: ${esc(o.tv[0])} ↗</a>`:"";
-  return `<div class="card sp-m${o.next?" sp-next":""}"><div class="sp-d">${o.next?'<span class="pill" style="background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">Nästa match</span> ':""}${spFmt(g.ts)}${live?' <span class="pill bad">Pågår</span>':""}</div><div class="sp-teams"><span>${nm(g.home)}</span>${sc}<span style="text-align:right">${nm(g.away)}</span></div>${tv?`<div style="margin-top:6px">${tv}</div>`:""}</div>`;
+  return `<div class="card sp-m${o.next?" sp-next":""}"><div class="sp-d">${o.next?'<span class="pill" style="background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">Nästa match</span> ':""}${spFmt(g.ts)}${live?' <span class="pill bad">Pågår</span>':""}${/^(PST|POST)$/.test(g.st||"")?' <span class="pill bad">Uppskjuten</span>':""}</div><div class="sp-teams"><span>${nm(g.home)}</span>${sc}<span style="text-align:right">${nm(g.away)}</span></div>${tv?`<div style="margin-top:6px">${tv}</div>`:""}</div>`;
 }
 async function renderIdrott(){
   const S=state.sp,hock=S.sport==="ishockey",key=hock?"ishockey":S.liga;
@@ -3025,8 +3025,8 @@ async function renderIdrott(){
   const d=await spLoad(key);if(state.tab!=="idrott")return;
   let h=bar;
   if(d.error&&!d.table){el.innerHTML=h+`<div class="card"><b>Kunde inte hämta idrottsdata.</b><div class="note">${esc(d.error)}</div></div>`;return;}
-  const now=Date.now(),games=d.games||[],isDone=g=>SP_DONE.test(g.st||""),
-    up=games.filter(g=>!isDone(g)&&(g.ts>=now-3*36e5||SP_LIVE.test(g.st||""))).sort((a,b)=>a.ts-b.ts),
+  const now=Date.now(),games=d.games||[],isDone=g=>SP_DONE.test(g.st||""),isOff=g=>SP_OFF.test(g.st||""),
+    up=games.filter(g=>!isDone(g)&&!isOff(g)&&(g.ts>=now-3*36e5||SP_LIVE.test(g.st||""))).sort((a,b)=>a.ts-b.ts),
     past=games.filter(isDone).sort((a,b)=>b.ts-a.ts);
   const upd=`<div class="note" style="margin-top:10px">${esc(d.league||"")} ${d.season||""} · uppdaterad ${spFmt(d.at||now)}${d.stale?" · visar sparad data ("+esc(d.error)+")":""}${d.demo?" · demodata":""}</div>`;
   if(hock){
