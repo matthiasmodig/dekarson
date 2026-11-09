@@ -310,13 +310,22 @@ const SPORT = {
   damallsvenskan: { host: "v3.football.api-sports.io", name: /^(obos )?damallsvenskan$/i },
   elitettan: { host: "v3.football.api-sports.io", name: /^elitettan$/i },
 };
-async function apis(env, host, path) {
+const SLEEP = (ms) => new Promise((r) => setTimeout(r, ms));
+let LASTCALL = 0;
+async function apis(env, host, path, retry = 1) {
+  /* Gratisplanen har en låg gräns per minut: håll minst 1,5 s mellan anrop och försök en gång till efter en paus. */
+  const wait = LASTCALL + 1500 - Date.now();
+  if (wait > 0) await SLEEP(wait);
+  LASTCALL = Date.now();
   if (!env.APISPORTS_KEY) throw new Error("APISPORTS_KEY saknas som secret i Cloudflare-workern dekarson-api.");
   const r = await fetch("https://" + host + path, { headers: { "x-apisports-key": env.APISPORTS_KEY } });
   if (!r.ok) throw new Error("API-Sports svarade " + r.status);
   const j = await r.json();
   const er = j.errors && (Array.isArray(j.errors) ? j.errors[0] : Object.values(j.errors)[0]);
-  if (er) throw new Error("API-Sports: " + String(er).slice(0, 140));
+  if (er) {
+    if (retry > 0 && /too many requests|rate limit/i.test(String(er))) { await SLEEP(20000); return apis(env, host, path, retry - 1); }
+    throw new Error("API-Sports: " + String(er).slice(0, 140));
+  }
   return j.response || [];
 }
 async function sportData(env, k) {
@@ -326,6 +335,8 @@ async function sportData(env, k) {
   const hit = await env.KV.get(ck, "json");
   if (hit && now - hit.at < 3600e3) return { ...hit, cached: true };
   if (hit && now - (hit.tried || 0) < 120e3) return { ...hit, cached: true };
+  const bad = await env.KV.get(ck + ":err", "json");
+  if (!hit && bad && now - bad.at < 90e3) throw new Error(bad.msg + " (försöker igen om en stund)");
   try {
     const d = new Date(), y = d.getUTCFullYear(), m = d.getUTCMonth() + 1;
     const season = cfg.hockey ? (m >= 7 ? y : y - 1) : y;
@@ -383,6 +394,7 @@ async function sportData(env, k) {
     return { ...out, cached: false };
   } catch (e) {
     if (hit) { await env.KV.put(ck, JSON.stringify({ ...hit, tried: now })); return { ...hit, cached: true, stale: true, error: e.message }; }
+    await env.KV.put(ck + ":err", JSON.stringify({ at: Date.now(), msg: e.message }), { expirationTtl: 120 });
     throw e;
   }
 }
