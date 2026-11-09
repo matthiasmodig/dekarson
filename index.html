@@ -181,7 +181,7 @@ dialog::backdrop{background:#0009}
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
     <button data-tab="kameror" aria-selected="false" hidden>Kameror</button>
-    <button data-tab="idrott" aria-selected="false">Idrott</button>
+    <button data-tab="idrott" aria-selected="false" hidden>Idrott</button>
     <div class="sp"></div>
     <button data-tab="status" aria-selected="false">Status</button>
     <button data-tab="admin" aria-selected="false">Admin</button>
@@ -2976,6 +2976,7 @@ async function draw(){
 /* =====================================================================
    IDROTT (ishockey + fotboll) – data via workern /sport (API-Sports)
    ===================================================================== */
+const SPORT_ON=false; /* sätt true (och ta bort hidden på menyknappen) för att slå på Idrott igen */
 const SPORT_LIGOR=[["allsvenskan","Allsvenskan"],["superettan","Superettan"],["ettan-norra","Ettan norra"],["ettan-sodra","Ettan södra"],["damallsvenskan","OBOS Damallsvenskan"],["elitettan","Elitettan"]];
 /* Sändare per serie. Datakällan saknar sändningstider, så korten länkar till sändarens tablå. */
 const SPORT_TV={allsvenskan:["TV4 Play","https://www.tv4play.se/sport"],superettan:["TV4 Play","https://www.tv4play.se/sport"],"ettan-norra":["Expressen Play","https://www.expressen.se/play/"],"ettan-sodra":["Expressen Play","https://www.expressen.se/play/"],damallsvenskan:["Expressen Play","https://www.expressen.se/play/"],elitettan:["Expressen Play","https://www.expressen.se/play/"]};
@@ -3055,6 +3056,7 @@ function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.q
 function showTab(t){
   if(t==="kameror"&&!CAMERAS_ON)t="oversikt";
   if(t==="timpris")t="oversikt";
+  if(t==="idrott"&&!SPORT_ON)t="oversikt";
   if(t==="plan"){t="styr";state.styrView="hus";state.husRoom=null;}else if(t==="styr"&&state.styrView==="hus")state.styrView="styr";
   state.tab=t;state.prop=t==="oversikt"?(state.ovProp||"235"):"235";drawProp();state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===(t==="styr"&&state.styrView==="hus"?"plan":t)));
