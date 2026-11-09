@@ -134,6 +134,9 @@ input[type=range]{width:100%;height:34px;accent-color:var(--on)}
 .flow .nm{font-weight:650}
 .stat{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .stat:last-child{border-bottom:0}
+.sp-list{display:grid;gap:8px}.sp-m{padding:10px 14px}.sp-next{border:2px solid var(--accent)}.sp-d{font-size:13px;color:var(--mut);margin-bottom:4px}
+.sp-teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}.sp-sc{font-weight:700;font-size:18px;white-space:nowrap}.sp-sc.mut{color:var(--mut);font-size:15px}
+.sp-t th,.sp-t td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line)}.sp-t .r{text-align:right}.sp-t .b{font-weight:700}.sp-t tr.sp-me td{background:var(--soft);font-weight:700}
 .pill{display:inline-block;background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:1px 10px;font-size:13px;color:var(--mut)}
 .pill.bad{color:var(--bad);border-color:var(--bad)}
 
@@ -178,6 +181,7 @@ dialog::backdrop{background:#0009}
     <button data-tab="energi" aria-selected="false">Energi</button>
     <button data-tab="klimat" aria-selected="false">Värme &amp; klimat</button>
     <button data-tab="kameror" aria-selected="false" hidden>Kameror</button>
+    <button data-tab="idrott" aria-selected="false">Idrott</button>
     <div class="sp"></div>
     <button data-tab="status" aria-selected="false">Status</button>
     <button data-tab="admin" aria-selected="false">Admin</button>
@@ -203,6 +207,7 @@ dialog::backdrop{background:#0009}
   <section id="p-energi" class="hide"></section>
   <section id="p-klimat" class="hide"></section>
   <section id="p-kameror" class="hide"></section>
+  <section id="p-idrott" class="hide"></section>
   <section id="p-styr" class="hide"></section>
   <section id="p-status" class="hide"></section>
   <section id="p-admin" class="hide"></section>
@@ -671,6 +676,7 @@ function nibeGroup(){
 }
 /* ---------- Ikoner (inbyggda SVG, ärver textfärgen) ---------- */
 const ICONS={
+trophy:'<path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 6H5v1a3 3 0 003 3M16 6h3v1a3 3 0 01-3 3"/><path d="M12 13v4M9 20h6M10 17h4"/>',
 house:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
 bolt:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
 flame:'<path d="M12 22c4 0 7-3 7-7 0-4-3-6-4-9-2 2-3 4-3 6-1-1-2-2-2-4-3 2-5 5-5 7 0 4 3 7 7 7z"/>',
@@ -731,7 +737,7 @@ const ICON_RULES=[[/kamera|camera|parkering/,"camera"],[/ytterdörr|lås\b|olås
 [/garage|\bport\b|portsensor/,"garage"],[/\bdörr|passage|\bhall\b/,"door"],[/sovrum|måns|klara/,"bed"],[/badrum/,"bath"],[/\bwc\b/,"toilet"],[/vardagsrum|allrum/,"sofa"],
 [/matplats/,"table"],[/\bkök/,"stove"],[/\bwic\b/,"wardrobe"],[/uterum/,"sun"],[/tvätt/,"washer"],
 [/kalender/,"calendar"],[/jämför/,"sliders"],[/väder|smhi|moln/,"cloud"],[/sonos|musik|högtalare/,"speaker"],[/zigbee|repeater|wifi/,"wifi"],[/elmätare|fastighet/,"meter"]];
-const ICON_HUE={camera:200,house:215,bolt:42,flame:16,thermo:355,drop:200,fan:188,lock:268,bulb:46,car:218,tractor:28,plug:285,coin:40,battery:140,gauge:258,waves:172,speaker:300,wind:205,map:158,toggles:235,play:140,pulse:340,cog:220,chart:215,clock:230,washer:208,dryer:18,wardrobe:30,dish:194,stove:8,bed:262,bath:192,toilet:222,sofa:20,table:32,garage:225,door:24,sun:40,cloud:208,manhole:220,motion:305,bell:44,calendar:352,sliders:245,wifi:210,humid:198,meter:215,radiator:10,snow:192,screen:220};
+const ICON_HUE={trophy:42,camera:200,house:215,bolt:42,flame:16,thermo:355,drop:200,fan:188,lock:268,bulb:46,car:218,tractor:28,plug:285,coin:40,battery:140,gauge:258,waves:172,speaker:300,wind:205,map:158,toggles:235,play:140,pulse:340,cog:220,chart:215,clock:230,washer:208,dryer:18,wardrobe:30,dish:194,stove:8,bed:262,bath:192,toilet:222,sofa:20,table:32,garage:225,door:24,sun:40,cloud:208,manhole:220,motion:305,bell:44,calendar:352,sliders:245,wifi:210,humid:198,meter:215,radiator:10,snow:192,screen:220};
 function iconSvg(n){return ICONS[n]?`<svg class="ico" style="--ih:${ICON_HUE[n]!=null?ICON_HUE[n]:215}" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`:"";}
 function ic(label,def){const t=String(label||"").replace(/<[^>]*>/g,"").toLowerCase();for(const [r,n] of ICON_RULES)if(r.test(t))return iconSvg(n);return def?iconSvg(def):"";}
 function dualTile(attrs,label,a,b,cls){
@@ -2961,12 +2967,90 @@ async function draw(){
   else if(state.tab==="energi")await renderEnergi();
   else if(state.tab==="klimat")await renderKlimat();
   else if(state.tab==="kameror")renderKameror();
+  else if(state.tab==="idrott")await renderIdrott();
   else if(state.tab==="styr")await renderStyr();
   else if(state.tab==="status")renderStatus();
   else renderAdmin();
   if(state.modal&&$("#dlg").open)await renderModal();
 }
-const NAV_ICONS={oversikt:"house",styr:"toggles",plan:"map",flows:"play",sonos:"speaker",energi:"bolt",timpris:"coin",detalj:"chart",klimat:"thermo",kameror:"camera",status:"pulse",admin:"cog"};
+/* =====================================================================
+   IDROTT (ishockey + fotboll) – data via workern /sport (API-Sports)
+   ===================================================================== */
+const SPORT_LIGOR=[["allsvenskan","Allsvenskan"],["superettan","Superettan"],["ettan-norra","Ettan norra"],["ettan-sodra","Ettan södra"],["damallsvenskan","OBOS Damallsvenskan"],["elitettan","Elitettan"]];
+/* Sändare per serie. Datakällan saknar sändningstider, så korten länkar till sändarens tablå. */
+const SPORT_TV={allsvenskan:["TV4 Play","https://www.tv4play.se/sport"],superettan:["TV4 Play","https://www.tv4play.se/sport"],"ettan-norra":["Expressen Play","https://www.expressen.se/play/"],"ettan-sodra":["Expressen Play","https://www.expressen.se/play/"],damallsvenskan:["Expressen Play","https://www.expressen.se/play/"],elitettan:["Expressen Play","https://www.expressen.se/play/"]};
+const SP_DONE=/^(FT|AET|PEN|AOT|AP|FIN|AWD|WO)$/,SP_LIVE=/^(1H|HT|2H|ET|BT|P|LIVE|P1|P2|P3|OT|SUSP|INT)$/;
+(function(){try{const s=JSON.parse(localStorage.getItem("sportSel")||"{}");state.sp={sport:s.sport||"ishockey",liga:s.liga||"allsvenskan",view:"matcher",d:{}};}catch(e){state.sp={sport:"ishockey",liga:"allsvenskan",view:"matcher",d:{}};}})();
+function spSave(){try{localStorage.setItem("sportSel",JSON.stringify({sport:state.sp.sport,liga:state.sp.liga}));}catch(e){}}
+function spDemo(k){
+  const now=Date.now(),H=36e5,D=864e5,fb=k!=="ishockey";
+  const teams=fb?["Mjällby AIF","Hammarby","Malmö FF","Djurgården","IF Elfsborg","BK Häcken","AIK","IFK Göteborg"]:["MODO Hockey","Almtuna","Björklöven","Timrå IK","AIK","Södertälje","Västerås","Kalmar"];
+  const table=teams.map((t,i)=>fb?{pos:i+1,team:t,p:30,w:18-i,d:5,l:7+i,gf:55-i*3,ga:30+i*2,pts:59-i*3-(i>3?1:0)}:{pos:i+1,team:t,p:52,w:26-i*2,otw:3,otl:2,l:21-i,gf:170-i*8,ga:130+i*4,pts:92-i*7});
+  const games=[];
+  for(let i=-6;i<8;i++){const a=teams[(i+8)%teams.length],b=teams[(i+11)%teams.length],ts=now+i*3*D+((i*7)%5)*H+2*H;
+    games.push({id:i+10,ts,home:fb?a:(i%2?"MODO Hockey":b),away:fb?b:(i%2?b:"MODO Hockey"),hs:i<0?(i*3+20)%5:null,as:i<0?(i*5+20)%4:null,st:i<0?"FT":"NS"});}
+  games.sort((a,b)=>a.ts-b.ts);
+  return {league:fb?(SPORT_LIGOR.find(x=>x[0]===k)||[0,k])[1]:"HockeyAllsvenskan",season:2026,table,games,team:"MODO Hockey",at:now,demo:true};
+}
+async function spLoad(k,force){
+  const c=state.sp.d[k];if(c&&!force&&Date.now()-c.at<30*60e3)return c.d;
+  let d;
+  if(isDemo())d=spDemo(k);
+  else if(!isCloud())d={error:"Idrottsdata hämtas via Cloudflare-workern och kräver molnläget."};
+  else{try{const r=await fetch(base()+"/sport?k="+encodeURIComponent(k),{headers:{"Authorization":"Bearer "+cfg.session}});const j=await r.json().catch(()=>({}));
+    d=r.ok?j:{error:r.status===404||r.status===405?"Workern behöver uppdateras (worker/worker.js).":(j.error||"Kunde inte läsa idrottsdata ("+r.status+")")};}
+    catch(e){d={error:e.message};}}
+  state.sp.d[k]={at:d.error?Date.now()-25*60e3:Date.now(),d};return d;
+}
+const spFmt=ts=>{const o={timeZone:"Europe/Stockholm"},d=new Date(ts);return new Intl.DateTimeFormat("sv-SE",{...o,weekday:"short",day:"numeric",month:"short"}).format(d)+" "+new Intl.DateTimeFormat("sv-SE",{...o,hour:"2-digit",minute:"2-digit"}).format(d);};
+function spTable(d,hock,mark){
+  const th=(a,t)=>`<th${a?` class="r"`:""}>${t}</th>`;
+  const cols=hock?["S","V","VÖ","FÖ","F","GM","IM","P"]:["S","V","O","F","GM","IM","+/-","P"];
+  const row=r=>{const v=hock?[r.p,r.w,r.otw,r.otl,r.l,r.gf,r.ga,r.pts]:[r.p,r.w,r.d,r.l,r.gf,r.ga,(r.gf-r.ga>0?"+":"")+(r.gf-r.ga),r.pts];
+    return `<tr${mark&&mark.test(r.team)?' class="sp-me"':""}><td>${r.pos}</td><td>${esc(r.team)}</td>${v.map((x,i)=>`<td class="r${i===v.length-1?" b":""}">${x==null?"–":x}</td>`).join("")}</tr>`;};
+  return `<div class="card" style="overflow-x:auto"><table class="sp-t"><thead><tr><th>#</th><th>Lag</th>${cols.map(c=>th(1,c)).join("")}</tr></thead><tbody>${(d.table||[]).map(row).join("")||`<tr><td colspan="${cols.length+2}" class="note">Tabellen är inte tillgänglig ännu.</td></tr>`}</tbody></table></div>`;
+}
+function spMatch(g,o){
+  o=o||{};const done=SP_DONE.test(g.st||""),live=SP_LIVE.test(g.st||""),me=o.me;
+  const nm=n=>me&&me.test(n)?`<b>${esc(n)}</b>`:esc(n);
+  const sc=(done||live)&&g.hs!=null?`<span class="sp-sc">${g.hs} – ${g.as}</span>`:`<span class="sp-sc mut">${new Date(g.ts).toLocaleTimeString("sv-SE",{timeZone:"Europe/Stockholm",hour:"2-digit",minute:"2-digit"})}</span>`;
+  const tv=!done&&o.tv?`<a class="pill" href="${esc(o.tv[1])}" target="_blank" rel="noopener" title="Sändningstid finns inte i datakällan – öppnar tablån">TV: ${esc(o.tv[0])} ↗</a>`:"";
+  return `<div class="card sp-m${o.next?" sp-next":""}"><div class="sp-d">${o.next?'<span class="pill" style="background:var(--accent);color:var(--accent-ink);border-color:var(--accent)">Nästa match</span> ':""}${spFmt(g.ts)}${live?' <span class="pill bad">Pågår</span>':""}</div><div class="sp-teams"><span>${nm(g.home)}</span>${sc}<span style="text-align:right">${nm(g.away)}</span></div>${tv?`<div style="margin-top:6px">${tv}</div>`:""}</div>`;
+}
+async function renderIdrott(){
+  const S=state.sp,hock=S.sport==="ishockey",key=hock?"ishockey":S.liga;
+  const bar=`<div class="bar" style="margin:0 0 10px"><h2 style="margin:0">Idrott</h2><span class="grow"></span><div class="seg" id="spSport"><button data-spsport="ishockey" aria-pressed="${hock}">Ishockey</button><button data-spsport="fotboll" aria-pressed="${!hock}">Fotboll</button></div></div>`
+    +(hock?"":`<div class="bar" style="margin:0 0 10px">${SPORT_LIGOR.map(([k,n])=>`<button class="chip" data-spliga="${k}" aria-pressed="${S.liga===k}">${n}</button>`).join("")}</div>`);
+  const el=$("#p-idrott");if(!el.innerHTML)el.innerHTML=bar+'<div class="note">Hämtar…</div>';
+  const d=await spLoad(key);if(state.tab!=="idrott")return;
+  let h=bar;
+  if(d.error&&!d.table){el.innerHTML=h+`<div class="card"><b>Kunde inte hämta idrottsdata.</b><div class="note">${esc(d.error)}</div></div>`;return;}
+  const now=Date.now(),games=d.games||[],isDone=g=>SP_DONE.test(g.st||""),
+    up=games.filter(g=>!isDone(g)&&(g.ts>=now-3*36e5||SP_LIVE.test(g.st||""))).sort((a,b)=>a.ts-b.ts),
+    past=games.filter(isDone).sort((a,b)=>b.ts-a.ts);
+  const upd=`<div class="note" style="margin-top:10px">${esc(d.league||"")} ${d.season||""} · uppdaterad ${spFmt(d.at||now)}${d.stale?" · visar sparad data ("+esc(d.error)+")":""}${d.demo?" · demodata":""}</div>`;
+  if(hock){
+    const me=/modo/i,tv=null;
+    h+=`<h3 style="margin:14px 0 8px">${ic("Idrott","trophy")}${esc(d.team||"MODO Hockey")} · herr A-lag</h3>`;
+    h+=`<div class="rowN" style="--c:2;margin-bottom:12px"><div><div class="note" style="margin:0 0 6px">Nästa match</div>${up[0]?spMatch(up[0],{next:1,me}):'<div class="card note">Ingen kommande match hittades.</div>'}</div>
+      <div><div class="note" style="margin:0 0 6px">Senaste resultat</div>${past[0]?spMatch(past[0],{me}):'<div class="card note">Inga spelade matcher ännu.</div>'}</div></div>`;
+    h+=`<h3 style="margin:14px 0 8px">Hockeyallsvenskan · tabell</h3>${spTable(d,true,me)}`;
+    h+=`<h3 style="margin:14px 0 8px">Spelschema</h3><div class="sp-list">${up.map((g,i)=>spMatch(g,{next:i===0,me})).join("")||'<div class="note">Inga kommande matcher.</div>'}</div>`;
+    if(past.length)h+=`<details style="margin-top:12px"><summary>Spelade matcher (${past.length})</summary><div class="sp-list" style="margin-top:8px">${past.map(g=>spMatch(g,{me})).join("")}</div></details>`;
+  }else{
+    const tvv=SPORT_TV[key];
+    h+=`<div class="bar" style="margin:0 0 10px"><div class="seg" id="spView"><button data-spview="matcher" aria-pressed="${S.view==="matcher"}">Kommande matcher</button><button data-spview="tabell" aria-pressed="${S.view==="tabell"}">Tabell</button></div></div>`;
+    if(S.view==="tabell")h+=spTable(d,false);
+    else{
+      h+=up.length?`<div class="sp-list">${up.map(g=>spMatch(g,{tv:tvv})).join("")}</div>`:`<div class="card note">Inga kommande matcher hittades. Säsongen kan vara slut eller schemat ännu inte släppt.</div>`;
+      if(past.length)h+=`<details style="margin-top:12px"${up.length?"":" open"}><summary>Senaste resultat</summary><div class="sp-list" style="margin-top:8px">${past.slice(0,12).map(g=>spMatch(g)).join("")}</div></details>`;
+      h+=`<div class="note" style="margin-top:10px">TV: datakällan har inga sändningstider. Matcherna länkar till ${esc(tvv[0])}s tablå.</div>`;
+    }
+  }
+  el.innerHTML=h+upd;
+}
+
+const NAV_ICONS={oversikt:"house",styr:"toggles",plan:"map",flows:"play",sonos:"speaker",energi:"bolt",timpris:"coin",detalj:"chart",klimat:"thermo",kameror:"camera",idrott:"trophy",status:"pulse",admin:"cog"};
 function navIcons(){document.querySelectorAll("#nav button").forEach(b=>{if(!b.querySelector(".ico"))b.insertAdjacentHTML("afterbegin",iconSvg(NAV_ICONS[b.dataset.tab]));});}
 function showTab(t){
   if(t==="kameror"&&!CAMERAS_ON)t="oversikt";
@@ -2974,8 +3058,8 @@ function showTab(t){
   if(t==="plan"){t="styr";state.styrView="hus";state.husRoom=null;}else if(t==="styr"&&state.styrView==="hus")state.styrView="styr";
   state.tab=t;state.prop=t==="oversikt"?(state.ovProp||"235"):"235";drawProp();state.search="";if(t!=="oversikt"&&document.body.classList.contains("panel"))setPanel(false);
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===(t==="styr"&&state.styrView==="hus"?"plan":t)));
-  for(const k of ["oversikt","energi","klimat","kameror","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
-  const stale=Date.now()-(state.lastRefresh||0)>120000,p=stale?refresh({force:true}):draw();
+  for(const k of ["oversikt","energi","klimat","kameror","idrott","styr","status","admin"])$("#p-"+k).classList.toggle("hide",k!==t);
+  const stale=t!=="idrott"&&Date.now()-(state.lastRefresh||0)>120000,p=stale?refresh({force:true}):draw();
   if(t==="kameror")Promise.resolve(p).catch(()=>{}).then(()=>setTimeout(()=>camSnapAll(true),500));
 }
 
@@ -2987,6 +3071,10 @@ $("#nav").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if
 $("#segProp").addEventListener("click",e=>{const b=e.target.closest("[data-prop]");if(!b)return;state.prop=state.ovProp=b.dataset.prop;drawProp();draw();});
 
 document.addEventListener("click",async e=>{
+  {const a=e.target.closest("[data-spsport]"),b=e.target.closest("[data-spliga]"),c=e.target.closest("[data-spview]");
+   if(a){state.sp.sport=a.dataset.spsport;spSave();$("#p-idrott").innerHTML="";draw();return;}
+   if(b){state.sp.liga=b.dataset.spliga;state.sp.view="matcher";spSave();$("#p-idrott").innerHTML="";draw();return;}
+   if(c){state.sp.view=c.dataset.spview;draw();return;}}
   const th=e.target.closest("#segTheme [data-theme]");if(th){setTheme(th.dataset.theme);return;}
   if(e.target.id==="panelBtn"){showTab("oversikt");setPanel(true);return;}
   if(e.target.id==="panelX"){setPanel(false);return;}

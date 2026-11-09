@@ -52,6 +52,11 @@ export default {
         const r = await fetch(target.toString(), { cf: { cacheTtl: 300, cacheEverything: true } });
         return new Response(await r.text(), { status: r.status, headers: { "Content-Type": "text/calendar; charset=utf-8", ...cors } });
       }
+      if (url.pathname === "/sport" && req.method === "GET") {
+        if (!(await sessionOk(req, env))) return json({ error: "Inte inloggad" }, 401, cors);
+        try { return json(await sportData(env, url.searchParams.get("k") || ""), 200, cors); }
+        catch (e) { return json({ error: e.message }, 502, cors); }
+      }
       if (url.pathname === "/tibber" && req.method === "GET") {
         if (!(await sessionOk(req, env))) return json({ error: "Inte inloggad" }, 401, cors);
         if (url.searchParams.get("history")) {
@@ -290,4 +295,86 @@ async function proxy(req, url, env, cors) {
   let r = await call(await homeySession(env, false));
   if (r.status === 401) r = await call(await homeySession(env, true));
   return new Response(r.body, { status: r.status, headers: { "Content-Type": r.headers.get("Content-Type") || "application/json", ...cors } });
+}
+
+
+/* ---- Idrott: tabeller och spelschema via API-Sports (api-football / api-hockey) ----
+   Secret: APISPORTS_KEY (gratiskonto på api-sports.io räcker; samma nyckel för fotboll och hockey).
+   Svaren cachas i KV (1 h) och återanvänds vid fel, så gratisgränsen (100 anrop/dygn) räcker. */
+const SPORT = {
+  ishockey: { host: "v1.hockey.api-sports.io", hockey: true, name: /hockeyallsvenskan/i, team: /modo/i },
+  allsvenskan: { host: "v3.football.api-sports.io", name: /^allsvenskan$/i },
+  superettan: { host: "v3.football.api-sports.io", name: /^superettan$/i },
+  "ettan-norra": { host: "v3.football.api-sports.io", name: /^ettan.*norra/i },
+  "ettan-sodra": { host: "v3.football.api-sports.io", name: /^ettan.*s(ö|o)dra/i },
+  damallsvenskan: { host: "v3.football.api-sports.io", name: /^(obos )?damallsvenskan$/i },
+  elitettan: { host: "v3.football.api-sports.io", name: /^elitettan$/i },
+};
+async function apis(env, host, path) {
+  if (!env.APISPORTS_KEY) throw new Error("APISPORTS_KEY saknas som secret i Cloudflare-workern dekarson-api.");
+  const r = await fetch("https://" + host + path, { headers: { "x-apisports-key": env.APISPORTS_KEY } });
+  if (!r.ok) throw new Error("API-Sports svarade " + r.status);
+  const j = await r.json();
+  const er = j.errors && (Array.isArray(j.errors) ? j.errors[0] : Object.values(j.errors)[0]);
+  if (er) throw new Error("API-Sports: " + String(er).slice(0, 140));
+  return j.response || [];
+}
+async function sportData(env, k) {
+  const cfg = SPORT[k];
+  if (!cfg) throw new Error("Okänd serie");
+  const ck = "sp:" + k, now = Date.now();
+  const hit = await env.KV.get(ck, "json");
+  if (hit && now - hit.at < 3600e3) return { ...hit, cached: true };
+  if (hit && now - (hit.tried || 0) < 120e3) return { ...hit, cached: true };
+  try {
+    const d = new Date(), y = d.getUTCFullYear(), m = d.getUTCMonth() + 1;
+    const season = cfg.hockey ? (m >= 7 ? y : y - 1) : y;
+    const lgs = (await env.KV.get("sp:lg:" + cfg.host + ":" + season, "json")) || [];
+    let lg = lgs.find((x) => cfg.name.test(x.name));
+    if (!lg) {
+      const all = await apis(env, cfg.host, "/leagues?country=Sweden&season=" + season);
+      const list = all.map((x) => ({ id: x.league ? x.league.id : x.id, name: x.league ? x.league.name : x.name }));
+      await env.KV.put("sp:lg:" + cfg.host + ":" + season, JSON.stringify(list), { expirationTtl: 7 * 86400 });
+      lg = list.find((x) => cfg.name.test(x.name));
+    }
+    if (!lg) throw new Error("Hittade inte serien hos API-Sports för säsongen " + season);
+    let out;
+    if (cfg.hockey) {
+      const st = await apis(env, cfg.host, "/standings?league=" + lg.id + "&season=" + season);
+      const rows = (st[0] || []).flat ? st.flat() : st;
+      const table = rows.map((r) => ({
+        pos: r.position, id: r.team.id, team: r.team.name, p: r.games.played,
+        w: (r.games.win && r.games.win.total) || 0, otw: (r.games.win_overtime && r.games.win_overtime.total) || 0,
+        otl: (r.games.lose_overtime && r.games.lose_overtime.total) || 0, l: (r.games.lose && r.games.lose.total) || 0,
+        gf: r.goals && r.goals.for, ga: r.goals && r.goals.against, pts: r.points,
+      })).sort((a, b) => a.pos - b.pos);
+      const modo = table.find((t) => cfg.team.test(t.team));
+      let games = [];
+      if (modo) {
+        games = (await apis(env, cfg.host, "/games?league=" + lg.id + "&season=" + season + "&team=" + modo.id)).map((g) => ({
+          id: g.id, ts: g.timestamp * 1000, home: g.teams.home.name, away: g.teams.away.name,
+          hs: g.scores.home, as: g.scores.away, st: g.status && g.status.short,
+        }));
+      }
+      out = { league: lg.name, season, table, games, team: modo ? modo.team : "MODO Hockey" };
+    } else {
+      const st = await apis(env, cfg.host, "/standings?league=" + lg.id + "&season=" + season);
+      const grp = st[0] && st[0].league && st[0].league.standings && st[0].league.standings[0] || [];
+      const table = grp.map((r) => ({
+        pos: r.rank, id: r.team.id, team: r.team.name, p: r.all.played, w: r.all.win, d: r.all.draw, l: r.all.lose,
+        gf: r.all.goals.for, ga: r.all.goals.against, pts: r.points, form: r.form || "",
+      }));
+      const games = (await apis(env, cfg.host, "/fixtures?league=" + lg.id + "&season=" + season)).map((g) => ({
+        id: g.fixture.id, ts: g.fixture.timestamp * 1000, home: g.teams.home.name, away: g.teams.away.name,
+        hs: g.goals.home, as: g.goals.away, st: g.fixture.status && g.fixture.status.short,
+      })).sort((a, b) => a.ts - b.ts);
+      out = { league: lg.name, season, table, games };
+    }
+    out.at = now;
+    await env.KV.put(ck, JSON.stringify(out));
+    return { ...out, cached: false };
+  } catch (e) {
+    if (hit) { await env.KV.put(ck, JSON.stringify({ ...hit, tried: now })); return { ...hit, cached: true, stale: true, error: e.message }; }
+    throw e;
+  }
 }
