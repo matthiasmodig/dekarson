@@ -487,7 +487,20 @@ async function loadSeries(minDate){
   if(S.traktor&&!Object.keys(S.traktor.kr||{}).length)S.traktor.hkr=await safe(()=>hourlyKrBest(cfg.ids.trLoad));
   if(S.golv&&!Object.keys(S.golv.kr||{}).length)S.golv.hkr=await safe(()=>hourlyKrBest(cfg.ids.floor));
   if(S.entre&&!Object.keys(S.entre.kr||{}).length)S.entre.hkr=await safe(()=>hourlyKrBest(cfg.ids.entre));
-  addEstKr(S);buildOvr(S);return S;
+  addEstKr(S);buildOvr(S);
+  try{applyDagbok(S,await loadDagbok());}catch(e){}
+  return S;
+}
+/* Dagbok-arket är facit för avslutade dygn: där en rad finns ersätter den Homeys dygnsvärden (rättar mätarhopp och luckor). Dagens dygn kommer alltid från Homey. */
+const DAGBOK_MAP=[["tibber","tibber"],["hushall","hush"],["uppv","uppv"],["vp","vp"],["ovrigt","ovr"],["d236","d236"]];
+function applyDagbok(S,D){
+  if(!S||!D)return S;const t=todayStr();
+  for(const d of Object.keys(D)){if(d>=t)continue;const row=D[d];
+    for(const [dk,sk] of DAGBOK_MAP){const v=row&&row[dk];if(!v||v.kwh==null||!S[sk])continue;
+      S[sk].kwh=S[sk].kwh||{};S[sk].kr=S[sk].kr||{};S[sk].kwh[d]=v.kwh;
+      if(v.kr!=null){S[sk].kr[d]=v.kr;if(S[sk].hkr)delete S[sk].hkr[d];}
+      (S[sk].fromDagbok=S[sk].fromDagbok||{})[d]=true;}}
+  return S;
 }
 /* Övrigt = Entréplatta + Golvvärme Uterum (Homeys definition). Läses direkt från rapportenhet om ID anges i Admin, annars summan av de två mätarna. */
 function buildOvr(S){
@@ -1567,7 +1580,8 @@ async function renderEnergi(){
   const avg=cur.kwh.v>0&&cur.kr.v!=null?cur.kr.v/cur.kwh.v:null,pavg=prv&&prv.kwh.v>0&&prv.kr.v!=null?prv.kr.v/prv.kwh.v:null;
   const days=R.len-cur[u].missing||1,pdays=prv?R.len-prv[u].missing||1:1;
   if(is235){const tb=state.devices[cfg.ids.tibber];
-    const pk=capVal(tb,"meter_money_this_day"),pw=capVal(tb,"meter_kwh_this_day"),lk=capVal(tb,"meter_money_last_day"),lw=capVal(tb,"meter_kwh_last_day");
+    const pk=capVal(tb,"meter_money_this_day"),pw=capVal(tb,"meter_kwh_this_day");let lk=capVal(tb,"meter_money_last_day"),lw=capVal(tb,"meter_kwh_last_day");
+    {const yd=addDays(todayStr(),-1),Tb=S&&S.tibber;if(Tb&&Tb.fromDagbok&&Tb.fromDagbok[yd]){lw=Tb.kwh[yd];if(Tb.kr[yd]!=null)lk=Tb.kr[yd];}}
     h+=grp("Idag och igår",dualTile('data-daily="kr"',"Idag",{v:pk,un:"kr",sub:delta(pk,lk,"mot igår")},{v:pw,un:"kWh",sub:delta(pw,lw,"mot igår")},"sm")+dualTile('data-daily="kr"',"Igår",{v:lk,un:"kr",sub:""},{v:lw,un:"kWh",sub:""},"sm")+await dagbokHtml("card"),4)+catPowerHtml();}
   h+=`<section class="grp" style="margin-top:6px"><h3>Vald period</h3><div class="rowN" style="--c:3">`;
   const dK=R.len-cur.kr.missing||1,dW=R.len-cur.kwh.missing||1,pdK=prv?R.len-prv.kr.missing||1:1,pdW=prv?R.len-prv.kwh.missing||1:1;
