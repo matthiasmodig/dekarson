@@ -893,6 +893,12 @@ async function devModalHtml(id){
   if(hasP||on){const x=await onoffModalHtml(id);h+=x.replace(/^<div class="mhead">[\s\S]*?<\/div>/,"");}
   else h+=`<div class="note" style="margin-top:12px">Klicka på ett värde för att se diagram över tid.</div>`;
   return h;}
+function safeRestartBtn(){
+  const ID="5ffe013f-1f77-41cf-b40e-9c7d2dc32707",f=state.flows.find(x=>x.id===ID)||state.flows.find(x=>/starta upp efter strömavbrott/i.test(x.name));
+  if(!f&&!isDemo())return "";const fid=f?f.id:ID;
+  const cf="Starta efter strömavbrott? Flödet sätter VP - 1, VVB - 1, Avloppspump och Ventilation PÅ, Entré värme AV (och Frysvakt PÅ om det är 10 °C eller kallare ute), startar flödet Shelly – automatisk återanslutning och skickar en statusrapport till din telefon.";
+  return `<button class="btn sm" data-act="flow" data-id="${esc(fid)}" data-confirm="${esc(cf)}" title="Startar flödet Starta upp efter strömavbrott">${state.flash[fid]?"Skickat ✓":"Säkerhetsomstart"}</button>`;
+}
 function statusBar(){
   const L=statusLists(),unl=L.locks.filter(x=>!x.ok).length,al=L.alarms.length+L.open.length;
   const chip=(k,dot,txt)=>`<button class="chip" data-status="${k}"><span class="dot ${dot}"></span>${txt}</button>`;
@@ -902,7 +908,7 @@ function statusBar(){
     ${chip("locks",!L.locks.length?"":(unl?"bad":"ok"),L.locks.length?(unl?`Lås: ${unl} olåst`:"Lås: alla låsta"):"Lås: –")}
     ${chip("alarms",al?"bad":"ok",`Larm/öppet: ${al}`)}
     ${chip("motion",L.motion.length?"on":"",`Rörelse: ${L.motion.length}`)}
-    ${chip("battery",L.battery.length?"bad":"ok",`Svagt batteri: ${L.battery.length}`)}</div>${tempBar()}
+    <span class="grow"></span>${safeRestartBtn()}</div>${tempBar()}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px"><div class="note" style="margin:0">Klicka på en ruta för detaljer och för att ändra.</div>${devSearchHtml()}</div></div>`;
 }
 
@@ -922,7 +928,7 @@ function heatCards(){
   const gp=gPortList().map(p=>{const st=p.open===true?"Öppen":p.open===false?"Stängd":"Okänd",c=p.open===true?"var(--bad)":p.open===false?"var(--good)":"var(--mut)";
     return `<div class="card tile" data-gport="${esc(p.d.id)}" data-nm="${esc("Garageport "+p.k)}" tabindex="0" role="button" title="Visa när porten aktiverats" style="cursor:pointer"><div class="l"><span class="dot" style="background:${c}"></span> ${ic("Garageport")}Garageport ${p.k}<button class="btn sm" data-act="garageport" data-dev="${esc(p.d.id)}" data-nm="${esc("Garageport "+p.k)}" style="float:right;padding:0 8px;min-height:24px;font-size:12px" title="Öppna eller stänga porten">Aktivera</button></div><div class="v" style="color:${c}">${st}</div><div class="s">Klicka för aktiveringshistorik</div></div>`;}).join("");
   /* Manuella Traktor-flöden i Homey (startas via flödets trigger, inget ändras i flödena) */
-  const TRFL=[["a1d33b04-1d54-4b01-9eb3-3b032ec8a2c1",/traktor.*starta nu/i,"Traktor: ladda + värme 3 h","Startar laddning och motorvärmare nu i 3 timmar"],["03993f2e-6a72-4a09-9024-f97304831296",/traktor.*nattstart/i,"Traktor: nattstart","00:01 laddning · 03:00 värme · 06:00 av"],["fec17e2b-7987-4986-b4de-b5fea07b0117",/golvvärme uterum.*starta 24/i,"Golvvärme uterum: starta 24 h","Startar golvvärmen i uterummet i 24 timmar"],["5ffe013f-1f77-41cf-b40e-9c7d2dc32707",/starta upp efter strömavbrott/i,"Starta upp efter strömavbrott","Sätter på VP-1, VVB-1, avloppspump och ventilation, stänger Entré värme, kontrollerar efter ca 80 s och skickar rapport","Starta efter strömavbrott? Flödet sätter VP - 1, VVB - 1, Avloppspump och Ventilation PÅ, Entré värme AV (och Frysvakt PÅ om det är 10 °C eller kallare ute), startar flödet Shelly – automatisk återanslutning och skickar en statusrapport till din telefon."]];
+  const TRFL=[["a1d33b04-1d54-4b01-9eb3-3b032ec8a2c1",/traktor.*starta nu/i,"Traktor: ladda + värme 3 h","Startar laddning och motorvärmare nu i 3 timmar"],["03993f2e-6a72-4a09-9024-f97304831296",/traktor.*nattstart/i,"Traktor: nattstart","00:01 laddning · 03:00 värme · 06:00 av"],["fec17e2b-7987-4986-b4de-b5fea07b0117",/golvvärme uterum.*starta 24/i,"Golvvärme uterum: starta 24 h","Startar golvvärmen i uterummet i 24 timmar"]];
   const trFlow=TRFL.map(([id,re,l,sb,cf])=>{const f=state.flows.find(x=>x.id===id)||state.flows.find(x=>re.test(x.name));if(!f&&!isDemo())return "";const fid=f?f.id:id;
     return `<div class="card tile"><div class="l">${ic(/golv/i.test(l)?"Golvvärme":"Traktor")}${esc(l)}<button class="btn sm" data-act="flow" data-id="${esc(fid)}"${cf?` data-confirm="${esc(cf)}"`:""} style="margin-left:auto" title="Startar flödet ${esc(f?f.name:l)}">${state.flash[fid]?"Skickat ✓":"Starta"}</button></div><div class="s">${esc(sb)}</div></div>`;}).join("");
   const all=t(cfg.ids.koksfläkt,"Köksfläkt")+t(cfg.ids.spotKok,"Spot köksbänk")+tr_(cfg.ids.trLoad,"Traktor laddning","l")+tr_(cfg.ids.trHeat,"Traktor MV","m")+trFlow+r1+gp;
