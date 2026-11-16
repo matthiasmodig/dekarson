@@ -2527,7 +2527,17 @@ function husWin(r){return husDevs(r).filter(d=>/f(ö|o)nster/i.test(devName(d))&
 function husInfo(r){
   const ds=husDevs(r),tp=husTemp(r,ds),hum=husHum(ds,tp),lamps=ds.filter(d=>isLamp(d)&&hasOnoff(d)),on=lamps.filter(d=>capVal(d,"onoff")).length;
   const w=ds.filter(d=>!isLamp(d)||capVal(d,"onoff")).reduce((a,d)=>a+(capVal(d,"measure_power")||0),0)+ds.filter(d=>isLamp(d)&&capVal(d,"onoff")&&false).length;
-  const wAll=countable(ds).reduce((a,d)=>a+((capVal(d,"onoff")!==false?capVal(d,"measure_power"):0)||0),0);
+  const pw=d=>d?((capVal(d,"onoff")!==false?capVal(d,"measure_power"):0)||0):0;
+  let wAll=countable(ds).reduce((a,d)=>a+pw(d),0);
+  if(r.id==="tvatt"){
+    /* Värmepump och varmvattenberedare kan mätas av flera enheter som överlappar (Energi VP / VP - 1, VV-beredare / VVB L1 + L2).
+       Jämför och ta det största värdet i varje grupp, så att samma last aldrig räknas två gånger. */
+    const vpIds=[cfg.ids.vp,"0fe62068-ca36-419b-967f-19d7c3f1caa1"],vvbIds=cfg.ids.vvb||[],grp=new Set([...vpIds,...vvbIds]);
+    const vpMax=Math.max(0,...vpIds.map(id=>pw(state.devices[id])));
+    const vv=vvbIds.map(id=>state.devices[id]).filter(Boolean),tot=vv.filter(d=>/vv-beredare/i.test(devName(d))&&!/l[123]\b/i.test(devName(d))),legs=vv.filter(d=>!tot.includes(d));
+    const vvbMax=Math.max(tot.reduce((a,d)=>a+pw(d),0),legs.reduce((a,d)=>a+pw(d),0));
+    wAll=countable(ds).filter(d=>!grp.has(d.id)).reduce((a,d)=>a+pw(d),0)+vpMax+vvbMax;
+  }
   return {ds,tp,hum,lamps,on,w:wAll};}
 /* Fönsterlampor/spots längs rummets ytterkant. Varje markering är en liten knapp som tänder/släcker just den enheten. */
 /* Liten klickbar "NN %"-text inuti en kart-knapp: öppnar enhetens kort (ljusstyrka) i stället för att tända/släcka */
