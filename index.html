@@ -897,7 +897,7 @@ function safeRestartBtn(){
   const ID="5ffe013f-1f77-41cf-b40e-9c7d2dc32707",f=state.flows.find(x=>x.id===ID)||state.flows.find(x=>/starta upp efter strömavbrott/i.test(x.name));
   if(!f&&!isDemo())return "";const fid=f?f.id:ID;
   const cf="Starta efter strömavbrott? Flödet sätter VP - 1, VVB - 1, Avloppspump och Ventilation PÅ, Entré värme AV (och Frysvakt PÅ om det är 10 °C eller kallare ute), startar flödet Shelly – automatisk återanslutning och skickar en statusrapport till din telefon.";
-  return `<button class="btn sm" data-act="flow" data-id="${esc(fid)}" data-confirm="${esc(cf)}" title="Startar flödet Starta upp efter strömavbrott">${state.flash[fid]?"Skickat ✓":"Säkerhetsomstart"}</button>`;
+  return `<button class="btn sm" data-act="flow" data-id="${esc(fid)}" data-confirm="${esc(cf)}" style="background:#c53838;border-color:#c53838;color:#fff;font-weight:600" title="Startar flödet Starta upp efter strömavbrott">${state.flash[fid]?"Skickat ✓":"Säkerhetsomstart"}</button>`;
 }
 function statusBar(){
   const L=statusLists(),unl=L.locks.filter(x=>!x.ok).length,al=L.alarms.length+L.open.length;
