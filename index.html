@@ -2515,10 +2515,12 @@ const HUS_ROOMS=[
 ];
 /* Värmepumpens fasmätare: enheter som heter "VP L1", "VP L2", "VP L3" (inte VVB) */
 const vpPhases=()=>Object.values(state.devices).filter(d=>d&&propOf(d)===state.prop&&/(^|[^a-zåäö])vp\b.*\bl[123]\b/i.test(devName(d))&&!/vvb|vv-/i.test(devName(d)));
+/* Varmvattnets fasmätare: "VV L1", "VV L2", "VV L3" (och "VVB L1" ...) */
+const vvPhases=()=>Object.values(state.devices).filter(d=>d&&propOf(d)===state.prop&&/(^|[^a-zåäö])vvb?\b.*\bl[123]\b/i.test(devName(d)));
 function husDevs(r){if(r.none)return [];
   const out=propDevices().filter(d=>{const z=zoneName(d),n=devName(d);if(r.name)return r.name.test(n);return r.z&&r.z.test(z)&&!(r.notName&&r.notName.test(n));});
   /* Värmepump (Energi VP + VP - 1) och varmvattenberedare (VVB) står i tvättstugan: räknas med i rummets effekt även om den ligger i en annan zon i Homey */
-  if(r.id==="tvatt"){for(const d of [state.devices[cfg.ids.vp],state.devices["0fe62068-ca36-419b-967f-19d7c3f1caa1"],...vpPhases(),...(cfg.ids.vvb||[]).map(id=>state.devices[id])]){if(d&&propOf(d)===state.prop&&!out.includes(d))out.push(d);}}
+  if(r.id==="tvatt"){for(const d of [state.devices[cfg.ids.vp],state.devices["0fe62068-ca36-419b-967f-19d7c3f1caa1"],...vpPhases(),...vvPhases(),...(cfg.ids.vvb||[]).map(id=>state.devices[id])]){if(d&&propOf(d)===state.prop&&!out.includes(d))out.push(d);}}
   return out;}
 function husTemp(r,ds){
   let sens=ds.find(d=>/^temperatursensor/i.test(devName(d))&&capVal(d,"measure_temperature")!=null);
@@ -2537,7 +2539,7 @@ function husInfo(r){
     const vpIds=[cfg.ids.vp,"0fe62068-ca36-419b-967f-19d7c3f1caa1"],vvbIds=cfg.ids.vvb||[],grp=new Set([...vpIds,...vvbIds]);
     const ph=vpPhases();ph.forEach(d=>grp.add(d.id));
     const vpMax=Math.max(0,...vpIds.map(id=>pw(state.devices[id])),ph.reduce((a,d)=>a+pw(d),0));
-    const vv=vvbIds.map(id=>state.devices[id]).filter(Boolean),tot=vv.filter(d=>/vv-beredare/i.test(devName(d))&&!/l[123]\b/i.test(devName(d))),legs=vv.filter(d=>!tot.includes(d));
+    const vv=vvbIds.map(id=>state.devices[id]).filter(Boolean),tot=vv.filter(d=>/vv-beredare/i.test(devName(d))&&!/l[123]\b/i.test(devName(d))),legs=[...new Set([...vv.filter(d=>!tot.includes(d)),...vvPhases()])];legs.forEach(d=>grp.add(d.id));
     const vvbMax=Math.max(tot.reduce((a,d)=>a+pw(d),0),legs.reduce((a,d)=>a+pw(d),0));
     wAll=countable(ds).filter(d=>!grp.has(d.id)).reduce((a,d)=>a+pw(d),0)+vpMax+vvbMax;
   }
