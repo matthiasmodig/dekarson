@@ -893,6 +893,23 @@ async function devModalHtml(id){
   if(hasP||on){const x=await onoffModalHtml(id);h+=x.replace(/^<div class="mhead">[\s\S]*?<\/div>/,"");}
   else h+=`<div class="note" style="margin-top:12px">Klicka på ett värde för att se diagram över tid.</div>`;
   return h;}
+/* El nu: visar läget i dashboarden och skickar samma rapport till WhatsApp via ett eget Homey-flöde */
+const ELNU_FLOW="e308c047-44ea-41b3-93a4-266962abe524",ELNU={live:"560efffc-57e8-4277-a202-933f2f6efb58",month:"9984ff30-8ea8-4a59-8b77-ca10a9722cdf",price:"d58b4538-b597-4d48-b58d-1794b7ff6d64"};
+function elNuBtn(){return `<button class="btn sm" data-act="elnu" style="background:#16844a;border-color:#16844a;color:#fff;font-weight:600" title="Visar El nu och skickar rapporten till WhatsApp">El nu${state.flash.elnu?" ✓":""}</button>`;}
+function elNuHtml(){
+  const g=id=>state.devices[id],v=(d,k)=>d&&d.available!==false&&d.capabilitiesObj&&d.capabilitiesObj[k]?d.capabilitiesObj[k].value:null;
+  const demo=isDemo(),live=g(ELNU.live),mon=g(ELNU.month),pr=g(ELNU.price);
+  const W=demo?1840:v(live,"measure_power"),A=[1,2,3].map(i=>demo?[4.1,2.8,3.3][i-1]:v(live,"measure_current.L"+i));
+  const cur=demo?1.12:v(pr,"meter_price_h0"),avg=demo?0.98:v(pr,"meter_price_this_day_avg"),kr=demo?1860:v(mon,"meter_money_this_month"),kwh=demo?1320:v(mon,"meter_kwh_this_month");
+  const now=new Date(),parts=Object.fromEntries(new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Stockholm",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric",hourCycle:"h23"}).formatToParts(now).map(x=>[x.type,Number(x.value)]));
+  const days=new Date(Date.UTC(parts.year,parts.month,0)).getUTCDate(),el=parts.day-1+parts.hour/24+parts.minute/1440,FIX=370;
+  const fk=el>0&&kr!=null&&kr>=FIX?FIX+(kr-FIX)*days/el:null,fe=el>0&&kwh!=null?kwh*days/el:null;
+  const mn=new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Stockholm",month:"long"}).format(now);
+  const sent=state.flash.elnuErr?`<div class="warn">Kunde inte skicka till WhatsApp: ${esc(state.flash.elnuErr)}</div>`:state.flash.elnu?'<div class="note" style="color:var(--good);font-weight:600">Skickat till WhatsApp-gruppen ✓</div>':'<div class="note">En rapport skickas till WhatsApp-gruppen när du öppnar rutan.</div>';
+  return `<div class="mhead"><h2>El nu · Dekarsön 235</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>
+  <div class="grid">${tile("Effekt just nu",W!=null?fmt(W,0):"–","W",A.map((a,i)=>"L"+(i+1)+" "+(a!=null?fmt(a,1):"–")+" A").join(" · "))}${tile("Elpris nu",cur!=null?fmt(cur,2):"–","kr/kWh","Dagens snitt "+(avg!=null?fmt(avg,2):"–"))}${tile("Hittills i "+mn,kr!=null?fmt(kr,0):"–","kr",kwh!=null?fmt(kwh,0)+" kWh":"–")}${tile("Prognos "+mn,fk!=null?fmt(fk,0):"–","kr",(fe!=null?fmt(fe,0)+" kWh · ":"")+"inkl. "+FIX+" kr fasta avgifter")}</div>
+  <div style="margin-top:10px">${sent}</div>${demo?'<div class="note">Demodata.</div>':""}`;
+}
 function safeRestartBtn(){
   const ID="5ffe013f-1f77-41cf-b40e-9c7d2dc32707",f=state.flows.find(x=>x.id===ID)||state.flows.find(x=>/starta upp efter strömavbrott/i.test(x.name));
   if(!f&&!isDemo())return "";const fid=f?f.id:ID;
@@ -908,7 +925,7 @@ function statusBar(){
     ${chip("locks",!L.locks.length?"":(unl?"bad":"ok"),L.locks.length?(unl?`Lås: ${unl} olåst`:"Lås: alla låsta"):"Lås: –")}
     ${chip("alarms",al?"bad":"ok",`Larm/öppet: ${al}`)}
     ${chip("motion",L.motion.length?"on":"",`Rörelse: ${L.motion.length}`)}
-    <span class="grow"></span>${safeRestartBtn()}</div>${tempBar()}
+    <span class="grow"></span>${elNuBtn()} ${safeRestartBtn()}</div>${tempBar()}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px"><div class="note" style="margin:0">Klicka på en ruta för detaljer och för att ändra.</div>${devSearchHtml()}</div></div>`;
 }
 
@@ -2242,6 +2259,7 @@ async function renderModal(){
   if(m.t==="cal"){body.innerHTML=calModalHtml();return;}
   if(m.t==="room"){body.innerHTML=roomModalHtml(m.k);return;}
   if(m.t==="dagbok"){body.innerHTML=`<div class="mhead"><h2>Dagbok</h2><span class="grow"></span><button class="btn" data-close="1">Stäng</button></div>`+await dagbokHtml(true);return;}
+  if(m.t==="elnu"){body.innerHTML=elNuHtml();return;}
   if(m.t==="now"){body.innerHTML=nowModalHtml();return;}
   if(m.t==="tpavg"){body.innerHTML=await tpAvgModalHtml();return;}
   if(m.t==="onoff"){body.innerHTML=await onoffModalHtml(m.k);return;}
@@ -3177,6 +3195,7 @@ document.addEventListener("click",async e=>{
     else if(act==="roomwin"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husWin(r))await setCap(d.id,"onoff",to);draw();}
     else if(act==="roomlights"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husDevs(r).filter(d=>isLamp(d)&&hasOnoff(d)))await setCap(d.id,"onoff",to);draw();}
     else if(act==="styrview"){state.styrView=b.dataset.v;state.search="";draw();}
+    else if(act==="elnu"){openModal("elnu","");try{await runFlow(ELNU_FLOW);state.flash.elnu=true;}catch(e){state.flash.elnuErr=e.message;}if(state.modal&&state.modal.t==="elnu")$("#dlgBody").innerHTML=elNuHtml();draw();setTimeout(()=>{delete state.flash.elnu;delete state.flash.elnuErr;draw();},4000);}
     else if(act==="flow"){if(b.dataset.confirm&&!confirm(b.dataset.confirm))return;await runFlow(id);state.flash[id]=true;draw();setTimeout(()=>{delete state.flash[id];draw();},1800);}
     else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
       for(const d of propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d)&&zoneName(d)===z))await setCap(d.id,"onoff",to);draw();}
