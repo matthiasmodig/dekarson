@@ -2222,7 +2222,7 @@ const CHARTS=[
    return barChart(a,null,a.map((_,i)=>labelDate(addDays(s,i*7))),unitName(eu));}},
  {k:"hours",title:"Timmedeleffekt, senaste 24 timmarna (kW)",async build(c){
    if(state.prop!=="235")return `<div class="note">Gäller Dekarsön 235.</div>`;
-   const hh=await loadHourly(),keys=doneKeys(hh).slice(-24);return lineChart(keys.map(k=>hh[k]),keys.map(k=>hourLbl(k)),"kW");},
+   const hh=await loadHourly(),keys=doneKeys(hh).slice(-24);return lineChart(keys.map(k=>hh[k]),keys.map(k=>hourLbl(k)),"kW",null,fillH());},
    async more(c){if(state.prop!=="235")return "";const hh=await loadHourly(),all=doneKeys(hh),k7=all.slice(-168);
      const sm=Array(24).fill(0),n=Array(24).fill(0);for(const k of all){const hr=+k.slice(11);sm[hr]+=hh[k];n[hr]++;}
      return `<div class="card" style="margin-top:14px"><h2>Senaste 7 dygnen, timme för timme (kW)</h2>${barChart(k7.map(k=>hh[k]),null,k7.map(k=>k.slice(8,10)+"/"+k.slice(5,7)+" "+k.slice(11)+":00"),"kW")}</div>
@@ -2394,8 +2394,10 @@ async function loadHourly(){
   }
   state.hourly={t:Date.now(),v:h};return h;
 }
-function lineChart(vals,labels,unit,color){
-  const W=1000,H=260,L=52,B=28,T=10,R=8,n=vals.length;
+/* Diagramrutorna ska fylla sin ruta: räkna ut viewBox-höjd så diagrammet blir ca 290 px högt i den bredd rutan får (ungefär, ur fönsterbredden) */
+function fillH(){const sb=window.innerWidth>900?248:0,cw=Math.max(300,window.innerWidth-sb-34),cols=Math.max(1,Math.floor((cw+12)/432)),w=(cw-12*(cols-1))/cols-34;return Math.max(260,Math.min(620,Math.round(1000*290/w)));}
+function lineChart(vals,labels,unit,color,Hh){
+  const W=1000,H=Hh||260,L=52,B=28,T=10,R=8,n=vals.length;
   const all=vals.filter(x=>x!=null);if(!all.length)return `<div class="note">Ingen data.</div>`;
   const max=niceMax(Math.max(...all,0.0001)),bw=(W-L-R)/n,y=v=>T+(H-T-B)*(1-v/max);let g="";
   for(let i=0;i<=4;i++){const v=max*i/4,yy=y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${L-6}" y="${yy+4}" text-anchor="end">${fmt(v,max<10?1:0)}</text>`;}
