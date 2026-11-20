@@ -81,6 +81,8 @@ h3{font-size:14px;margin:18px 0 8px;font-weight:700;color:var(--mut);text-transf
 @media(max-width:900px){.flrow{grid-template-columns:1fr 1fr}.flrow .flow{grid-column:auto!important}}
 @media(max-width:560px){.flrow{grid-template-columns:1fr}}
 .grid.wide{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.stTop{grid-column:1/-1;display:grid;gap:12px;grid-template-columns:minmax(0,1fr);align-items:start}
+@media(min-width:1000px){.stTop{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)}}
 .note{color:var(--mut);font-size:13px;margin-top:8px}
 .warn{background:#fff4dd;color:#6f4400;border:1px solid #efd08a;border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:14px}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .warn{background:#2b2411;color:#f2d28f;border-color:#58461c}}
@@ -2835,14 +2837,16 @@ function renderStatus(){
   const cat=(title,items,cls,cnt,sty)=>`<div class="card" style="${sty||""}"><h2>${title} <span class="pill ${cls||""}">${cnt!=null?cnt:items.length}</span></h2>${items.length?items.map(x=>`<div class="stat"><span>${x}</span></div>`).join(""):`<div class="note" style="margin:0">Inga</div>`}</div>`;
   const tbl=(title,head,rows,cnt,sty,cls,L0)=>`<div class="card" style="${sty||""}"><h2>${title} <span class="pill ${cls||""}">${cnt!=null?cnt:rows.length}</span></h2>${rows.length?`<table class="cols"><tr>${head.map((x,i)=>`<th${i>=(L0||1)?` style="text-align:right"`:""}>${x}</th>`).join("")}</tr>${rows.map(r=>`<tr>${r.map((x,i)=>`<td${i>=(L0||1)?` style="text-align:right;white-space:nowrap"`:""}>${x}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="note" style="margin:0">Inga</div>`}</div>`;
   let h=`<div class="grid wide">`;
+  h+=`<div class="stTop">`;
+  if(S.lights){const lo=L.lights.filter(hasOnoff);h+=cat("Tända lampor",L.lights.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${hasOnoff(d)?`<button class="btn sm" style="white-space:nowrap" data-act="lampoff" data-dev="${esc(d.id)}">Slå av</button>`:""}`),"",null,"min-width:0").replace(/<\/div>$/,lo.length?`<div style="margin-top:8px"><button class="btn sm" data-act="alloff">Släck alla (${lo.length})</button></div></div>`:"</div>");}
   if(S.sockets){
     const {on,tot,ovr}=consumersNow();
-    h+=cat("Påslagna enheter och förbrukare",on.map(x=>`<span class="dot on"></span>${esc(devName(x.d))} <span class="pill">${esc(zoneName(x.d))}</span></span><span>${x.w!=null?fmt(x.w,0)+" W":"– W"}`).concat(on.length?[`<b>Summa uppmätt</b></span><b>${fmt(tot,0)} W`]:[]).concat(ovr!=null?[`Övrigt, ej mätt <span class="pill">Fastighet minus uppmätt</span></span><span>${fmt(ovr,0)} W`,`<span class="note" style="margin:0;font-size:12px">Kan vara: kyl och frys, spis och ugn, TV och router, laddare, cirkulationspumpar och styrelektronik i värmesystemet, omätta lampor och uttag samt standby-förbrukning.</span>`]:[]),"",on.length,"grid-column:span 2;min-width:0");}
+    h+=cat("Påslagna enheter och förbrukare",on.map(x=>`<span class="dot on"></span>${esc(devName(x.d))} <span class="pill">${esc(zoneName(x.d))}</span></span><span>${x.w!=null?fmt(x.w,0)+" W":"– W"}`).concat(on.length?[`<b>Summa uppmätt</b></span><b>${fmt(tot,0)} W`]:[]).concat(ovr!=null?[`Övrigt, ej mätt <span class="pill">Fastighet minus uppmätt</span></span><span>${fmt(ovr,0)} W`,`<span class="note" style="margin:0;font-size:12px">Kan vara: kyl och frys, spis och ugn, TV och router, laddare, cirkulationspumpar och styrelektronik i värmesystemet, omätta lampor och uttag samt standby-förbrukning.</span>`]:[]),"",on.length,"min-width:0");}
   if(S.locks||S.open){h+=`<div style="display:flex;flex-direction:column;gap:12px;min-width:0">`;
     if(S.locks)h+=cat("Lås",L.locks.map(x=>`<span class="dot ${x.ok?"ok":"bad"}"></span>${esc(devName(x.d))}</span><span>${x.ok?"Låst":"Olåst"}`),L.locks.some(x=>!x.ok)?"bad":"");
     if(S.open)h+=cat("Kontakter aktiva (öppet)",L.open.map(d=>`<span class="dot bad"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
     h+=`</div>`;}
-  if(S.lights)h+=cat("Tända lampor",L.lights.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
+  h+=`</div>`;
   {const ph=[];
     if(state.prop==="236"){[1,2,3].forEach(i=>{const d=state.devices[cfg.ids["l236_"+i]];if(d)ph.push({n:"L"+i,w:capVal(d,"measure_power"),a:capVal(d,"measure_current"),v:capVal(d,"measure_voltage")});});}
     else if(state.devices[cfg.ids.fastighet]){const co=state.devices[cfg.ids.fastighet].capabilitiesObj||{},g=k=>co[k]&&co[k].value!=null?co[k].value:null;
@@ -3213,6 +3217,7 @@ document.addEventListener("click",async e=>{
     else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
       for(const d of propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d)&&zoneName(d)===z))await setCap(d.id,"onoff",to);draw();}
     else if(act==="lock"){const d=state.devices[b.dataset.dev],to=b.dataset.to==="true";if(b.dataset.cf?!confirm((to?"Låsa ":"Låsa upp ")+devName(d)+"?"):(!to&&!confirm("Låsa upp "+devName(d)+"?")))return;await setCap(d.id,"locked",to);draw();}
+    else if(act==="lampoff"){await setCap(b.dataset.dev,"onoff",false);draw();return;}
     else if(act==="alloff"){
       if(!confirm("Släcka alla tända lampor i "+PROPS.find(p=>p.k===state.prop).name+"?"))return;
       for(const d of propDevices().filter(d=>isLamp(d)&&hasOnoff(d)&&isShown(d)&&d.capabilitiesObj.onoff.value))await setCap(d.id,"onoff",false);draw();}
