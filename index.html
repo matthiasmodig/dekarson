@@ -794,13 +794,17 @@ function liveEnergy(){
   const y=u==="kr"?"devicecapabilities_number.number6":"devicecapabilities_number.number5";
   return {w:capVal(d,"measure_power.number1"),price:null,day:null,prevDay:null,month:capVal(d,m),prevMonth:null,year:capVal(d,y),prevYear:null,avgM:capVal(d,"devicecapabilities_number.number4")};
 }
+function batBtn(L){
+  if(!L.battery.length)return "";const bh=!!cfg.ui.status.batHide;
+  return `<div style="margin-top:8px"><button class="btn sm" data-act="battoggle">${bh?"Visa låg batterinivå ("+L.battery.length+")":"Dölj låg batterinivå"}</button></div>`;
+}
 function attnHtml(){
-  const L=statusLists(),att=[];
-  for(const d of L.battery)att.push(`Svagt batteri: ${esc(devName(d))} (${fmt(capVal(d,"measure_battery"),0)} %)`);
+  const L=statusLists(),att=[],bh=!!cfg.ui.status.batHide;
+  if(!bh)for(const d of L.battery)att.push(`Svagt batteri: ${esc(devName(d))} (${fmt(capVal(d,"measure_battery"),0)} %)`);
   for(const d of L.alarms)att.push(`Larm: ${esc(devName(d))}`);
   for(const d of L.open)att.push(`Öppet: ${esc(devName(d))} (${esc(zoneName(d))})`);
   for(const x of L.locks.filter(x=>!x.ok))att.push(`Olåst: ${esc(devName(x.d))}`);
-  return `<div class="card ${att.length?"attn":""}" style="grid-column:1/-1"><h2>Behöver uppmärksamhet <span class="pill ${att.length?"bad":""}">${att.length}</span></h2>${att.length?`<ul style="margin:0;padding-left:18px">${att.map(x=>`<li>${x}</li>`).join("")}</ul>`:`<div class="note" style="margin:0">Inget just nu.</div>`}</div>`;
+  return `<div class="card ${att.length?"attn":""}" style="grid-column:1/-1"><h2>Behöver uppmärksamhet <span class="pill ${att.length?"bad":""}">${att.length}</span></h2>${att.length?`<ul style="margin:0;padding-left:18px">${att.map(x=>`<li>${x}</li>`).join("")}</ul>`:`<div class="note" style="margin:0">Inget just nu.</div>`}${batBtn(L)}</div>`;
 }
 function heatDevs(){return [[cfg.ids.floor,"Golvvärme"],[cfg.ids.entre,"Entréplatta"],[cfg.ids.trLoad,"Traktor laddning"],[cfg.ids.trHeat,"Traktor MV"],[cfg.ids.avlopp,"Avloppsbrunn"]].map(([id,n])=>[state.devices[id],n]).filter(x=>x[0]&&hasOnoff(x[0]));}
 function tempBar(){
@@ -2849,7 +2853,8 @@ function renderStatus(){
   if(S.open)h+=cat("Kontakter aktiva (öppet)",L.open.map(d=>`<span class="dot bad"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
   if(S.alarms)h+=cat("Larm",L.alarms.map(d=>`<span class="dot bad"></span>${esc(devName(d))}`),L.alarms.length?"bad":"");
   if(S.motion)h+=cat("Rörelse just nu",L.motion.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
-  if(S.battery)h+=cat("Svagt batteri (20 % eller lägre)",L.battery.map(d=>`${esc(devName(d))}</span><span>${fmt(capVal(d,"measure_battery"),0)} %`),L.battery.length?"bad":"");
+  if(S.battery){const bh=!!S.batHide&&L.battery.length>0;h+=cat("Svagt batteri (20 % eller lägre)",bh?[`<span class="note" style="margin:0">Dold · ${L.battery.length} enheter</span>`]:L.battery.map(d=>`${esc(devName(d))}</span><span>${fmt(capVal(d,"measure_battery"),0)} %`),L.battery.length&&!bh?"bad":"",bh?L.battery.length:null);
+    if(L.battery.length)h=h.replace(/<\/div>$/,`<div style="margin-top:8px">${batBtn(L).replace(/^<div[^>]*>|<\/div>$/g,"")}</div></div>`);}
   if(S.temps)h+=tbl("Temperaturer",["Givare","Rum","Temperatur","Uppdaterad"],L.temps.sort((a,b)=>capVal(b,"measure_temperature")-capVal(a,"measure_temperature")).map(d=>[`<span data-sens="${esc(d.id)}|measure_temperature" style="cursor:pointer">${esc(devName(d))}</span>`,esc(zoneName(d)),`<b>${fmt(capVal(d,"measure_temperature"),1)} °C</b>`,(()=>{const o=d.capabilitiesObj.measure_temperature,x=o&&(o.lastUpdated||o.lastChanged);if(!x)return `<small style="color:var(--mut)">–</small>`;const t=new Date(x),old=Date.now()-t>6*36e5,same=t.toDateString()===new Date().toDateString();return `<small style="color:${old?"var(--bad)":"var(--mut)"}">${t.toLocaleString("sv-SE",same?{hour:"2-digit",minute:"2-digit"}:{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</small>`;})()]),L.temps.length,"grid-column:span 2;min-width:0","",2);
   h+=`</div><div class="note">Uppdateras var 20:e sekund. Vilka rutor som visas styrs i Admin.</div>`;
   $("#p-status").innerHTML=h;
@@ -3195,6 +3200,7 @@ document.addEventListener("click",async e=>{
     else if(act==="roomwin"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husWin(r))await setCap(d.id,"onoff",to);draw();}
     else if(act==="roomlights"){const r=HUS_ROOMS.find(x=>x.id===b.dataset.room),to=b.dataset.to==="true";for(const d of husDevs(r).filter(d=>isLamp(d)&&hasOnoff(d)))await setCap(d.id,"onoff",to);draw();}
     else if(act==="styrview"){state.styrView=b.dataset.v;state.search="";draw();}
+    else if(act==="battoggle"){cfg.ui.status.batHide=!cfg.ui.status.batHide;persist();draw();return;}
     else if(act==="elnu"){openModal("elnu","");try{await runFlow(ELNU_FLOW);state.flash.elnu=true;}catch(e){state.flash.elnuErr=e.message;}if(state.modal&&state.modal.t==="elnu")$("#dlgBody").innerHTML=elNuHtml();draw();setTimeout(()=>{delete state.flash.elnu;delete state.flash.elnuErr;draw();},4000);}
     else if(act==="flow"){if(b.dataset.confirm&&!confirm(b.dataset.confirm))return;await runFlow(id);state.flash[id]=true;draw();setTimeout(()=>{delete state.flash[id];draw();},1800);}
     else if(act==="zone"){const to=b.dataset.to==="true",z=b.dataset.zone;
