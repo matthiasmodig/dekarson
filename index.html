@@ -2222,7 +2222,7 @@ const CHARTS=[
    return barChart(a,null,a.map((_,i)=>labelDate(addDays(s,i*7))),unitName(eu));}},
  {k:"hours",title:"Timmedeleffekt, senaste 24 timmarna (kW)",async build(c){
    if(state.prop!=="235")return `<div class="note">Gäller Dekarsön 235.</div>`;
-   const hh=await loadHourly(),keys=doneKeys(hh).slice(-24);return lineChart(keys.map(k=>hh[k]),keys.map(k=>hourLbl(k)),"kW",null,fillH());},
+   const hh=await loadHourly(),keys=doneKeys(hh).slice(-24);state.hoursChart={vals:keys.map(k=>hh[k]),labels:keys.map(k=>hourLbl(k))};return lineChart(state.hoursChart.vals,state.hoursChart.labels,"kW",null,fillH());},
    async more(c){if(state.prop!=="235")return "";const hh=await loadHourly(),all=doneKeys(hh),k7=all.slice(-168);
      const sm=Array(24).fill(0),n=Array(24).fill(0);for(const k of all){const hr=+k.slice(11);sm[hr]+=hh[k];n[hr]++;}
      return `<div class="card" style="margin-top:14px"><h2>Senaste 7 dygnen, timme för timme (kW)</h2>${barChart(k7.map(k=>hh[k]),null,k7.map(k=>k.slice(8,10)+"/"+k.slice(5,7)+" "+k.slice(11)+":00"),"kW")}</div>
@@ -2395,6 +2395,19 @@ async function loadHourly(){
   state.hourly={t:Date.now(),v:h};return h;
 }
 /* Diagramrutorna ska fylla sin ruta: räkna ut viewBox-höjd så diagrammet blir ca 290 px högt i den bredd rutan får (ungefär, ur fönsterbredden) */
+/* Efter ritning: mät den verkliga rutan och rita om timdiagrammet så det fyller samma höjd som grannrutan */
+function fitDiagram(){
+  try{const hc=state.hoursChart,card=document.querySelector('.chartcard[data-chart="hours"]');if(!hc||!card)return;
+    const sv=card.querySelector("svg");if(!sv)return;
+    const row=[...document.querySelectorAll(".chartcard")].filter(c=>c!==card&&Math.abs(c.getBoundingClientRect().top-card.getBoundingClientRect().top)<4);
+    const target=Math.max(card.getBoundingClientRect().height,...row.map(c=>c.getBoundingClientRect().height)),cs=getComputedStyle(card),
+      avail=target-(sv.getBoundingClientRect().top-card.getBoundingClientRect().top)-parseFloat(cs.paddingBottom||0),w=sv.getBoundingClientRect().width;
+    if(!(avail>100&&w>100))return;const H=Math.max(200,Math.min(700,Math.round(1000*avail/w)));
+    if(Math.abs(H-(+sv.dataset.h||0))<4)return;
+    const t=document.createElement("div");t.innerHTML=lineChart(hc.vals,hc.labels,"kW",null,H);const n=t.firstElementChild;if(n&&n.tagName==="svg"){n.dataset.h=H;sv.replaceWith(n);}
+  }catch(e){}
+}
+window.addEventListener("resize",()=>{clearTimeout(window.__fd);window.__fd=setTimeout(fitDiagram,250);});
 function fillH(){const sb=window.innerWidth>900?248:0,cw=Math.max(300,window.innerWidth-sb-34),cols=Math.max(1,Math.floor((cw+12)/432)),w=(cw-12*(cols-1))/cols-34;return Math.max(260,Math.min(620,Math.round(1000*290/w)));}
 function lineChart(vals,labels,unit,color,Hh){
   const W=1000,H=Hh||260,L=52,B=28,T=10,R=8,n=vals.length;
@@ -3043,7 +3056,7 @@ async function draw(){
   state.keepFocus=document.activeElement&&["q","aq"].includes(document.activeElement.id);
   const dqf=document.activeElement&&document.activeElement.id==="dq";
   if(state.tab==="oversikt"){await renderOversikt();if(dqf){const q=$("#dq");if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length);}}}
-  else if(state.tab==="energi")await renderEnergi();
+  else if(state.tab==="energi"){await renderEnergi();fitDiagram();}
   else if(state.tab==="klimat")await renderKlimat();
   else if(state.tab==="kameror")renderKameror();
   else if(state.tab==="idrott")await renderIdrott();
