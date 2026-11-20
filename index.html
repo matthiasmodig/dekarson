@@ -2838,7 +2838,11 @@ function renderStatus(){
   const tbl=(title,head,rows,cnt,sty,cls,L0)=>`<div class="card" style="${sty||""}"><h2>${title} <span class="pill ${cls||""}">${cnt!=null?cnt:rows.length}</span></h2>${rows.length?`<table class="cols"><tr>${head.map((x,i)=>`<th${i>=(L0||1)?` style="text-align:right"`:""}>${x}</th>`).join("")}</tr>${rows.map(r=>`<tr>${r.map((x,i)=>`<td${i>=(L0||1)?` style="text-align:right;white-space:nowrap"`:""}>${x}</td>`).join("")}</tr>`).join("")}</table>`:`<div class="note" style="margin:0">Inga</div>`}</div>`;
   let h=`<div class="grid wide">`;
   h+=`<div class="stTop">`;
+  h+=`<div style="display:flex;flex-direction:column;gap:12px;min-width:0">`;
   if(S.lights){const lo=L.lights.filter(hasOnoff);h+=cat("Tända lampor",L.lights.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span>${hasOnoff(d)?`<button class="btn sm" style="white-space:nowrap" data-act="lampoff" data-dev="${esc(d.id)}">Slå av</button>`:""}`),"",null,"min-width:0").replace(/<\/div>$/,lo.length?`<div style="margin-top:8px"><button class="btn sm" data-act="alloff">Släck alla (${lo.length})</button></div></div>`:"</div>");}
+  if(S.alarms)h+=cat("Larm",L.alarms.map(d=>`<span class="dot bad"></span>${esc(devName(d))}`),L.alarms.length?"bad":"");
+  if(S.motion)h+=cat("Rörelse just nu",L.motion.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
+  h+=`</div>`;
   if(S.sockets){
     const {on,tot,ovr}=consumersNow();
     h+=cat("Påslagna enheter och förbrukare",on.map(x=>`<span class="dot on"></span>${esc(devName(x.d))} <span class="pill">${esc(zoneName(x.d))}</span></span><span>${x.w!=null?fmt(x.w,0)+" W":"– W"}`).concat(on.length?[`<b>Summa uppmätt</b></span><b>${fmt(tot,0)} W`]:[]).concat(ovr!=null?[`Övrigt, ej mätt <span class="pill">Fastighet minus uppmätt</span></span><span>${fmt(ovr,0)} W`,`<span class="note" style="margin:0;font-size:12px">Kan vara: kyl och frys, spis och ugn, TV och router, laddare, cirkulationspumpar och styrelektronik i värmesystemet, omätta lampor och uttag samt standby-förbrukning.</span>`]:[]),"",on.length,"min-width:0");}
@@ -2857,8 +2861,6 @@ function renderStatus(){
         ph.push({n:"L"+n,a:co[k].value,w:pk?co[pk].value:null,v:vk?co[vk].value:null});}}}
     if(ph.length){const fuse=Number(cfg.fuse)||20;
       h+=tbl("Faser · "+PROPS.find(p=>p.k===state.prop).name,["Fas","Effekt","Ström","Spänning","Skenbar","Eff.faktor"],ph.map(x=>{const va=x.n==="Totalt"?ph.filter(y=>y.n!=="Totalt").reduce((a,y)=>a+(y.a||0)*(y.v||0),0):(x.a!=null&&x.v!=null?x.a*x.v:null);return [`<b>${x.n}</b>`,x.w!=null?fmt(x.w,0)+" W":"–",x.a!=null?`<span style="${state.prop==="235"&&x.n!=="Totalt"&&x.a/fuse>.85?"color:var(--bad)":""}">${fmt(x.a,1)} A</span>`:"–",x.v!=null?fmt(x.v,0)+" V":"–",va?fmt(va,0)+" VA":"–",va&&x.w!=null?fmt(x.w/va,2):"–"];}),ph.length,"grid-column:span 2;min-width:0");}}
-  if(S.alarms)h+=cat("Larm",L.alarms.map(d=>`<span class="dot bad"></span>${esc(devName(d))}`),L.alarms.length?"bad":"");
-  if(S.motion)h+=cat("Rörelse just nu",L.motion.map(d=>`<span class="dot on"></span>${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span>`));
   if(S.battery){const all=!!S.batAll,bh=!!S.batHide&&!all&&L.battery.length>0,lv=d=>capVal(d,"measure_battery"),byName=(x,y)=>devName(x).localeCompare(devName(y),"sv"),src=all?[...L.batAll].sort(byName):L.battery;
     const row=d=>`${lv(d)<=20?`<span class="dot bad"></span>`:""}${esc(devName(d))} <span class="pill">${esc(zoneName(d))}</span></span><span style="${lv(d)<=20?"color:var(--bad);font-weight:600":""}">${fmt(lv(d),0)} %`;
     const items=bh?[`<span class="note" style="margin:0">Dold · ${L.battery.length} enheter</span>`]:src.map(row);
