@@ -3262,7 +3262,7 @@ $("#gateForm").addEventListener("submit",async e=>{e.preventDefault();const m=$(
   catch(err){m.textContent=err.message==="Failed to fetch"?"Kunde inte nå servern.":err.message;}finally{btn.disabled=false;}});
 if(!gateUpdate())refresh({force:true,flows:true});
 setInterval(()=>{if(!document.hidden&&state.tab!=="admin")refresh({quiet:true});},REFRESH_MS);
-$("#refreshBtn").addEventListener("click",async()=>{const b=$("#refreshBtn");b.disabled=true;state.vars=null;state.tp=null;state.zonesAt=0;CAMLIST=null;state.flowsAt=0;try{await refresh({force:true,flows:true});if(state.tab==="kameror")camHydrate(true);}finally{b.disabled=false;}});
+$("#refreshBtn").addEventListener("click",async()=>{const b=$("#refreshBtn");b.disabled=true;state.dagbok=null;state.vars=null;state.tp=null;state.zonesAt=0;CAMLIST=null;state.flowsAt=0;try{await refresh({force:true,flows:true});if(state.tab==="kameror")camHydrate(true);}finally{b.disabled=false;}});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&state.tab!=="admin"&&Date.now()-(state.lastRefresh||0)>REFRESH_MS)refresh({quiet:true});});
 </script>
 </body>
